@@ -1,48 +1,69 @@
 package com.robertsoultanaev.javasphinx.VM;
 
+import com.robertsoultanaev.javasphinx.SerializationUtils;
+import com.robertsoultanaev.javasphinx.SphinxException;
+import com.robertsoultanaev.javasphinx.SphinxParams;
 import com.robertsoultanaev.javasphinx.VM.VMException;
+import com.robertsoultanaev.javasphinx.crypto.ECCGroup;
 import com.robertsoultanaev.javasphinx.packet.ProcessedPacket;
 import com.robertsoultanaev.javasphinx.packet.SphinxPacket;
 import com.robertsoultanaev.javasphinx.packet.instruction.OpCode;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.Mac;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
 
+import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.Mac;
 import org.bouncycastle.crypto.digests.SHA256Digest;
+import org.bouncycastle.crypto.engines.AESEngine;
 import org.bouncycastle.crypto.macs.HMac;
+import org.bouncycastle.crypto.modes.SICBlockCipher;
 import org.bouncycastle.crypto.params.KeyParameter;
+import org.bouncycastle.crypto.params.ParametersWithIV;
 import org.bouncycastle.math.ec.ECPoint;
 import org.bouncycastle.math.ec.ECCurve;
 import org.bouncycastle.math.ec.custom.sec.SecP224R1Curve;
 import org.bouncycastle.math.ec.custom.sec.SecP256R1Curve;
 
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import static com.robertsoultanaev.javasphinx.SerializationUtils.concatenate;
+import static com.robertsoultanaev.javasphinx.SerializationUtils.slice;
 
 
 public class SphinxVM {
+    private SphinxPacket RecievedPacket;
     private ProcessedPacket processedPacket;
     private BigInteger nodeSecret;
     private byte[][] registers = new byte[256][64];
     private byte[] rawpacket;
+    private byte[] aesS;
+    private SphinxParams params;
+    private byte[] hmu;
 
-    public SphinxVM(BigInteger nodeSecret) {
+    public SphinxVM(BigInteger nodeSecret, SphinxParams params) {
         this.nodeSecret = nodeSecret;
+        this.params = params;
     }
 
-    public ProcessedPacket interpret(byte[] packet, byte[] instructions) throws VMException {
-        rawpacket = packet.clone();
+    public ProcessedPacket interpret(byte[] Rawpacket, byte[] instructions, SphinxPacket packet) throws VMException {
+        RecievedPacket = packet;
+        rawpacket = Rawpacket.clone();
         interpretInstructions(instructions);
         return processedPacket;
     }
 
-    private void interpretInstructions( byte[] instructions) throws VMException {
+    private void interpretInstructions(byte[] instructions) throws VMException {
         for (int pc = 0; pc < instructions.length;) {
             OpCode opcode = OpCode.fromByte(instructions[pc++]);
             try {
@@ -54,10 +75,9 @@ public class SphinxVM {
                     }
                     case STORE_BYTES -> {
                         byte source = instructions[pc++];
-                        byte startBit = instructions[pc++];
                         byte length = instructions[pc++];
                         byte destReg = instructions[pc++];
-                        storeBytes(source, startBit, length, destReg);
+                        storeBytes(source, length, destReg);
                     }
                     case COMPUTE_SHARED_SECRET -> {
                         byte pubKeyReg = instructions[pc++];
@@ -145,9 +165,10 @@ public class SphinxVM {
     }
 
 
-    private void storeBytes(byte source, byte start, byte length, byte destReg) throws VMException {
-        int startByte = Byte.toUnsignedInt(start);
+    private void storeBytes(byte source, byte length, byte destReg) throws VMException {
+        int startByte = 0;
         int lengthBytes = Byte.toUnsignedInt(length);
+
 
         byte[] src;
         if(source == 0x00) {
@@ -168,7 +189,11 @@ public class SphinxVM {
         byte[] newSrc = new byte[src.length - lengthBytes];
         System.arraycopy(src, 0, newSrc, 0, startByte);
         System.arraycopy(src, startByte + lengthBytes, newSrc, startByte, src.length - (startByte + lengthBytes));
-        registers[source] = newSrc;
+        if(source == 0x00) {
+            rawpacket = newSrc;
+        } else {
+            registers[source] = newSrc;
+        }
     }
 
     private void computeSharedSecret(byte pubKeyReg, byte destReg, byte groupId) throws VMException {
@@ -182,6 +207,16 @@ public class SphinxVM {
                     ECCurve curve = new SecP224R1Curve();
                     ECPoint pubPoint = curve.decodePoint(pubKeyBytes);
                     ECPoint s = pubPoint.multiply(nodeSecret);
+
+                    //Debug Code damit alles richtig ist!
+                    if(!pubPoint.equals(RecievedPacket.packetContent().header().alpha())) {
+                        throw new VMException("computeSharedSecret kaputt 2!");
+                    }
+                    if(!s.equals(RecievedPacket.packetContent().header().alpha().multiply(nodeSecret))) {
+                        throw new VMException("computeSharedSecret kaputt 2!");
+                    }
+
+
                     result = s.getEncoded(false);
                 }
                 case 0x01 -> {
@@ -227,8 +262,7 @@ public class SphinxVM {
                         default -> throw new VMException("Invalid classic hash type");
                     };
                     MessageDigest digest = MessageDigest.getInstance(algo);
-                    byte[] result = digest.digest(input);
-                    copyToRegister(result, destReg);
+                    registers[destReg] = digest.digest(input);
                     break;
 
                 // AES-CTR basierte "Flavour-Hashes"
@@ -239,8 +273,7 @@ public class SphinxVM {
                     //TODO Richtig implementieren undzwar variabel!
                     byte[] iv = getFlavorIV(hashType);
                     byte[] m = new byte[16]; // zero input
-                    byte[] derived = aesCtr(input, m, iv);
-                    copyToRegister(derived, destReg);
+                    registers[destReg] = aesCtr(input, m, iv);
                     break;
                 case 0x14: // aes_key
                     //TODO Richtig implementieren undzwar Variabel!
@@ -252,13 +285,14 @@ public class SphinxVM {
                     SHA256Digest.update(data, 0, data.length);
                     SHA256Digest.doFinal(output, 0);
                     registers[destReg] = slice(output, 16);
+                    aesS = registers[destReg];
                     break;
                 case 0x15:  //hb
                     //TODO Richtig implementieren
                     iv = getFlavorIV(hashType);
                     m = new byte[16]; // zero input
                     registers[destReg] = aesCtr(input, m, iv);
-
+                    break;
                 default:
                     throw new VMException("Unsupported hash type: " + hashType);
             }
@@ -271,29 +305,36 @@ public class SphinxVM {
         switch(hashType) {
             case 0x01 -> {
                 try {
-                    HMac mac = new HMac(new SHA256Digest());
-                    KeyParameter keyParam = new KeyParameter(registers[keyReg]);
-                    mac.init(keyParam);
-
-                    byte[] data = registers[dataReg];
-                    mac.update(data, 0, data.length);
-
+                    Mac mac = new HMac(new SHA256Digest());
+                    CipherParameters cipherParameters = new KeyParameter(registers[keyReg]);
+                    mac.init(cipherParameters);
                     byte[] output = new byte[mac.getMacSize()];
+
+                    mac.update(registers[dataReg], 0, registers[dataReg].length);
                     mac.doFinal(output, 0);
+
 
                     //TODO KeyLength variabel!
                     int keyLength = 16; // oder dynamisch aus params lesen
-                    System.arraycopy(output, 0, registers[destReg], 0, keyLength);
+                    registers[destReg] = slice(output, keyLength);
+
+
 
                 } catch (Exception e) {
                     throw new VMException("MAC failed: " + e.getMessage(), e);
                 }
+            }
+            default -> {
+                throw new VMException("MAC noch nicht implementiert");
             }
         }
 
     }
 
     private void verify(byte expectedReg, byte computedReg) throws VMException {
+        //if(!Arrays.equals(RecievedPacket.packetContent().header().getGamma(), registers[expectedReg])) {
+          //  throw new VMException("Irgendwas stimmt mit Gamma nicht?!");
+        //}
         if (!Arrays.equals(registers[expectedReg], registers[computedReg])) {
             throw new VMException("MAC verification failed");
         }
@@ -301,55 +342,93 @@ public class SphinxVM {
     }
 
     private void exponent(byte baseReg, byte expReg, byte destReg, byte groupId, byte outputLength) throws VMException {
-        int len = Byte.toUnsignedInt(outputLength);
-        byte[] resultEncoded;
-
         try {
+            byte[] alpha = registers[baseReg];
+            byte[] result;
+
             switch (groupId) {
-                case 0x01 -> { // Klassische mod-p Gruppe
-                    BigInteger base = new BigInteger(1, registers[baseReg]);
-                    BigInteger exp = new BigInteger(1, registers[expReg]);
+                case 0x00 -> {
+                    // EC-Gruppe: secp224r1
+                    ECCurve curve = new SecP224R1Curve();
+                    ECPoint pubPoint = curve.decodePoint(alpha);
+                    ECPoint s = pubPoint.multiply(nodeSecret);
+                    result = s.getEncoded(false);
+                }
+                case 0x01 -> {
+                    // klassische DH-Gruppe (mod p)
+                    BigInteger base = new BigInteger(1, alpha);
                     BigInteger p = new BigInteger("FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1", 16);
-                    BigInteger result = base.modPow(exp, p);
-                    resultEncoded = result.toByteArray();
+                    BigInteger secret = base.modPow(nodeSecret, p);
+                    result = secret.toByteArray();
                 }
 
-                case 0x02 -> { // EC: secp256r1
+                case 0x02 -> {
+                    // EC-Gruppe: secp256r1
                     ECCurve curve = new SecP256R1Curve();
-                    ECPoint basePoint = curve.decodePoint(registers[baseReg]);
-                    BigInteger scalar = new BigInteger(1, registers[expReg]);
-                    ECPoint resultPoint = basePoint.multiply(scalar).normalize();
-                    resultEncoded = resultPoint.getEncoded(false);
+                    ECPoint pubPoint = curve.decodePoint(alpha);
+                    ECPoint secretPoint = pubPoint.multiply(nodeSecret);
+                    result = secretPoint.getEncoded(false); // uncompressed
                 }
-
-                default -> throw new VMException("Unsupported group ID: " + groupId);
+                default -> throw new VMException("Unsupported groupId in computeSharedSecret: " + groupId);
             }
 
-            // Ergebnis auf outputLength bringen
-            byte[] output = new byte[len];
-            System.arraycopy(resultEncoded, 0, output, 0, len);
-            registers[destReg] = output;
+            registers[destReg] = result;
+
         } catch (Exception e) {
-            throw new VMException("EC Exponentiation failed: " + e.getMessage(), e);
+            throw new VMException("exponend failed: " + e.getMessage(), e);
         }
     }
 
     private void pad(byte inputReg, byte targetLength, byte destReg) throws VMException {
-        System.arraycopy(registers[inputReg], 0, registers[destReg], 0, targetLength);
-        Arrays.fill(registers[destReg], targetLength, registers[destReg].length, (byte) 0);
+        int len = Byte.toUnsignedInt(targetLength);
+        byte[] input = registers[inputReg];
+
+        if (len > registers[destReg].length) {
+            throw new VMException("Target length exceeds destination register size.");
+        }
+
+        byte[] output = new byte[registers[destReg].length + len];
+        Arrays.fill(output, (byte) 0x00);
+
+        System.arraycopy(input, 0, output, 0, input.length);
+
+        registers[destReg] = output;
+        System.out.println(registers[destReg].length);
     }
 
-    private void prgGenerate(byte seedReg, byte hashType, byte destReg) throws VMException {
-        try {
-            MessageDigest digest = switch (hashType) {
-                case 0x01 -> MessageDigest.getInstance("SHA-256");
-                case 0x02 -> MessageDigest.getInstance("SHA-1");
-                default -> throw new VMException("Unsupported PRG type: " + hashType);
-            };
-            byte[] result = digest.digest(registers[seedReg]);
-            System.arraycopy(result, 0, registers[destReg], 0, Math.min(result.length, registers[destReg].length));
-        } catch (NoSuchAlgorithmException e) {
-            throw new VMException("PRG failed: " + e.getMessage());
+
+    private void prgGenerate(byte seedReg, byte type, byte destReg) throws VMException {
+        switch(type) {
+            case 0x01 -> {
+                try{
+                    MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                    byte[] result = digest.digest(registers[seedReg]);
+                    System.arraycopy(result, 0, registers[destReg], 0, Math.min(result.length, registers[destReg].length));
+                } catch (NoSuchAlgorithmException e) {
+                    throw new VMException("PRG failed: " + e.getMessage());
+                }
+            }
+            case 0x02 -> {
+                try {
+                    MessageDigest digest = MessageDigest.getInstance("SHA-1");
+                    byte[] result = digest.digest(registers[seedReg]);
+                    System.arraycopy(result, 0, registers[destReg], 0, Math.min(result.length, registers[destReg].length));
+                } catch (NoSuchAlgorithmException e) {
+                    throw new VMException("PRG failed: " + e.getMessage());
+                }
+
+            }
+            case 0x03 -> {
+                byte[] iv = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+                //TODO Variabele länge!
+                System.out.println(registers[seedReg].length);
+                try {
+                    registers[destReg] = aesCtrKeystream(registers[seedReg], iv, 192);
+                } catch (Exception e) {
+                    throw new VMException("PRG Generate mit AESCTR Keystream hat nicht so geklappt?!");
+                }
+            }
+            default -> throw new VMException("Unsupported PRG type: " + type);
         }
     }
 
@@ -365,23 +444,45 @@ public class SphinxVM {
         for (int i = 0; i < a.length; i++) {
             result[i] = (byte) (a[i] ^ b[i]);
         }
-
         registers[destReg] = result;
     }
 
     private void decrypt(byte keyReg, byte inputReg, byte algoType, byte destReg) throws VMException {
-        try {
-            Cipher cipher = switch (algoType) {
-                case 0x01 -> Cipher.getInstance("AES/ECB/NoPadding");
-                case 0x02 -> Cipher.getInstance("Blowfish");
-                default -> throw new VMException("Unsupported encryption type: " + algoType);
-            };
-            SecretKeySpec key = new SecretKeySpec(registers[keyReg], cipher.getAlgorithm());
-            cipher.init(Cipher.DECRYPT_MODE, key);
-            byte[] result = cipher.doFinal(registers[inputReg]);
-            System.arraycopy(result, 0, registers[destReg], 0, Math.min(result.length, registers[destReg].length));
-        } catch (Exception e) {
-            throw new VMException("Decrypt failed: " + e.getMessage());
+        switch(algoType) {
+            case 0x01 -> {
+                try {
+                    Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
+                    SecretKeySpec key = new SecretKeySpec(registers[keyReg], cipher.getAlgorithm());
+                    cipher.init(Cipher.DECRYPT_MODE, key);
+                    byte[] result = cipher.doFinal(registers[inputReg]);
+                    System.arraycopy(result, 0, registers[destReg], 0, Math.min(result.length, registers[destReg].length));
+                } catch(Exception e) {
+                    throw new VMException("Decrypt with AES ECB does not work");
+                }
+            }
+            case 0x02 -> {
+                try {
+                    Cipher cipher = Cipher.getInstance("Blowfish");
+                    SecretKeySpec key = new SecretKeySpec(registers[keyReg], cipher.getAlgorithm());
+                    cipher.init(Cipher.DECRYPT_MODE, key);
+                    byte[] result = cipher.doFinal(registers[inputReg]);
+                    System.arraycopy(result, 0, registers[destReg], 0, Math.min(result.length, registers[destReg].length));
+                } catch (Exception e) {
+                    throw new VMException("Decrypt with Blowfish does not work");
+                }
+
+            }
+            case 0x03 -> {
+                int keyLength = 16;
+                try {
+                    registers[destReg] = lionessDec(registers[keyReg], registers[inputReg], keyLength);
+                } catch (Exception e) {
+                    throw new VMException("Decrypt with lionessDec does not work");
+                }
+            }
+            default -> {
+                throw new VMException("Decryption Algo not implemented");
+            }
         }
     }
 
@@ -429,7 +530,12 @@ public class SphinxVM {
     private void forward(byte idReg, byte payloadReg) throws VMException {
     }
 
-    private byte[] aesCtr(byte[] key, byte[] message, byte[] iv) throws Exception {
+    private byte[] aesCtrKeystream(byte[] key, byte[] iv, int length) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        byte[] zeroInput = new byte[length]; // enthält nur 0x00
+        return aesCtr(key, zeroInput, iv);   // nutzt deine bestehende aesCtr
+    }
+
+    private byte[] aesCtr(byte[] key, byte[] message, byte[] iv) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
         Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
         IvParameterSpec ivSpec = new IvParameterSpec(iv);
@@ -449,11 +555,6 @@ public class SphinxVM {
         };
     }
 
-    private void copyToRegister(byte[] source, byte destReg) {
-        byte[] dest = registers[destReg];
-        System.arraycopy(source, 0, dest, 0, Math.min(source.length, dest.length));
-    }
-
     private byte[] slice(byte[] source, int start, int end) {
         int resultLength = end - start;
         byte[] result = new byte[resultLength];
@@ -463,6 +564,68 @@ public class SphinxVM {
 
     private byte[] slice(byte[] source, int end) {
         return slice(source, 0, end);
+    }
+
+    private void lionessCheckLengths(byte[] key, byte[] message, int keyLength) throws SphinxException {
+        if (key.length != keyLength) {
+            throw new SphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
+        }
+
+        if (message.length < keyLength * 2) {
+            throw new SphinxException("Length of provided message (" + message.length + ") needs to be at least double the length of the key (" + keyLength + ")");
+        }
+    }
+
+    private byte[] lionessDec(byte[] key, byte[] message, int keyLength) throws SphinxException, InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+        lionessCheckLengths(key, message, keyLength);
+
+        byte[] r4Short = slice(message, keyLength);
+        byte[] r4Long = slice(message, keyLength, message.length);
+
+        // Round 4
+        byte[] r3Long = aesCtr(key, r4Long, r4Short);
+
+        // Round 3
+        byte[] three = "3".getBytes();
+        byte[] k2 = slice(hash(concatenate(r3Long, key, three)), keyLength);
+        byte[] r2Short = aesCtr(key, r4Short, k2);
+
+        // Round 2
+        byte[] r1Long = aesCtr(key, r3Long, r2Short);
+
+        // Round 1
+        byte[] one = "1".getBytes();
+        byte[] k0 = slice(hash(concatenate(r1Long, key, one)), keyLength);
+        byte[] c = aesCtr(key, r2Short, k0);
+
+        return concatenate(c, r1Long);
+    }
+
+    private byte[] hash(byte[] data) {
+        SHA256Digest digest = new SHA256Digest();
+        byte[] output = new byte[digest.getDigestSize()];
+
+        digest.update(data, 0, data.length);
+        digest.doFinal(output, 0);
+
+        return output;
+    }
+
+    private static byte[] concatenate(byte[]... arrays) {
+        int length = 0;
+        for (byte[] array : arrays) {
+            length += array.length;
+        }
+
+        byte[] result = new byte[length];
+
+        int offset = 0;
+        for (byte[] array : arrays) {
+            System.arraycopy(array, 0, result, offset, array.length);
+            offset += array.length;
+        }
+
+        return result;
     }
 }
 

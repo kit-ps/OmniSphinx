@@ -1,7 +1,4 @@
-import com.robertsoultanaev.javasphinx.SerializationUtils;
-import com.robertsoultanaev.javasphinx.SphinxClient;
-import com.robertsoultanaev.javasphinx.SphinxException;
-import com.robertsoultanaev.javasphinx.SphinxParams;
+import com.robertsoultanaev.javasphinx.*;
 import com.robertsoultanaev.javasphinx.VM.SphinxVM;
 import com.robertsoultanaev.javasphinx.VM.VMException;
 import com.robertsoultanaev.javasphinx.packet.ProcessedPacket;
@@ -89,22 +86,30 @@ public class SphinxVMIntegrationTest {
         System.out.println(alphaLen);
         // Instruction parameter setup (assumed fixed here)
         byte HASH_TYPE_MAC = 0x10;
-        byte HASH_TYPE_PRG = 0x02;
+        byte HASH_TYPE_PRG = 0x11;
         byte MAC_TYPE = 0x01;
-        byte DECRYPT_ALGO = 0x04;
+        byte DECRYPT_ALGO = 0x03;
         byte BLINDING_HASH = 0x15;
         byte GROUP_ID = 0x00;
         byte HASH_TYPE_KEY = 0x14;
+        byte PRG_Type = 0x03;
+        byte Decrypt_hash = 0x12;
 
         // Generate VM instructions
         byte[] instructions = SphinxInstructionPresets.createInstructions(
-                alphaLen, betaLen, kappa, HASH_TYPE_KEY, HASH_TYPE_MAC, HASH_TYPE_PRG, MAC_TYPE, DECRYPT_ALGO, BLINDING_HASH, GROUP_ID
+                alphaLen, betaLen, kappa, HASH_TYPE_KEY, HASH_TYPE_MAC, HASH_TYPE_PRG, PRG_Type, MAC_TYPE, Decrypt_hash, DECRYPT_ALGO, BLINDING_HASH, GROUP_ID
         );
-
+        System.out.println("Alpha Länge: " + SerializationUtils.encodeECPoint(packet.packetContent().header().alpha()).length);
+        System.out.println("Beta länge: " + header.getBeta().length);
+        System.out.println("Gamma Länge: " + header.getGamma().length);
+        System.out.println("Instructions Länge: " + instructions.length);
+        System.out.println("Payload Länge: " + packet.packetContent().delta().length);
         // Run VM
         BigInteger secret = pkiPriv.get(useNodes[0]).priv(); // Private key of first node
-        SphinxVM vm = new SphinxVM(secret);
-        ProcessedPacket result = vm.interpret(rawPacket, instructions);
+        //SphinxNode node = new SphinxNode(params, new RandomRoutingStrategy(), secret);
+        //node.sphinxProcess(packet.packetContent());
+        SphinxVM vm = new SphinxVM(secret, params);
+        ProcessedPacket result = vm.interpret(rawPacket, instructions, packet);
 
         assertNotNull("Processed packet should not be null", result);
         assertNotNull("Routing field must be extracted", result.routing());

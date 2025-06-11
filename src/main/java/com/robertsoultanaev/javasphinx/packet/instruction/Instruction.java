@@ -17,13 +17,12 @@ public class Instruction {
      * Extrahiert Bits aus einem Quellregister und speichert sie in einem Zielregister.
      * Die extrahierten Bits werden aus dem Quellregister entfernt.
      * @param source Quellregister, aus dem gelesen wird
-     * @param startBit Startposition für die Extraktion (in Bits)
-     * @param lengthRegister Register, das die Anzahl der zu extrahierenden Bits enthält
+     * @param length Anzahl an bytes die ausgewählt werden, angefangen vom 0ten byte
      * @param destReg Zielregister für die extrahierten Bits
      * @return Instruction für die Bit-Extraktion
      */
-    public static byte[] storeBytes(byte source, byte startBit, byte lengthRegister, byte destReg) {
-        return new byte[]{OpCode.STORE_BYTES.getCode(), source, startBit, lengthRegister, destReg};
+    public static byte[] storeBytes(byte source,  byte length, byte destReg) {
+        return new byte[]{OpCode.STORE_BYTES.getCode(), source,  length, destReg};
     }
 
     /**
@@ -97,12 +96,14 @@ public class Instruction {
 
     /**
      * Generiert einen Keystream mittels PRG (Pseudo-Random Generator).
+     *
      * @param seedReg Register mit dem Seed für den PRG
      * @param destReg Zielregister für den generierten Keystream
+     * @param typePrg zeigt den Typend es PRGs an
      * @return Instruction für die PRG-Generation
      */
-    public static byte[] prgGenerate(byte seedReg, byte destReg) {
-        return new byte[]{OpCode.PRG_GENERATE.getCode(), seedReg, destReg};
+    public static byte[] prgGenerate(byte seedReg, byte typePrg, byte destReg) {
+        return new byte[]{OpCode.PRG_GENERATE.getCode(), seedReg, typePrg, destReg};
     }
 
     /**
@@ -149,6 +150,6 @@ public class Instruction {
     }
 
     public static byte[] concate(byte reg1, byte reg2, byte destReg) {
-        return new byte[] {OpCode.FIND_NEXT.getCode() ,reg1, reg2, destReg };
+        return new byte[] {OpCode.CONCATE.getCode() ,reg1, reg2, destReg };
     }
 }

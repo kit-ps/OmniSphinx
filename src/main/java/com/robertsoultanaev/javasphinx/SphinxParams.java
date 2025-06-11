@@ -190,6 +190,7 @@ public class SphinxParams {
     }
 
     public byte[] pii(byte[] key, byte[] data) throws SphinxException {
+
         if (key.length != keyLength) {
             throw new SphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
         }
@@ -197,7 +198,6 @@ public class SphinxParams {
         if (data.length != bodyLength) {
             throw new SphinxException("Length of provided message (" + data.length + ") did not match the required message body length (" + bodyLength + ")");
         }
-
         return lionessDec(key, data);
     }
 

@@ -21,7 +21,7 @@ public class SphinxNodeWithInstructions {
      * Verarbeitet ein Sphinx-Paket mithilfe der SphinxVM und vordefinierter Instruktionen.
      */
     public ProcessedPacket process(PacketContent packetContent) throws Exception {
-        SphinxVM vm = new SphinxVM(nodeSecret);
+        //SphinxVM vm = new SphinxVM(nodeSecret);
         //byte[] instructions = SphinxInstructionPresets.createInstructions();
 
         //SphinxPacket packet = new SphinxPacket(null, packetContent); // params werden ggf. in VM oder anders übergeben

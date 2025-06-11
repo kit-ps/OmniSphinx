@@ -37,7 +37,7 @@ public class SphinxNode {
      * @param packetContent Header and encrypted payload of the Sphinx packet
      * @return The new header and payload of the Sphinx packet along with some auxiliary information
      */
-    public ProcessedPacket sphinxProcess(PacketContent packetContent) throws SphinxException, IOException {
+    public ProcessedPacket sphinxProcess(PacketContent packetContent) throws SphinxException {
         // Sammle notwendige Daten
         ECCGroup group = params.getGroup();
         ECPoint alpha = packetContent.header().alpha();
@@ -47,7 +47,6 @@ public class SphinxNode {
 
         //Berechne das Shared Secret
         ECPoint s = group.expon(alpha, secret);
-
         byte[] aesS = params.getAesKey(s);
 
         if (beta.length != (params.headerLength() - 32)) {

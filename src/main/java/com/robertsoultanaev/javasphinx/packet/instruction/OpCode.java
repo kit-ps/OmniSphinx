@@ -13,7 +13,7 @@ public enum OpCode {
     XOR((byte) 0x09),
     DECRYPT((byte) 0x0A),
     FORWARD((byte) 0x0B),
-    FIND_NEXT((byte) 0x0C),    // Analysiert Beta und findet nächsten Knoten
+    FIND_NEXT((byte) 0x0C),
     CONCATE((byte) 0x0D);
 
 
