@@ -15,7 +15,12 @@ public enum OpCode {
     FORWARD((byte) 0x0B),
     FIND_NEXT((byte) 0x0C),
     CONCATE((byte) 0x0D),
-    ENCRYPT((byte) 0x0F);
+    ENCRYPT((byte) 0x0F),
+    MIX_NONE((byte) 0x10),
+    MIX_TIMED((byte) 0x11),
+    MIX_THRESHOLD((byte) 0x12),
+    MIX_POOL((byte) 0x13),
+    MIX_POISSON((byte) 0x14);
 
 
     private final byte code;

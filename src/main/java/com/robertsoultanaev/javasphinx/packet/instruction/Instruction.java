@@ -165,4 +165,24 @@ public class Instruction {
     public static byte[] forLoop(byte times, byte instrCount) {
         return new byte[]{OpCode.FOR.getCode(), times, instrCount};
     }
+
+    public static byte[] mixNone() {
+        return new byte[]{OpCode.MIX_NONE.getCode()};
+    }
+
+    public static byte[] mixTimed(byte delay) {
+        return new byte[]{OpCode.MIX_TIMED.getCode(), delay};
+    }
+
+    public static byte[] mixThreshold(byte bufferSize) {
+        return new byte[]{OpCode.MIX_THRESHOLD.getCode(), bufferSize};
+    }
+
+    public static byte[] mixPool(byte poolSize, byte outflowRate) {
+        return new byte[]{OpCode.MIX_POOL.getCode(), poolSize, outflowRate};
+    }
+
+    public static byte[] mixPoisson(byte meanDelay) {
+        return new byte[]{OpCode.MIX_POISSON.getCode(), meanDelay};
+    }
 }

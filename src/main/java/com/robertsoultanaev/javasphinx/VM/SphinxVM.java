@@ -139,6 +139,30 @@ public class SphinxVM {
                         byte destReg = instructions[pc++];
                         encrypt(keyReg, inputReg, destReg);
                     }
+                    case MIX_NONE -> {
+                        // Direkt weiterleiten → keine Aktion nötig
+                    }
+
+                    case MIX_TIMED -> {
+                        byte delay = instructions[pc++];
+                        applyTimedMix(delay);
+                    }
+
+                    case MIX_THRESHOLD -> {
+                        byte bufferSize = instructions[pc++];
+                        applyThresholdMix(bufferSize);
+                    }
+
+                    case MIX_POOL -> {
+                        byte poolSize = instructions[pc++];
+                        byte outflowRate = instructions[pc++];
+                        applyPoolMix(poolSize, outflowRate);
+                    }
+
+                    case MIX_POISSON -> {
+                        byte meanDelay = instructions[pc++];
+                        applyPoissonMix(meanDelay);
+                    }
                     default -> throw new VMException("Unknown OpCode: " + opcode);
                 }
             } catch (VMException e) {
@@ -230,6 +254,36 @@ public class SphinxVM {
                         byte idReg = instructions[innerPc++];
                         byte payloadReg = instructions[innerPc++];
                         forward(idReg, payloadReg);
+                    }
+                    case ENCRYPT -> {
+                        byte keyReg = instructions[innerPc++];
+                        byte inputReg = instructions[innerPc++];
+                        byte destReg = instructions[innerPc++];
+                        encrypt(keyReg, inputReg, destReg);
+                    }
+                    case MIX_NONE -> {
+                        // Direkt weiterleiten → keine Aktion nötig
+                    }
+
+                    case MIX_TIMED -> {
+                        byte delay = instructions[innerPc++];
+                        applyTimedMix(delay);
+                    }
+
+                    case MIX_THRESHOLD -> {
+                        byte bufferSize = instructions[innerPc++];
+                        applyThresholdMix(bufferSize);
+                    }
+
+                    case MIX_POOL -> {
+                        byte poolSize = instructions[innerPc++];
+                        byte outflowRate = instructions[innerPc++];
+                        applyPoolMix(poolSize, outflowRate);
+                    }
+
+                    case MIX_POISSON -> {
+                        byte meanDelay = instructions[innerPc++];
+                        applyPoissonMix(meanDelay);
                     }
                     default -> throw new VMException("Unknown OpCode in FOR block: " + innerOpcode);
                 }
@@ -423,18 +477,46 @@ public class SphinxVM {
     }
 
     private void concate(byte reg1, byte reg2, byte destReg) throws VMException {
-//        byte[] data1 = registers[reg1];
-//        byte[] data2 = registers[reg2];
-//
-//        byte[] result = new byte[data1.length + data2.length];
-//        System.arraycopy(data1, 0, result, 0, data1.length);
-//        System.arraycopy(data2, 0, result, data1.length, data2.length);
-//
-//        registers[destReg] = result;
+        byte[] data1 = registers[reg1];
+        byte[] data2 = registers[reg2];
+
+        byte[] result = new byte[data1.length + data2.length];
+        System.arraycopy(data1, 0, result, 0, data1.length);
+        System.arraycopy(data2, 0, result, data1.length, data2.length);
+
+        registers[destReg] = result;
     }
 
 
     private void forward(byte idReg, byte payloadReg) throws VMException {
+    }
+
+    private void applyTimedMix(byte delay) throws VMException {
+        try {
+            Thread.sleep(Byte.toUnsignedInt(delay));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new VMException("Timed mix interrupted");
+        }
+    }
+
+    private void applyPoissonMix(byte meanDelay) throws VMException {
+        double mean = Byte.toUnsignedInt(meanDelay);
+        double sampled = -mean * Math.log(1.0 - Math.random());
+        try {
+            Thread.sleep((long) sampled);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new VMException("Poisson mix interrupted");
+        }
+    }
+
+    private void applyThresholdMix(byte bufferSize) throws VMException {
+        throw new VMException("Threshold mix not implemented yet: Buffer size = " + bufferSize);
+    }
+
+    private void applyPoolMix(byte poolSize, byte outflowRate) throws VMException {
+        throw new VMException("Pool mix not implemented yet: PoolSize = " + poolSize + ", Outflow = " + outflowRate);
     }
 }
 
