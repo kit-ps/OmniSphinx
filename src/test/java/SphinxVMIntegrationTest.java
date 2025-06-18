@@ -5,6 +5,7 @@ import com.robertsoultanaev.javasphinx.packet.ProcessedPacket;
 import com.robertsoultanaev.javasphinx.packet.SphinxPacket;
 import com.robertsoultanaev.javasphinx.packet.header.Header;
 import com.robertsoultanaev.javasphinx.packet.header.PacketContent;
+import com.robertsoultanaev.javasphinx.packet.instruction.Instruction;
 import com.robertsoultanaev.javasphinx.packet.instruction.SphinxInstructionPresets;
 import com.robertsoultanaev.javasphinx.packet.message.DestinationAndMessage;
 import com.robertsoultanaev.javasphinx.pki.PkiEntry;
@@ -13,6 +14,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.bouncycastle.math.ec.ECPoint;
 
+import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.util.*;
 
@@ -83,27 +85,9 @@ public class SphinxVMIntegrationTest {
         byte alphaLen = getAlphaLen(packet);
         byte betaLen = (byte) header.getBeta().length;
         byte kappa = (byte) header.getGamma().length;
-        System.out.println(alphaLen);
-        // Instruction parameter setup (assumed fixed here)
-        byte HASH_TYPE_MAC = 0x10;
-        byte HASH_TYPE_PRG = 0x11;
-        byte MAC_TYPE = 0x01;
-        byte DECRYPT_ALGO = 0x03;
-        byte BLINDING_HASH = 0x15;
-        byte GROUP_ID = 0x00;
-        byte HASH_TYPE_KEY = 0x14;
-        byte PRG_Type = 0x03;
-        byte Decrypt_hash = 0x12;
 
         // Generate VM instructions
-        byte[] instructions = SphinxInstructionPresets.createInstructions(
-                alphaLen, betaLen, kappa, HASH_TYPE_KEY, HASH_TYPE_MAC, HASH_TYPE_PRG, PRG_Type, MAC_TYPE, Decrypt_hash, DECRYPT_ALGO, BLINDING_HASH, GROUP_ID
-        );
-        System.out.println("Alpha Länge: " + SerializationUtils.encodeECPoint(packet.packetContent().header().alpha()).length);
-        System.out.println("Beta länge: " + header.getBeta().length);
-        System.out.println("Gamma Länge: " + header.getGamma().length);
-        System.out.println("Instructions Länge: " + instructions.length);
-        System.out.println("Payload Länge: " + packet.packetContent().delta().length);
+        byte[] instructions = SphinxInstructionPresets.createInstructions(alphaLen, betaLen, kappa);
         // Run VM
         BigInteger secret = pkiPriv.get(useNodes[0]).priv(); // Private key of first node
         //SphinxNode node = new SphinxNode(params, new RandomRoutingStrategy(), secret);
@@ -114,6 +98,27 @@ public class SphinxVMIntegrationTest {
         assertNotNull("Processed packet should not be null", result);
         assertNotNull("Routing field must be extracted", result.routing());
         assertNotNull("Payload must be processed", result.packetContent());
+    }
+
+    @Test
+    public void testForLoop() throws Exception {
+        ByteArrayOutputStream instr = new ByteArrayOutputStream();
+
+        byte instrCount = 4;
+        instr.write(Instruction.forLoop( (byte) 2, instrCount));
+
+
+        instr.write(Instruction.concate((byte) 0x00, (byte) 0x00, (byte) 0x00));
+        instr.write(Instruction.concate((byte) 0x00, (byte) 0x00, (byte) 0x00));
+        instr.write(Instruction.concate((byte) 0x00, (byte) 0x00, (byte) 0x00));
+        instr.write(Instruction.concate((byte) 0x00, (byte) 0x00, (byte) 0x00));
+
+        instr.write(Instruction.concate((byte) 0x00, (byte) 0x00, (byte) 0x00));
+        byte[] inst = instr.toByteArray();
+
+        SphinxVM vm = new SphinxVM(null, params);
+
+        vm.interpret(null, inst, null);
     }
 
     private byte getAlphaLen(SphinxPacket packet) throws VMException {

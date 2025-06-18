@@ -1,7 +1,7 @@
 package com.robertsoultanaev.javasphinx.packet.instruction;
 
 public enum OpCode {
-    STORE((byte) 0x00),
+    FOR((byte) 0x00),
     STORE_BYTES((byte) 0x01),
     COMPUTE_SHARED_SECRET((byte) 0x02),
     HASH((byte) 0x03),
@@ -14,7 +14,8 @@ public enum OpCode {
     DECRYPT((byte) 0x0A),
     FORWARD((byte) 0x0B),
     FIND_NEXT((byte) 0x0C),
-    CONCATE((byte) 0x0D);
+    CONCATE((byte) 0x0D),
+    ENCRYPT((byte) 0x0F);
 
 
     private final byte code;

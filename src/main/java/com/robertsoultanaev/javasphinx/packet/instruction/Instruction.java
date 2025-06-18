@@ -9,9 +9,9 @@ public class Instruction {
      * @param destReg Das Zielregister
      * @return Instruction zum Speichern des Wertes
      */
-    public static byte[] store(byte value, byte destReg) {
-        return new byte[]{OpCode.STORE.getCode(), value, destReg};
-    }
+    //public static byte[] store(byte value, byte destReg) {
+    //    return new byte[]{OpCode.STORE.getCode(), value, destReg};
+    //}
 
     /**
      * Extrahiert Bits aus einem Quellregister und speichert sie in einem Zielregister.
@@ -32,19 +32,18 @@ public class Instruction {
      * @param destReg Zielregister für das berechnete Shared Secret
      * @return Instruction für die Shared-Secret-Berechnung
      */
-    public static byte[] computeSharedSecret(byte pubKeyReg, byte destReg, byte groupId) {
-        return new byte[]{OpCode.COMPUTE_SHARED_SECRET.getCode(), pubKeyReg, destReg, groupId};
+    public static byte[] computeSharedSecret(byte pubKeyReg, byte destReg) {
+        return new byte[]{OpCode.COMPUTE_SHARED_SECRET.getCode(), pubKeyReg, destReg};
     }
 
     /**
      * Berechnet einen Hash-Wert aus dem Inhalt eines Registers.
-     * @param hashType Art des Hash-Algorithmus (z.B. für MAC oder PRG)
      * @param inputReg Eingaberegister mit zu hashenden Daten
      * @param destReg Zielregister für den Hash-Wert
      * @return Instruction für die Hash-Berechnung
      */
-    public static byte[] hash(byte hashType, byte inputReg, byte destReg) {
-        return new byte[]{OpCode.HASH.getCode(), hashType, inputReg, destReg};
+    public static byte[] hash(byte inputReg, byte destReg) {
+        return new byte[]{OpCode.HASH.getCode(), inputReg, destReg};
     }
 
 
@@ -56,8 +55,8 @@ public class Instruction {
      * @param destReg Zielregister für den MAC-Wert
      * @return Instruction für die MAC-Berechnung
      */
-    public static byte[] mac(byte keyReg, byte dataReg, byte macType, byte destReg) {
-        return new byte[]{OpCode.MAC.getCode(), keyReg, dataReg, macType, destReg};
+    public static byte[] mac(byte keyReg, byte dataReg, byte length,  byte destReg) {
+        return new byte[]{OpCode.MAC.getCode(), keyReg, dataReg, length, destReg};
     }
 
     /**
@@ -79,8 +78,8 @@ public class Instruction {
      * @param destReg Zielregister für das Ergebnis
      * @return Instruction für die Exponentation
      */
-    public static byte[] exponent(byte inputReg1, byte inputReg2, byte destReg, byte groupID, byte outputlength) {
-        return new byte[]{OpCode.EXPONENT.getCode(), inputReg1, inputReg2, destReg, groupID, outputlength};
+    public static byte[] exponent(byte inputReg1, byte inputReg2, byte destReg,  byte outputlength) {
+        return new byte[]{OpCode.EXPONENT.getCode(), inputReg1, inputReg2, destReg, outputlength};
     }
 
     /**
@@ -99,11 +98,10 @@ public class Instruction {
      *
      * @param seedReg Register mit dem Seed für den PRG
      * @param destReg Zielregister für den generierten Keystream
-     * @param typePrg zeigt den Typend es PRGs an
      * @return Instruction für die PRG-Generation
      */
-    public static byte[] prgGenerate(byte seedReg, byte typePrg, byte destReg) {
-        return new byte[]{OpCode.PRG_GENERATE.getCode(), seedReg, typePrg, destReg};
+    public static byte[] prgGenerate(byte seedReg,  byte destReg) {
+        return new byte[]{OpCode.PRG_GENERATE.getCode(), seedReg, destReg};
     }
 
     /**
@@ -125,8 +123,19 @@ public class Instruction {
      * @param destReg Zielregister für die entschlüsselten Daten
      * @return Instruction für die Entschlüsselung
      */
-    public static byte[] decrypt(byte keyReg, byte inputReg, byte algo,  byte destReg) {
-        return new byte[]{OpCode.DECRYPT.getCode(), keyReg, inputReg, algo, destReg};
+    public static byte[] decrypt(byte keyReg, byte inputReg, byte destReg) {
+        return new byte[]{OpCode.DECRYPT.getCode(), keyReg, inputReg, destReg};
+    }
+
+    /**
+     * Verschlüsselt Daten mit einem gegebenen Schlüssel.
+     * @param keyReg Register mit dem Entschlüsselungsschlüssel
+     * @param inputReg Register mit den Daten
+     * @param destReg Zielregister für die verschlüsselten Daten
+     * @return Instruction für die Entschlüsselung
+     */
+    public static byte[] encrypt(byte keyReg, byte inputReg, byte destReg) {
+        return new byte[]{OpCode.ENCRYPT.getCode(), keyReg, inputReg, destReg};
     }
 
     /** Leitet ein Paket an den ncäshten Node.
@@ -151,5 +160,9 @@ public class Instruction {
 
     public static byte[] concate(byte reg1, byte reg2, byte destReg) {
         return new byte[] {OpCode.CONCATE.getCode() ,reg1, reg2, destReg };
+    }
+
+    public static byte[] forLoop(byte times, byte instrCount) {
+        return new byte[]{OpCode.FOR.getCode(), times, instrCount};
     }
 }

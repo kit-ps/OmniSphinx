@@ -21,7 +21,7 @@ public class SphinxInstructionPresets {
     private static final byte REG_ROUTE_INFO = 0x0F;
     private static final byte REG_BLIND      = 0x10;
 
-    public static byte[] createInstructions(byte ALPHA_LENGTH, byte BETA_LENGTH, byte KAPPA, byte HASH_TYPE_KEY, byte HASH_TYPE_MAC, byte HASH_TYPE_PRG, byte PRG_TYPE, byte macType, byte Decrypt_hash, byte DECRYPT_ALGO, byte BLINDING_HASH, byte GROUP_ID) throws IOException {
+    public static byte[] createInstructions(byte ALPHA_LENGTH, byte BETA_LENGTH, byte KAPPA) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
 
 
@@ -33,17 +33,17 @@ public class SphinxInstructionPresets {
 
 
         //Shared Secret aus Alpha berechnen
-        instr.write(Instruction.computeSharedSecret(REG_ALPHA, REG_SECRET, GROUP_ID));
-        instr.write(Instruction.hash(HASH_TYPE_KEY, REG_SECRET, REG_SECRET));
+        instr.write(Instruction.computeSharedSecret(REG_ALPHA, REG_SECRET));
+        instr.write(Instruction.hash( REG_SECRET, REG_SECRET));
 
         //MAC prüfen
-        instr.write(Instruction.hash(HASH_TYPE_MAC, REG_SECRET, REG_HASH_MAC));
-        instr.write(Instruction.mac(REG_HASH_MAC, REG_BETA, macType, REG_MAC));
+        instr.write(Instruction.hash( REG_SECRET, REG_HASH_MAC));
+        instr.write(Instruction.mac(REG_HASH_MAC, REG_BETA, KAPPA, REG_MAC));
         instr.write(Instruction.verify(REG_GAMMA, REG_MAC));
 
         //PRG erzeugen
-        instr.write(Instruction.hash(HASH_TYPE_PRG, REG_SECRET, REG_HASH_PRG));
-        instr.write(Instruction.prgGenerate(REG_HASH_PRG, PRG_TYPE, REG_PRG));
+        instr.write(Instruction.hash(REG_SECRET, REG_HASH_PRG));
+        instr.write(Instruction.prgGenerate(REG_HASH_PRG, REG_PRG));
 
         //Beta padden und entschlüsseln
         instr.write(Instruction.pad(REG_BETA, KAPPA, REG_BETA));
@@ -51,8 +51,8 @@ public class SphinxInstructionPresets {
         instr.write(Instruction.xor(REG_BETA, REG_PRG, REG_DEC_BETA));
 
         //Payload entschlüsseln
-        instr.write(Instruction.hash(Decrypt_hash, REG_SECRET, REG_PAYLOAD));
-        instr.write(Instruction.decrypt(REG_SECRET, REG_PACKET, DECRYPT_ALGO, REG_PAYLOAD));
+        instr.write(Instruction.hash( REG_SECRET, REG_PAYLOAD));
+        instr.write(Instruction.decrypt(REG_SECRET, REG_PACKET,  REG_PAYLOAD));
 
         //Routing-Information extrahieren
         instr.write(Instruction.findNext(REG_DEC_BETA, REG_ROUTE_INFO));
@@ -62,8 +62,8 @@ public class SphinxInstructionPresets {
 
         //Berechne das Blinding
         //instr.write(Instruction.concate(REG_ALPHA, REG_SECRET, REG_BLIND));
-        instr.write(Instruction.hash(BLINDING_HASH, REG_SECRET, REG_BLIND));
-        instr.write(Instruction.exponent(REG_ALPHA, REG_BLIND, REG_ALPHA, GROUP_ID, ALPHA_LENGTH));
+        instr.write(Instruction.hash(REG_SECRET, REG_BLIND));
+        instr.write(Instruction.exponent(REG_ALPHA, REG_BLIND, REG_ALPHA, ALPHA_LENGTH));
 
         //Zusammenbauen des Headers
         instr.write(Instruction.concate(REG_ALPHA, REG_DEC_BETA, REG_ALPHA));
