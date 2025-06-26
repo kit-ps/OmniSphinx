@@ -1,6 +1,6 @@
-import com.robertsoultanaev.javasphinx.SerializationUtils;
-import com.robertsoultanaev.javasphinx.SphinxException;
-import com.robertsoultanaev.javasphinx.SphinxParams;
+import javasphinx.SerializationUtils;
+import javasphinx.SphinxException;
+import javasphinx.SphinxParams;
 import org.bouncycastle.math.ec.ECPoint;
 import org.bouncycastle.util.Arrays;
 import org.bouncycastle.util.encoders.Hex;

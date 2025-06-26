@@ -1,5 +1,5 @@
-import com.robertsoultanaev.javasphinx.SerializationUtils;
-import com.robertsoultanaev.javasphinx.crypto.ECCGroup;
+import javasphinx.SerializationUtils;
+import javasphinx.crypto.ECCGroup;
 import org.bouncycastle.math.ec.ECPoint;
 import org.bouncycastle.util.encoders.Hex;
 import org.junit.Before;
