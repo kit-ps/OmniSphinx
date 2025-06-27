@@ -6,7 +6,7 @@ import MasterThesisFormat.VM.SphinxVM;
 import MasterThesisFormat.VM.VMException;
 import javasphinx.packet.ProcessedPacket;
 import javasphinx.packet.SphinxPacket;
-import javasphinx.packet.header.Header;
+import javasphinx.packet.header.SphinxHeader;
 import javasphinx.packet.header.PacketContent;
 import MasterThesisFormat.instruction.Instruction;
 import MasterThesisFormat.instruction.SphinxInstructionPresets;
@@ -78,15 +78,15 @@ public class SphinxVMIntegrationTest {
 
         // Create packet (using classic Sphinx logic)
         PacketContent content = client.createForwardMessage(nodesRouting, nodeKeys, dest, message);
-        SphinxPacket packet = new SphinxPacket(params, content);
+        SphinxPacket packet = new SphinxPacket(params, content.sphinxHeader(), content.delta());
         byte[] rawPacket = client.packMessageForInstructions(packet);
 
         // Get parameters for Instruction creation
-        Header header = packet.packetContent().header();
+        SphinxHeader sphinxHeader = packet.getHeader();
 
         byte alphaLen = getAlphaLen(packet);
-        byte betaLen = (byte) header.getBeta().length;
-        byte kappa = (byte) header.getGamma().length;
+        byte betaLen = (byte) sphinxHeader.getBeta().length;
+        byte kappa = (byte) sphinxHeader.getGamma().length;
 
         // Generate VM instructions
         byte[] instructions = SphinxInstructionPresets.createInstructions(alphaLen, betaLen, kappa);
@@ -124,7 +124,7 @@ public class SphinxVMIntegrationTest {
     }
 
     private byte getAlphaLen(SphinxPacket packet) throws VMException {
-        int alphaLen = SerializationUtils.encodeECPoint(packet.packetContent().header().alpha()).length;
+        int alphaLen = SerializationUtils.encodeECPoint(packet.getHeader().getAlpha()).length;
         if(alphaLen > 255) {
             throw new VMException("Alpha hat einen höheren Wert als 255?!");
         }

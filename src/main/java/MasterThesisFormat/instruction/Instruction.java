@@ -4,16 +4,6 @@ package MasterThesisFormat.instruction;
 public class Instruction {
 
     /**
-     * Speichert einen einzelnen Byte-Wert in ein Register.
-     * @param value Der zu speichernde Wert
-     * @param destReg Das Zielregister
-     * @return Instruction zum Speichern des Wertes
-     */
-    //public static byte[] store(byte value, byte destReg) {
-    //    return new byte[]{OpCode.STORE.getCode(), value, destReg};
-    //}
-
-    /**
      * Extrahiert Bits aus einem Quellregister und speichert sie in einem Zielregister.
      * Die extrahierten Bits werden aus dem Quellregister entfernt.
      * @param source Quellregister, aus dem gelesen wird

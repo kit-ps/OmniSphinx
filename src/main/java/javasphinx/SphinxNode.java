@@ -3,7 +3,7 @@ package javasphinx;
 import javasphinx.crypto.ECCGroup;
 import javasphinx.packet.ProcessedPacket;
 import javasphinx.packet.SphinxPacket;
-import javasphinx.packet.header.Header;
+import javasphinx.packet.header.SphinxHeader;
 import javasphinx.packet.header.PacketContent;
 import javasphinx.routing.RoutingStrategy;
 import org.bouncycastle.math.ec.ECPoint;
@@ -38,9 +38,9 @@ public class SphinxNode {
     public ProcessedPacket sphinxProcess(PacketContent packetContent) throws SphinxException {
         // Sammle notwendige Daten
         ECCGroup group = params.getGroup();
-        ECPoint alpha = packetContent.header().alpha();
-        byte[] beta = packetContent.header().beta();
-        byte[] gamma = packetContent.header().gamma();
+        ECPoint alpha = packetContent.sphinxHeader().getAlpha();
+        byte[] beta = packetContent.sphinxHeader().getBeta();
+        byte[] gamma = packetContent.sphinxHeader().getGamma();
         byte[] delta = packetContent.delta();
 
         //Berechne das Shared Secret
@@ -90,15 +90,15 @@ public class SphinxNode {
         byte[] macKey = params.hpi(aesS);
 
 
-        Header header = new Header(alpha, beta, gamma);
+        SphinxHeader sphinxHeader = new SphinxHeader(alpha, beta, gamma);
 
-        PacketContent packetContent1 = new PacketContent(header, delta);
+        PacketContent packetContent1 = new PacketContent(sphinxHeader, delta);
 
         return new ProcessedPacket(tag, routing, packetContent1, macKey);
     }
 
     public SphinxPacket repack(ProcessedPacket packet) {
-        return new SphinxPacket(params, packet.packetContent());
+        return new SphinxPacket(params, packet.packetContent().sphinxHeader(), packet.packetContent().delta());
     }
 
 }

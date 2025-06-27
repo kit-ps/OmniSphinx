@@ -1,25 +1,34 @@
 package javasphinx.packet;
 
+import MasterThesisFormat.MixFormats.Packet;
 import javasphinx.SphinxParams;
+import javasphinx.packet.header.SphinxHeader;
 import javasphinx.packet.header.PacketContent;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
  * Type used to represent the Sphinx packet as it is encoded into a binary format
  */
-public final class SphinxPacket {
+public final class SphinxPacket extends Packet {
     private final int headerLength;
     private final int bodyLength;
-    private final PacketContent packetContent;
+    private final SphinxHeader sphinxHeader;
+    private final byte[] delta;
 
     /**
      *
      */
-    public SphinxPacket(SphinxParams params, PacketContent packetContent) {
+    public SphinxPacket(SphinxParams params, SphinxHeader sphinxHeader, byte[] delta) {
         this.headerLength = params.headerLength();
         this.bodyLength = params.bodyLength();
-        this.packetContent = packetContent;
+        this.sphinxHeader = sphinxHeader;
+        this.delta = delta;
+    }
+
+    public PacketContent getPacketContet() {
+        return new PacketContent(sphinxHeader, delta);
     }
 
     public int headerLength() {
@@ -30,8 +39,12 @@ public final class SphinxPacket {
         return bodyLength;
     }
 
-    public PacketContent packetContent() {
-        return packetContent;
+    public SphinxHeader getHeader() {
+        return sphinxHeader;
+    }
+
+    public byte[] getDelta() {
+        return delta;
     }
 
     @Override
@@ -40,12 +53,12 @@ public final class SphinxPacket {
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (SphinxPacket) obj;
         return this.headerLength == that.headerLength && this.bodyLength == that.bodyLength &&
-                Objects.equals(this.packetContent, that.packetContent);
+                Objects.equals(this.sphinxHeader, that.sphinxHeader) && Arrays.equals(this.delta, that.delta);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(headerLength, bodyLength, packetContent);
+        return Objects.hash(headerLength, bodyLength, sphinxHeader, Arrays.hashCode(delta));
     }
 
     @Override
@@ -53,7 +66,8 @@ public final class SphinxPacket {
         return "SphinxPacket[" +
                 "headerLength=" + headerLength + ", " +
                 "bodyLength=" + bodyLength + ", " +
-                "packetContent=" + packetContent + ']';
+                "header=" + sphinxHeader +
+                "delta=" + Arrays.toString(delta) + ']';
     }
 
 }

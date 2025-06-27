@@ -80,18 +80,18 @@ public class SphinxClientTest {
         byte[] message = "this is a test".getBytes();
         PacketContent packetContent = client.createForwardMessage(nodesRouting, nodeKeys, dest, message);
 
-        SphinxPacket sphinxPacket = new SphinxPacket(params, packetContent);
+        SphinxPacket sphinxPacket = new SphinxPacket(params, packetContent.sphinxHeader(), packetContent.delta());
 
         byte[] binMessage = client.packMessage(sphinxPacket);
         SphinxPacket unpackedSphinxPacket = client.unpackMessage(binMessage);
-        PacketContent unpackedPacketContent = unpackedSphinxPacket.packetContent();
+        PacketContent unpackedPacketContent = unpackedSphinxPacket.getPacketContet();
 
         assertEquals(params.headerLength(), unpackedSphinxPacket.headerLength());
         assertEquals(params.bodyLength(), unpackedSphinxPacket.bodyLength());
 
-        assertEquals(packetContent.header().alpha(), unpackedPacketContent.header().alpha());
-        assertArrayEquals(packetContent.header().beta(), unpackedPacketContent.header().beta());
-        assertArrayEquals(packetContent.header().gamma(), unpackedPacketContent.header().gamma());
+        assertEquals(packetContent.sphinxHeader().getAlpha(), unpackedPacketContent.sphinxHeader().getAlpha());
+        assertArrayEquals(packetContent.sphinxHeader().getBeta(), unpackedPacketContent.sphinxHeader().getBeta());
+        assertArrayEquals(packetContent.sphinxHeader().getGamma(), unpackedPacketContent.sphinxHeader().getBeta());
         assertArrayEquals(packetContent.delta(), unpackedPacketContent.delta());
     }
 
@@ -103,18 +103,18 @@ public class SphinxClientTest {
 
         PacketContent packetContent = client.createForwardMessage(nodesRouting, nodeKeys, dest, message);
 
-        SphinxPacket sphinxPacket = new SphinxPacket(params, packetContent);
+        SphinxPacket sphinxPacket = new SphinxPacket(params, packetContent.sphinxHeader(), packetContent.delta());
 
         byte[] binMessage = client.packMessage(sphinxPacket);
         SphinxPacket unpackedSphinxPacket = client.unpackMessage(binMessage);
-        PacketContent unpackedPacketContent = unpackedSphinxPacket.packetContent();
+        PacketContent unpackedPacketContent = unpackedSphinxPacket.getPacketContet();
 
         assertEquals(params.headerLength(), unpackedSphinxPacket.headerLength());
         assertEquals(params.bodyLength(), unpackedSphinxPacket.bodyLength());
 
-        assertEquals(packetContent.header().alpha(), unpackedPacketContent.header().alpha());
-        assertArrayEquals(packetContent.header().beta(), unpackedPacketContent.header().beta());
-        assertArrayEquals(packetContent.header().gamma(), unpackedPacketContent.header().gamma());
+        assertEquals(packetContent.sphinxHeader().getAlpha(), unpackedPacketContent.sphinxHeader().getAlpha());
+        assertArrayEquals(packetContent.sphinxHeader().getBeta(), unpackedPacketContent.sphinxHeader().getBeta());
+        assertArrayEquals(packetContent.sphinxHeader().getGamma(), unpackedPacketContent.sphinxHeader().getGamma());
         assertArrayEquals(packetContent.delta(), unpackedPacketContent.delta());
     }
 

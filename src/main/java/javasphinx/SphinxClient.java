@@ -3,7 +3,7 @@ package javasphinx;
 import javasphinx.crypto.ECCGroup;
 import javasphinx.packet.RoutingFlag;
 import javasphinx.packet.SphinxPacket;
-import javasphinx.packet.header.Header;
+import javasphinx.packet.header.SphinxHeader;
 import javasphinx.packet.header.HeaderAndSecrets;
 import javasphinx.packet.header.PacketContent;
 import javasphinx.packet.message.DestinationAndMessage;
@@ -43,7 +43,7 @@ public class SphinxClient {
     }
 
     public SphinxPacket createPacket(PacketContent packetContent) {
-        return new SphinxPacket(params, packetContent);
+        return new SphinxPacket(params, packetContent.sphinxHeader(), packetContent.delta());
     }
 
     public SphinxParams params() {
@@ -191,14 +191,14 @@ public class SphinxClient {
             gamma = params.mu(params.hmu(asbtuples.get(i).aes), beta);
         }
         //byte[] instructions = SphinxInstructionPresets.createSphinxInstructionsForAnotherSphinxNode();
-        Header header = new Header(asbtuples.get(0).alpha, beta, gamma);
+        SphinxHeader sphinxHeader = new SphinxHeader(asbtuples.get(0).alpha, beta, gamma);
 
         byte[][] secrets = new byte[asbtuples.size()][];
         for (int i = 0; i < asbtuples.size(); i++) {
             secrets[i] = asbtuples.get(i).aes;
         }
 
-        return new HeaderAndSecrets(header, secrets);
+        return new HeaderAndSecrets(sphinxHeader, secrets);
     }
 
     /**
@@ -253,7 +253,7 @@ public class SphinxClient {
             delta = params.pi(params.hpi(secrets[i]), delta);
         }
 
-        return new PacketContent(headerAndSecrets.header(), delta);
+        return new PacketContent(headerAndSecrets.sphinxHeader(), delta);
     }
 
     /**
@@ -299,7 +299,7 @@ public class SphinxClient {
 
         System.arraycopy(hashedSecrets, 0, keytuple, 1, keytuple.length - 1);
 
-        NymTuple nymTuple = new NymTuple(nodelist[0], headerAndSecrets.header(), ktilde);
+        NymTuple nymTuple = new NymTuple(nodelist[0], headerAndSecrets.sphinxHeader(), ktilde);
 
         return new SingleUseReplyBlock(xid, keytuple, nymTuple);
     }
@@ -317,7 +317,7 @@ public class SphinxClient {
         byte[] body = padBody(params.bodyLength(), zeroPaddedMessage);
         byte[] delta = params.pi(nymTuple.kTilde(), body);
 
-        return new PacketContent(nymTuple.header(), delta);
+        return new PacketContent(nymTuple.sphinxHeader(), delta);
     }
 
     /**
@@ -388,11 +388,11 @@ public class SphinxClient {
      */
     public byte[] packMessageForInstructions(SphinxPacket sphinxPacket) throws SphinxException {
 
-        Header header = sphinxPacket.packetContent().header();
-        byte[] encodedAlpha = SerializationUtils.encodeECPoint(header.alpha());
-        byte[] beta = header.getBeta();
-        byte[] gamma = header.getGamma();
-        byte[] delta = sphinxPacket.packetContent().delta();
+        SphinxHeader sphinxHeader = sphinxPacket.getHeader();
+        byte[] encodedAlpha = SerializationUtils.encodeECPoint(sphinxHeader.getAlpha());
+        byte[] beta = sphinxHeader.getBeta();
+        byte[] gamma = sphinxHeader.getGamma();
+        byte[] delta = sphinxPacket.getDelta();
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
@@ -417,9 +417,9 @@ public class SphinxClient {
         int headerLength = sphinxPacket.headerLength();
         int bodyLength = sphinxPacket.bodyLength();
 
-        Header header = sphinxPacket.packetContent().header();
-        byte[] delta = sphinxPacket.packetContent().delta();
-        byte[] packedEcPoint = packECPoint(header.alpha());
+        SphinxHeader sphinxHeader = sphinxPacket.getHeader();
+        byte[] delta = sphinxPacket.getDelta();
+        byte[] packedEcPoint = packECPoint(sphinxHeader.getAlpha());
 
         try {
             packer.packArrayHeader(2);
@@ -430,10 +430,10 @@ public class SphinxClient {
             packer.packArrayHeader(3);
             packer.packExtensionTypeHeader((byte) 2, packedEcPoint.length);
             packer.writePayload(packedEcPoint);
-            packer.packBinaryHeader(header.beta().length);
-            packer.writePayload(header.beta());
-            packer.packBinaryHeader(header.gamma().length);
-            packer.writePayload(header.gamma());
+            packer.packBinaryHeader(sphinxHeader.getBeta().length);
+            packer.writePayload(sphinxHeader.getBeta());
+            packer.packBinaryHeader(sphinxHeader.getGamma().length);
+            packer.writePayload(sphinxHeader.getGamma());
             packer.packBinaryHeader(delta.length);
             packer.writePayload(delta);
             packer.close();
@@ -487,11 +487,11 @@ public class SphinxClient {
 
         ECPoint alpha = SerializationUtils.decodeECPoint(encodedAlpha);
 
-        Header header = new Header(alpha, beta, gamma);
+        SphinxHeader sphinxHeader = new SphinxHeader(alpha, beta, gamma);
 
-        PacketContent packetContent = new PacketContent(header, delta);
+        PacketContent packetContent = new PacketContent(sphinxHeader, delta);
 
-        return new SphinxPacket(params, packetContent);
+        return new SphinxPacket(params, packetContent.sphinxHeader(), packetContent.delta());
     }
 
     /**

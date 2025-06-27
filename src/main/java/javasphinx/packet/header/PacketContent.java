@@ -3,5 +3,5 @@ package javasphinx.packet.header;
 /**
  * Type to combine Sphinx header and payload
  */
-public record PacketContent(Header header, byte[] delta) {
+public record PacketContent(SphinxHeader sphinxHeader, byte[] delta) {
 }
