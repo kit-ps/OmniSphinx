@@ -17,17 +17,11 @@ import java.util.Arrays;
 public class SphinxNode {
 
     private final SphinxParams params;
-    private final SphinxClient client;
     private final BigInteger secret;
 
     public SphinxNode(final SphinxParams params, final BigInteger secret) {
         this.params = params;
-        this.client = new SphinxClient();
         this.secret = secret;
-    }
-
-    public SphinxClient client() {
-        return client;
     }
 
     /**

@@ -3,19 +3,19 @@ package MasterThesisFormat;
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.VM.VMUtil;
 import MasterThesisFormat.header.InstructionHeader;
-import MasterThesisFormat.instruction.Instruction;
 import MasterThesisFormat.instruction.SphinxInstructionPresets;
 import MasterThesisFormat.routing.RoutingStrategy;
 import javasphinx.SphinxClient;
 import javasphinx.SphinxException;
+import javasphinx.crypto.ECCGroup;
 import javasphinx.packet.RoutingFlag;
 import javasphinx.packet.SphinxPacket;
-import javasphinx.packet.header.SphinxPacketContent;
 import org.bouncycastle.math.ec.ECPoint;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 
 import java.io.IOException;
+import java.math.BigInteger;
 
 public class Client {
     public static final int MAX_INSTRUCTION_SIZE = 1024;
@@ -83,10 +83,22 @@ public class Client {
      * @return Header and payload of a Sphinx packet encrypted in a nested manner.
      */
     public InstructionPacket createSphinxInstructionPacket(byte[][] nodelist, ECPoint[] keys, byte[] destination, byte[] message) throws Exception, IOException {
-        SphinxPacketContent content = SphinxClient.createForwardMessage(nodelist, keys, destination, message, params);
+        int nu = nodelist.length;
+        ECCGroup group = params.getGroup();
 
-        byte[][] secrets = content.headerAndSecrets().secrets();
-        ECPoint[] alphas = content.headerAndSecrets().alpha();
+        BigInteger blindFactor = group.genSecret();
+        ECPoint[] alphas = new ECPoint[nu];
+        ECPoint[] sharedSecrets = new ECPoint[nu];
+        byte[][] secrets = new byte[nu][];
+        for (int i = 0; i < nu; i++) {
+            alphas[i] = group.expon(group.getGenerator(), blindFactor);
+            sharedSecrets[i] = group.expon(keys[i], blindFactor);
+            secrets[i] = params.getAesKey(sharedSecrets[i]);
+            java.math.BigInteger b = params.hb(alphas[i], secrets[i]);
+            blindFactor = blindFactor.multiply(b).mod(group.getOrder());
+        }
+
+        SphinxPacket packet = SphinxClient.createForwardPacket(nodelist, alphas, sharedSecrets, destination, message, params);
 
         byte[] onion = new byte[0];
         byte[] sigma = new byte[params.keyLength()];
@@ -94,7 +106,7 @@ public class Client {
         for (int i = nodelist.length - 1; i >= 0; i--) {
             byte[] instr = SphinxInstructionPresets.createInstructions(
                     (byte) alphas[i].getEncoded(false).length,
-                    (byte) content.headerAndSecrets().sphinxHeader().getBeta().length,
+                    (byte) packet.getHeader().getBeta().length,
                     (byte) params.keyLength());
 
             int plainLen = instr.length + onion.length;
@@ -118,8 +130,6 @@ public class Client {
         byte[] finalOnion = VMUtil.slice(onion, params.keyLength(), onion.length);
 
         InstructionHeader header = new InstructionHeader(alphas[0], finalSigma, finalOnion);
-
-        SphinxPacket packet = new SphinxPacket(params, content.headerAndSecrets().sphinxHeader(), content.delta());
 
         return new InstructionPacket(header, packet);
     }

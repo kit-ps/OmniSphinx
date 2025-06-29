@@ -39,24 +39,12 @@ public class SphinxClient {
     /**
      * Create a Sphinx header with the shared secrets.
      * @param nodelist List of encoded mix node identifiers used to route the Sphinx packet.
-     * @param keys List of the corresponding public keys of the mix nodes in nodelist.
      * @param dest Final destination of the Sphinx packet.
      * @return Header and the list of secrets used to encrypt the payload in a nested manner.
      */
-    private static HeaderAndSecrets createHeader(byte[][] nodelist, ECPoint[] keys, byte[] dest, Params params) throws SphinxException, IOException {
-        class HeaderRecord {
-            final ECPoint alpha;
-            final ECPoint s;
-            final BigInteger b;
-            final byte[] aes;
-
-            HeaderRecord(ECPoint alpha, ECPoint s, BigInteger b, byte[] aes) {
-                this.alpha = alpha;
-                this.s = s;
-                this.b = b;
-                this.aes = aes;
-            }
-        }
+    private static HeaderAndSecrets createHeader(byte[][] nodelist, ECPoint[] alphas,
+                                                 ECPoint[] sharedSecrets, byte[] dest,
+                                                 Params params) throws SphinxException, IOException {
 
         byte[][] nodeMeta = new byte[nodelist.length][];
         for (int i = 0; i < nodelist.length; i++) {
@@ -66,23 +54,14 @@ public class SphinxClient {
         }
 
         int nu = nodelist.length;
-        ECCGroup group = params.getGroup();
 
-        BigInteger blindFactor = group.genSecret();
-        List<HeaderRecord> asbtuples = new ArrayList<>();
+        if (alphas.length != nu || sharedSecrets.length != nu) {
+            throw new SphinxException("Parameter length mismatch");
+        }
 
-        for (ECPoint k : keys) {
-            ECPoint alpha = group.expon(group.getGenerator(), blindFactor);
-            ECPoint s = group.expon(k, blindFactor);
-            byte[] aesS = params.getAesKey(s);
-
-            BigInteger b = params.hb(alpha, aesS);
-            blindFactor = blindFactor.multiply(b);
-            blindFactor = blindFactor.mod(group.getOrder());
-
-            HeaderRecord headerRecord = new HeaderRecord(alpha, s, b, aesS);
-
-            asbtuples.add(headerRecord);
+        byte[][] aesKeys = new byte[nu][];
+        for (int i = 0; i < nu; i++) {
+            aesKeys[i] = params.getAesKey(sharedSecrets[i]);
         }
 
         byte[] phi = {};
@@ -96,7 +75,7 @@ public class SphinxClient {
             byte[] zeroes2 = new byte[minLen];
             Arrays.fill(zeroes2, (byte) 0x00);
             byte[] zeroes2plain = concatenate(zeroes2, plain);
-            phi = params.xorRho(params.hrho(asbtuples.get(i-1).aes), zeroes2plain);
+            phi = params.xorRho(params.hrho(aesKeys[i - 1]), zeroes2plain);
             phi = slice(phi, minLen, phi.length);
 
             minLen -= nodeMeta[i].length + params.keyLength();
@@ -124,10 +103,10 @@ public class SphinxClient {
         secureRandom.nextBytes(randomPad);
 
         byte[] beta = concatenate(finalRouting, randomPad);
-        beta = params.xorRho(params.hrho(asbtuples.get(nu - 1).aes), beta);
+        beta = params.xorRho(params.hrho(aesKeys[nu - 1]), beta);
         beta = concatenate(beta, phi);
 
-        byte[] gamma = params.mu(params.hmu(asbtuples.get(nu-1).aes), beta);
+        byte[] gamma = params.mu(params.hmu(aesKeys[nu - 1]), beta);
 
         for (int i = nu - 2; i >= 0; i--) {
             byte[] nodeId = nodeMeta[i+1];
@@ -136,29 +115,24 @@ public class SphinxClient {
             byte[] plainBeta = slice(beta, plainBetaLen);
             byte[] plain = concatenate(nodeId, gamma, plainBeta);
 
-            beta = params.xorRho(params.hrho(asbtuples.get(i).aes), plain);
-            gamma = params.mu(params.hmu(asbtuples.get(i).aes), beta);
+            beta = params.xorRho(params.hrho(aesKeys[i]), plain);
+            gamma = params.mu(params.hmu(aesKeys[i]), beta);
         }
-        SphinxHeader sphinxHeader = new SphinxHeader(asbtuples.get(0).alpha, beta, gamma);
+        SphinxHeader sphinxHeader = new SphinxHeader(alphas[0], beta, gamma);
 
-        byte[][] secrets = new byte[asbtuples.size()][];
-        for (int i = 0; i < asbtuples.size(); i++) {
-            secrets[i] = asbtuples.get(i).aes;
-        }
-        ECPoint[] alphas = asbtuples.stream().map(asb -> asb.alpha).toArray(ECPoint[]::new);
-        return new HeaderAndSecrets(sphinxHeader, secrets, alphas);
+        return new HeaderAndSecrets(sphinxHeader, aesKeys, alphas);
     }
 
     /**
      * Create a forward Sphinx message.
      * @param nodelist List of encoded mix node identifiers used to route the Sphinx packet.
-     * @param keys List of the corresponding public keys of the mix nodes in nodelist.
      * @param destination Final destination.
      * @param message Data payload.
      * @return Header and payload of a Sphinx packet encrypted in a nested manner.
      */
-    public static SphinxPacketContent createForwardMessage(byte[][] nodelist, ECPoint[] keys, byte[] destination, byte[] message, Params params) throws SphinxException, IOException {
-        if (!(destination.length > 0 && destination.length < MAX_DEST_SIZE)) {
+    public static SphinxPacket createForwardPacket(byte[][] nodelist, ECPoint[] alphas,
+                                                   ECPoint[] sharedSecrets, byte[] destination,
+                                                   byte[] message, Params params) throws SphinxException, IOException {        if (!(destination.length > 0 && destination.length < MAX_DEST_SIZE)) {
             throw new SphinxException("Destination has to be between 1 and " + MAX_DEST_SIZE + " bytes long");
         }
 
@@ -174,7 +148,7 @@ public class SphinxClient {
         }
 
         byte[] finalDestination = packer.toByteArray();
-        HeaderAndSecrets headerAndSecrets = createHeader(nodelist, keys, finalDestination, params);
+        HeaderAndSecrets headerAndSecrets = createHeader(nodelist, alphas, sharedSecrets, finalDestination, params);
 
         packer = MessagePack.newDefaultBufferPacker();
         try {
@@ -201,18 +175,18 @@ public class SphinxClient {
             delta = params.pi(params.hpi(secrets[i]), delta);
         }
 
-        return new SphinxPacketContent(headerAndSecrets, delta);
+        return new SphinxPacket(params, headerAndSecrets.sphinxHeader(), delta);
     }
 
     /**
      * Create a single-use reply block to receive replies anonymously.
      * @param nodelist List of encoded mix node identifiers used to route the Sphinx packet.
-     * @param keys List of the corresponding public keys of the mix nodes in nodelist.
      * @param dest Final destination of the Sphinx packet.
      * @return An identifier for the SURB, key tuple to receive a message addressed to this SURB, and the reply block itself.
      */
-    public SingleUseReplyBlock createSurb(byte[][] nodelist, ECPoint[] keys, byte[] dest, Params params) throws SphinxException, IOException {
-        SecureRandom secureRandom = new SecureRandom();
+    public static SingleUseReplyBlock createSurb(byte[][] nodelist, ECPoint[] alphas,
+                                                 ECPoint[] sharedSecrets, byte[] dest,
+                                                 Params params) throws SphinxException, IOException {        SecureRandom secureRandom = new SecureRandom();
         int nu = nodelist.length;
 
         byte[] xid = new byte[params.keyLength()];
@@ -232,7 +206,7 @@ public class SphinxClient {
         }
 
         byte[] finalDest = packer.toByteArray();
-        HeaderAndSecrets headerAndSecrets = createHeader(nodelist, keys, finalDest, params);
+        HeaderAndSecrets headerAndSecrets = createHeader(nodelist, alphas, sharedSecrets, finalDest, params);
 
         byte[] ktilde = new byte[params.keyLength()];
         secureRandom.nextBytes(ktilde);
@@ -274,7 +248,7 @@ public class SphinxClient {
      * @param delta The payload of the Sphinx message.
      * @return Final destination and data payload of the Sphinx message.
      */
-    public DestinationAndMessage receiveForward(byte[] macKey, byte[] delta, Params params) throws SphinxException {
+    public static DestinationAndMessage receiveForward(byte[] macKey, byte[] delta, Params params) throws SphinxException {
         byte[] mac = slice(delta, params.keyLength());
         byte[] body = slice(delta, params.keyLength(), delta.length);
 
@@ -310,7 +284,7 @@ public class SphinxClient {
      * @param delta The encrypted data payload of the Sphinx packet.
      * @return The data payload of the Sphinx packet.
      */
-    public byte[] receiveSurb(byte[][] keytuple, byte[] delta, Params params) throws SphinxException {
+    public static byte[] receiveSurb(byte[][] keytuple, byte[] delta, Params params) throws SphinxException {
         byte[] ktilde = keytuple[0];
         for (int i = keytuple.length - 1; i > 0; i--) {
             delta = params.pi(keytuple[i], delta);
@@ -334,7 +308,7 @@ public class SphinxClient {
      * @param sphinxPacket Sphinx packet and the Sphinx parameter lengths.
      * @return Sphinx message in binary format.
      */
-    public byte[] packMessageForInstructions(SphinxPacket sphinxPacket) throws SphinxException {
+    public static byte[] packMessageForInstructions(SphinxPacket sphinxPacket) throws SphinxException {
 
         SphinxHeader sphinxHeader = sphinxPacket.getHeader();
         byte[] encodedAlpha = SerializationUtils.encodeECPoint(sphinxHeader.getAlpha());
@@ -359,7 +333,7 @@ public class SphinxClient {
      * @param sphinxPacket Sphinx packet and the Sphinx parameter lengths.
      * @return Sphinx message in binary format.
      */
-    public byte[] packMessage(SphinxPacket sphinxPacket) throws SphinxException {
+    public static byte[] packMessage(SphinxPacket sphinxPacket) throws SphinxException {
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
 
         int headerLength = sphinxPacket.headerLength();
@@ -397,7 +371,7 @@ public class SphinxClient {
      * @param m Binary message.
      * @return Binary message serialised into SphinxPacket type.
      */
-    public SphinxPacket unpackMessage(byte[] m, Params params) throws SphinxException, IOException {
+    public static SphinxPacket unpackMessage(byte[] m, Params params) throws SphinxException, IOException {
         MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(m);
         int headerLength, bodyLength;
         byte[] packedAlpha, beta, gamma, delta;
@@ -447,7 +421,7 @@ public class SphinxClient {
      * Compute the maximum number of bytes that can be a packet into a single Sphinx packet payload with the given parameters.
      * @return Maximum number of bytes that can be a packet into a single Sphinx packet payload with the given parameters.
      */
-    public int getMaxPayloadSize(Params params) throws SphinxException {
+    public static int getMaxPayloadSize(Params params) throws SphinxException {
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
         try {
             packer.packArrayHeader(2);
@@ -480,7 +454,7 @@ public class SphinxClient {
         return concatenate(body, initialPadByte, padBytes);
     }
 
-    private byte[] unpadBody(byte[] body) {
+    private static byte[] unpadBody(byte[] body) {
         int l = body.length - 1;
         byte xMarker = (byte) 0x7f;
         byte fMarker = (byte) 0xff;
@@ -498,7 +472,7 @@ public class SphinxClient {
         return ret;
     }
 
-    public byte[] packECPoint(ECPoint ecPoint) throws SphinxException {
+    public static byte[] packECPoint(ECPoint ecPoint) throws SphinxException {
         byte[] encodedEcPoint = SerializationUtils.encodeECPoint(ecPoint);
 
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
