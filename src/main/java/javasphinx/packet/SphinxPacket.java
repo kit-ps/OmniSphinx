@@ -1,6 +1,7 @@
 package javasphinx.packet;
 
 import MasterThesisFormat.MixFormats.Packet;
+import MasterThesisFormat.Params;
 import javasphinx.SphinxParams;
 import javasphinx.packet.header.SphinxHeader;
 import javasphinx.packet.header.SphinxPacketContent;
@@ -20,15 +21,11 @@ public final class SphinxPacket extends Packet {
     /**
      *
      */
-    public SphinxPacket(SphinxParams params, SphinxHeader sphinxHeader, byte[] delta) {
+    public SphinxPacket(Params params, SphinxHeader sphinxHeader, byte[] delta) {
         this.headerLength = params.headerLength();
         this.bodyLength = params.bodyLength();
         this.sphinxHeader = sphinxHeader;
         this.delta = delta;
-    }
-
-    public SphinxPacketContent getPacketContet() {
-        return new SphinxPacketContent(sphinxHeader, delta);
     }
 
     public int headerLength() {

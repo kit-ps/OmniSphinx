@@ -79,7 +79,8 @@ public class SphinxVMIntegrationTest {
         // Create packet (using classic Sphinx logic)
         //SphinxPacketContent content = client.createForwardMessage(nodesRouting, nodeKeys, dest, message);
         SphinxPacketContent content = null;
-        SphinxPacket packet = new SphinxPacket(params, content.sphinxHeader(), content.delta());
+        //SphinxPacket packet = new SphinxPacket(params, content.sphinxHeader(), content.delta());
+        SphinxPacket packet = null;
         byte[] rawPacket = client.packMessageForInstructions(packet);
 
         // Get parameters for Instruction creation

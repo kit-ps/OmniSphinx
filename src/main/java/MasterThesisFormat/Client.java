@@ -2,12 +2,14 @@ package MasterThesisFormat;
 
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.VM.VMUtil;
+import MasterThesisFormat.header.InstructionHeader;
 import MasterThesisFormat.instruction.Instruction;
 import MasterThesisFormat.instruction.SphinxInstructionPresets;
 import MasterThesisFormat.routing.RoutingStrategy;
 import javasphinx.SphinxClient;
 import javasphinx.SphinxException;
 import javasphinx.packet.RoutingFlag;
+import javasphinx.packet.SphinxPacket;
 import javasphinx.packet.header.SphinxPacketContent;
 import org.bouncycastle.math.ec.ECPoint;
 import org.msgpack.core.MessageBufferPacker;
@@ -80,24 +82,43 @@ public class Client {
      * @param message Data payload.
      * @return Header and payload of a Sphinx packet encrypted in a nested manner.
      */
-    public InstructionPacket createSphinxInstructionPacket(byte[][] nodelist, ECPoint[] keys, byte[] destination, byte[] message) throws SphinxException, IOException {
-        SphinxPacketContent sphinxPacketContent = SphinxClient.createForwardMessage(nodelist, keys, destination, message, params);
-        byte[][] secrets = sphinxPacketContent.headerAndSecrets().secrets();
+    public InstructionPacket createSphinxInstructionPacket(byte[][] nodelist, ECPoint[] keys, byte[] destination, byte[] message) throws Exception, IOException {
+        SphinxPacketContent content = SphinxClient.createForwardMessage(nodelist, keys, destination, message, params);
 
-        byte[] encryptedInstructions = params.pi(params.hpi(secrets[nodelist.length - 1]),
-                SphinxInstructionPresets.createInstructions((byte) sphinxPacketContent.headerAndSecrets().alpha()[nodelist.length - 1].getEncoded(false).length,
-                (byte) sphinxPacketContent.headerAndSecrets().sphinxHeader().getBeta().length,
-                (byte) params.keyLength()));
+        byte[][] secrets = content.headerAndSecrets().secrets();
+        ECPoint[] alphas = content.headerAndSecrets().alpha();
 
-        for (int i = nodelist.length - 2; i >= 0; i--) {
-            byte[] instructions = params.pi(params.hpi(secrets[i]),
-                    SphinxInstructionPresets.createInstructions((byte) sphinxPacketContent.headerAndSecrets().alpha()[i].getEncoded(false).length,
-                            (byte) sphinxPacketContent.headerAndSecrets().sphinxHeader().getBeta().length,
-                            (byte) params.keyLength()));
-            encryptedInstructions = VMUtil.concatenate(params.pi(params.hpi(secrets[i]), encryptedInstructions), encryptedInstructions);
+        byte[] onion = new byte[0];
+        byte[] nextSigma = new byte[params.keyLength()];
+
+        for (int i = nodelist.length - 1; i >= 0; i--) {
+            byte[] instr = SphinxInstructionPresets.createInstructions(
+                    (byte) alphas[i].getEncoded(false).length,
+                    (byte) content.headerAndSecrets().sphinxHeader().getBeta().length,
+                    (byte) params.keyLength());
+
+            if (instr.length + nextSigma.length + onion.length > MAX_INSTRUCTION_SIZE) {
+                throw new SphinxException("Instructions exceed maximum size");
+            }
+
+            // Struktur: [Instructions_i || Sigma_{i+1} || Onion_{i+1}]
+            byte[] plain = new byte[MAX_INSTRUCTION_SIZE];
+            int offset = 0;
+            System.arraycopy(instr, 0, plain, offset, instr.length);
+            offset += instr.length;
+            System.arraycopy(nextSigma, 0, plain, offset, nextSigma.length);
+            offset += nextSigma.length;
+            System.arraycopy(onion, 0, plain, offset, onion.length);
+
+            onion = params.pi(params.hpi(secrets[i]), plain);
+
+            nextSigma = params.mu(params.hmu(secrets[i]), instr);
         }
 
-        return null;
-    }
+        InstructionHeader header = new InstructionHeader(alphas[0], nextSigma, onion);
+        SphinxPacket packet = new SphinxPacket(params, content.headerAndSecrets().sphinxHeader(), content.delta());
 
+        return new InstructionPacket(header, packet);
+    }
 }
+

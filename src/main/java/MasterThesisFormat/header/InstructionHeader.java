@@ -9,7 +9,7 @@ public class InstructionHeader {
     private final byte[] instructions;
 
 
-    public InstructionHeader(ECPoint alpha, byte[] MAC, byte[] instructions, Packet packet) {
+    public InstructionHeader(ECPoint alpha, byte[] MAC, byte[] instructions) {
         this.alpha = alpha;
         this.MAC = MAC;
         this.instructions = instructions.clone();
