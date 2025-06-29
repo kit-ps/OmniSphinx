@@ -3,7 +3,7 @@ package javasphinx.packet;
 import MasterThesisFormat.MixFormats.Packet;
 import javasphinx.SphinxParams;
 import javasphinx.packet.header.SphinxHeader;
-import javasphinx.packet.header.PacketContent;
+import javasphinx.packet.header.SphinxPacketContent;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -27,8 +27,8 @@ public final class SphinxPacket extends Packet {
         this.delta = delta;
     }
 
-    public PacketContent getPacketContet() {
-        return new PacketContent(sphinxHeader, delta);
+    public SphinxPacketContent getPacketContet() {
+        return new SphinxPacketContent(sphinxHeader, delta);
     }
 
     public int headerLength() {

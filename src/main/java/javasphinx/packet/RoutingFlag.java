@@ -1,5 +1,8 @@
 package javasphinx.packet;
 
+import javasphinx.SphinxException;
+import MasterThesisFormat.routing.RoutingStrategy;
+
 import java.util.Arrays;
 
 public enum RoutingFlag {

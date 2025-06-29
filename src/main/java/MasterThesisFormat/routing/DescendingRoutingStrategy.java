@@ -1,4 +1,4 @@
-package javasphinx.routing;
+package MasterThesisFormat.routing;
 
 import java.util.Arrays;
 

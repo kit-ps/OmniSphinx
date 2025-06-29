@@ -4,14 +4,14 @@ import javasphinx.SphinxException;
 import javasphinx.SphinxParams;
 import MasterThesisFormat.VM.SphinxVM;
 import MasterThesisFormat.VM.VMException;
-import javasphinx.packet.ProcessedPacket;
+import javasphinx.packet.ProcessedSphinxPacket;
 import javasphinx.packet.SphinxPacket;
 import javasphinx.packet.header.SphinxHeader;
-import javasphinx.packet.header.PacketContent;
+import javasphinx.packet.header.SphinxPacketContent;
 import MasterThesisFormat.instruction.Instruction;
 import MasterThesisFormat.instruction.SphinxInstructionPresets;
 import javasphinx.pki.PkiEntry;
-import javasphinx.routing.RandomRoutingStrategy;
+import MasterThesisFormat.routing.RandomRoutingStrategy;
 import org.junit.Before;
 import org.junit.Test;
 import org.bouncycastle.math.ec.ECPoint;
@@ -34,7 +34,7 @@ public class SphinxVMIntegrationTest {
     @Before
     public void setUp() throws SphinxException {
         params = new SphinxParams();
-        client = new SphinxClient(params, new RandomRoutingStrategy());
+        //client = new SphinxClient(params);
 
         int r = 5;
 
@@ -58,11 +58,11 @@ public class SphinxVMIntegrationTest {
         for (int i = 0; i < nodePool.length; i++) {
             nodePool[i] = pubKeys[i];
         }
-        useNodes = client.route(nodePool, r);
+        //useNodes = client.route(nodePool, r);
 
         nodesRouting = new byte[useNodes.length][];
         for (int i = 0; i < useNodes.length; i++) {
-            nodesRouting[i] = client.encodeNode(useNodes[i], (new Random()).nextInt());
+            //nodesRouting[i] = client.encodeNode(useNodes[i], (new Random()).nextInt());
         }
 
         nodeKeys = new ECPoint[useNodes.length];
@@ -77,7 +77,8 @@ public class SphinxVMIntegrationTest {
         byte[] message = "Hello world from instructions!".getBytes();
 
         // Create packet (using classic Sphinx logic)
-        PacketContent content = client.createForwardMessage(nodesRouting, nodeKeys, dest, message);
+        //SphinxPacketContent content = client.createForwardMessage(nodesRouting, nodeKeys, dest, message);
+        SphinxPacketContent content = null;
         SphinxPacket packet = new SphinxPacket(params, content.sphinxHeader(), content.delta());
         byte[] rawPacket = client.packMessageForInstructions(packet);
 
@@ -95,11 +96,11 @@ public class SphinxVMIntegrationTest {
         //SphinxNode node = new SphinxNode(params, new RandomRoutingStrategy(), secret);
         //node.sphinxProcess(packet.packetContent());
         SphinxVM vm = new SphinxVM(secret, params);
-        ProcessedPacket result = vm.interpret(rawPacket, instructions, packet);
+        ProcessedSphinxPacket result = vm.interpret(rawPacket, instructions, packet);
 
         assertNotNull("Processed packet should not be null", result);
         assertNotNull("Routing field must be extracted", result.routing());
-        assertNotNull("Payload must be processed", result.packetContent());
+        assertNotNull("Payload must be processed", result.sphinxPacketContent());
     }
 
     @Test

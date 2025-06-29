@@ -1,11 +1,11 @@
 package javasphinx;
 
 import javasphinx.crypto.ECCGroup;
-import javasphinx.packet.ProcessedPacket;
+import javasphinx.packet.ProcessedSphinxPacket;
 import javasphinx.packet.SphinxPacket;
 import javasphinx.packet.header.SphinxHeader;
-import javasphinx.packet.header.PacketContent;
-import javasphinx.routing.RoutingStrategy;
+import javasphinx.packet.header.SphinxPacketContent;
+import MasterThesisFormat.routing.RoutingStrategy;
 import org.bouncycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
@@ -20,9 +20,9 @@ public class SphinxNode {
     private final SphinxClient client;
     private final BigInteger secret;
 
-    public SphinxNode(final SphinxParams params, final RoutingStrategy routingStrategy, final BigInteger secret) {
+    public SphinxNode(final SphinxParams params, final BigInteger secret) {
         this.params = params;
-        this.client = new SphinxClient(params, routingStrategy);
+        this.client = new SphinxClient();
         this.secret = secret;
     }
 
@@ -32,16 +32,16 @@ public class SphinxNode {
 
     /**
      * Method that processes Sphinx packets at a mix node
-     * @param packetContent Header and encrypted payload of the Sphinx packet
+     * @param sphinxPacketContent Header and encrypted payload of the Sphinx packet
      * @return The new header and payload of the Sphinx packet along with some auxiliary information
      */
-    public ProcessedPacket sphinxProcess(PacketContent packetContent) throws SphinxException {
+    public ProcessedSphinxPacket sphinxProcess(SphinxPacketContent sphinxPacketContent) throws SphinxException {
         // Sammle notwendige Daten
         ECCGroup group = params.getGroup();
-        ECPoint alpha = packetContent.sphinxHeader().getAlpha();
-        byte[] beta = packetContent.sphinxHeader().getBeta();
-        byte[] gamma = packetContent.sphinxHeader().getGamma();
-        byte[] delta = packetContent.delta();
+        ECPoint alpha = sphinxPacketContent.headerAndSecrets().sphinxHeader().getAlpha();
+        byte[] beta = sphinxPacketContent.headerAndSecrets().sphinxHeader().getBeta();
+        byte[] gamma = sphinxPacketContent.headerAndSecrets().sphinxHeader().getGamma();
+        byte[] delta = sphinxPacketContent.delta();
 
         //Berechne das Shared Secret
         ECPoint s = group.expon(alpha, secret);
@@ -92,13 +92,11 @@ public class SphinxNode {
 
         SphinxHeader sphinxHeader = new SphinxHeader(alpha, beta, gamma);
 
-        PacketContent packetContent1 = new PacketContent(sphinxHeader, delta);
+        //SphinxPacketContent sphinxPacketContent1 = new SphinxPacketContent(sphinxHeader, delta);
 
-        return new ProcessedPacket(tag, routing, packetContent1, macKey);
+        //return new ProcessedSphinxPacket(tag, routing, sphinxPacketContent1, macKey);
+        return null;
     }
 
-    public SphinxPacket repack(ProcessedPacket packet) {
-        return new SphinxPacket(params, packet.packetContent().sphinxHeader(), packet.packetContent().delta());
-    }
 
 }
