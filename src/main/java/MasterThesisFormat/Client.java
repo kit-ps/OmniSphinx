@@ -89,7 +89,7 @@ public class Client {
         ECPoint[] alphas = content.headerAndSecrets().alpha();
 
         byte[] onion = new byte[0];
-        byte[] nextSigma = new byte[params.keyLength()];
+        byte[] sigma = new byte[params.keyLength()];
 
         for (int i = nodelist.length - 1; i >= 0; i--) {
             byte[] instr = SphinxInstructionPresets.createInstructions(
@@ -97,25 +97,28 @@ public class Client {
                     (byte) content.headerAndSecrets().sphinxHeader().getBeta().length,
                     (byte) params.keyLength());
 
-            if (instr.length + nextSigma.length + onion.length > MAX_INSTRUCTION_SIZE) {
+            int plainLen = instr.length + onion.length;
+            if (plainLen + params.keyLength() > MAX_INSTRUCTION_SIZE) {
                 throw new SphinxException("Instructions exceed maximum size");
             }
 
-            // Struktur: [Instructions_i || Sigma_{i+1} || Onion_{i+1}]
-            byte[] plain = new byte[MAX_INSTRUCTION_SIZE];
-            int offset = 0;
-            System.arraycopy(instr, 0, plain, offset, instr.length);
-            offset += instr.length;
-            System.arraycopy(nextSigma, 0, plain, offset, nextSigma.length);
-            offset += nextSigma.length;
-            System.arraycopy(onion, 0, plain, offset, onion.length);
+            byte[] plain = new byte[plainLen];
+            System.arraycopy(instr, 0, plain, 0, instr.length);
+            System.arraycopy(onion, 0, plain, instr.length, onion.length);
 
-            onion = params.pi(params.hpi(secrets[i]), plain);
+            byte[] enc = params.xorRho(params.hrho(secrets[i]), plain);
+            sigma = params.mu(params.hmu(secrets[i]), plain);
 
-            nextSigma = params.mu(params.hmu(secrets[i]), instr);
+            onion = new byte[sigma.length + enc.length];
+            System.arraycopy(sigma, 0, onion, 0, sigma.length);
+            System.arraycopy(enc, 0, onion, sigma.length, enc.length);
         }
 
-        InstructionHeader header = new InstructionHeader(alphas[0], nextSigma, onion);
+        byte[] finalSigma = VMUtil.slice(onion, 0, params.keyLength());
+        byte[] finalOnion = VMUtil.slice(onion, params.keyLength(), onion.length);
+
+        InstructionHeader header = new InstructionHeader(alphas[0], finalSigma, finalOnion);
+
         SphinxPacket packet = new SphinxPacket(params, content.headerAndSecrets().sphinxHeader(), content.delta());
 
         return new InstructionPacket(header, packet);
