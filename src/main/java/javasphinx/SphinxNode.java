@@ -2,10 +2,10 @@ package javasphinx;
 
 import javasphinx.crypto.ECCGroup;
 import javasphinx.packet.ProcessedSphinxPacket;
-import javasphinx.packet.SphinxPacket;
+import java.nio.ByteBuffer;
 import javasphinx.packet.header.SphinxHeader;
 import javasphinx.packet.header.SphinxPacketContent;
-import MasterThesisFormat.routing.RoutingStrategy;
+
 import org.bouncycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
@@ -58,11 +58,22 @@ public class SphinxNode {
         //Decrypt Beta
         byte[] B = params.xorRho(params.hrho(aesS), betaPad);
 
-        //Get length of routing
-        byte length = B[0];
+        //Extract delay and length of routing
+        int delay = ByteBuffer.wrap(B, 0, 4).getInt();
+        byte length = B[4];
 
-        byte[] routing = SerializationUtils.slice(B, 1, 1 + length);
-        byte[] rest = SerializationUtils.slice(B, 1 + length, B.length);
+        byte[] routing = SerializationUtils.slice(B, 5, 5 + length);
+        byte[] rest = SerializationUtils.slice(B, 5 + length, B.length);
+
+        //apply the delay before forwarding
+        if (delay > 0) {
+            try {
+                Thread.sleep(delay);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new SphinxException("Delay interrupted");
+            }
+        }
 
         //used to identify previously seen elements of G
         byte[] tag = params.htau(aesS);

@@ -6,11 +6,10 @@ import javasphinx.packet.RoutingFlag;
 import javasphinx.packet.SphinxPacket;
 import javasphinx.packet.header.SphinxHeader;
 import javasphinx.packet.header.HeaderAndSecrets;
-import javasphinx.packet.header.SphinxPacketContent;
+import java.nio.ByteBuffer;
 import javasphinx.packet.message.DestinationAndMessage;
 import javasphinx.packet.reply.NymTuple;
 import javasphinx.packet.reply.SingleUseReplyBlock;
-import MasterThesisFormat.routing.RoutingStrategy;
 import org.bouncycastle.math.ec.ECPoint;
 import org.bouncycastle.util.encoders.Hex;
 import org.msgpack.core.MessageBufferPacker;
@@ -19,12 +18,8 @@ import org.msgpack.core.MessageUnpacker;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.security.SecureRandom;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import static javasphinx.SerializationUtils.concatenate;
 import static javasphinx.SerializationUtils.slice;
@@ -124,6 +119,93 @@ public class SphinxClient {
     }
 
     /**
+     * Create a Sphinx header that additionally encodes a delay inside the beta
+     * field. The delay is stored as a 4 byte integer at the start of beta.
+     */
+    private static HeaderAndSecrets createHeaderWithDelay(byte[][] nodelist, ECPoint[] alphas,
+                                                          ECPoint[] sharedSecrets, byte[] dest,
+                                                          int delay, Params params) throws SphinxException, IOException {
+
+        byte[][] nodeMeta = new byte[nodelist.length][];
+        for (int i = 0; i < nodelist.length; i++) {
+            byte[] node = nodelist[i];
+            byte[] nodeLength = {(byte) node.length};
+            nodeMeta[i] = concatenate(nodeLength, node);
+        }
+
+        int nu = nodelist.length;
+
+        if (alphas.length != nu || sharedSecrets.length != nu) {
+            throw new SphinxException("Parameter length mismatch");
+        }
+
+        byte[][] aesKeys = new byte[nu][];
+        for (int i = 0; i < nu; i++) {
+            aesKeys[i] = params.getAesKey(sharedSecrets[i]);
+        }
+
+        byte[] phi = {};
+        int minLen = params.headerLength() - 32;
+
+        for (int i = 1; i < nu; i++) {
+            byte[] zeroes1 = new byte[params.keyLength() + nodeMeta[i].length];
+            Arrays.fill(zeroes1, (byte) 0x00);
+            byte[] plain = concatenate(phi, zeroes1);
+
+            byte[] zeroes2 = new byte[minLen];
+            Arrays.fill(zeroes2, (byte) 0x00);
+            byte[] zeroes2plain = concatenate(zeroes2, plain);
+            phi = params.xorRho(params.hrho(aesKeys[i - 1]), zeroes2plain);
+            phi = slice(phi, minLen, phi.length);
+
+            minLen -= nodeMeta[i].length + params.keyLength();
+        }
+
+        int lenMeta = 0;
+        for (int i = 1; i < nodeMeta.length; i++) {
+            lenMeta += nodeMeta[i].length;
+        }
+
+        if (phi.length != lenMeta + (nu-1)*params.keyLength()) {
+            throw new SphinxException("Length of phi (" + phi.length + ") did not match the expected length (" + (lenMeta + (nu-1)*params.keyLength()) + ")");
+        }
+
+        byte[] destLength = {(byte) dest.length};
+        byte[] delayBytes = ByteBuffer.allocate(4).putInt(delay).array();
+        byte[] finalRouting = concatenate(delayBytes, destLength, dest);
+
+        int randomPadLen = (params.headerLength() - 32) - lenMeta - (nu-1)*params.keyLength() - finalRouting.length;
+        if (randomPadLen < 0) {
+            throw new SphinxException("Length of random pad (" + randomPadLen + ") must be non-negative");
+        }
+
+        SecureRandom secureRandom = new SecureRandom();
+        byte[] randomPad = new byte[randomPadLen];
+        secureRandom.nextBytes(randomPad);
+
+        byte[] beta = concatenate(finalRouting, randomPad);
+        beta = params.xorRho(params.hrho(aesKeys[nu - 1]), beta);
+        beta = concatenate(beta, phi);
+
+        byte[] gamma = params.mu(params.hmu(aesKeys[nu - 1]), beta);
+
+        for (int i = nu - 2; i >= 0; i--) {
+            byte[] nodeId = nodeMeta[i+1];
+
+            int plainBetaLen = (params.headerLength() - 32) - params.keyLength() - nodeId.length;
+            byte[] plainBeta = slice(beta, plainBetaLen);
+            byte[] plain = concatenate(nodeId, gamma, plainBeta);
+
+            beta = params.xorRho(params.hrho(aesKeys[i]), plain);
+            gamma = params.mu(params.hmu(aesKeys[i]), beta);
+        }
+        SphinxHeader sphinxHeader = new SphinxHeader(alphas[0], beta, gamma);
+
+        return new HeaderAndSecrets(sphinxHeader, aesKeys, alphas);
+    }
+
+
+    /**
      * Create a forward Sphinx message.
      * @param nodelist List of encoded mix node identifiers used to route the Sphinx packet.
      * @param destination Final destination.
@@ -179,6 +261,61 @@ public class SphinxClient {
     }
 
     /**
+     * Create a forward Sphinx message that carries a delay value encoded in the
+     * beta field. The mix node processing this packet SHOULD delay forwarding by
+     * the specified number of milliseconds.
+     */
+    public static SphinxPacket createForwardPacketWithDelay(byte[][] nodelist, ECPoint[] alphas,
+                                                            ECPoint[] sharedSecrets, byte[] destination,
+                                                            byte[] message, int delay, Params params) throws SphinxException, IOException {
+        if (!(destination.length > 0 && destination.length < MAX_DEST_SIZE)) {
+            throw new SphinxException("Destination has to be between 1 and " + MAX_DEST_SIZE + " bytes long");
+        }
+
+        MessageBufferPacker packer;
+
+        packer = MessagePack.newDefaultBufferPacker();
+        try {
+            packer.packArrayHeader(1);
+            packer.packString(RoutingFlag.DESTINATION.value());
+            packer.close();
+        } catch (IOException ex) {
+            throw new SphinxException("Failed to pack the destination flag");
+        }
+
+        byte[] finalDestination = packer.toByteArray();
+        HeaderAndSecrets headerAndSecrets = createHeaderWithDelay(nodelist, alphas, sharedSecrets, finalDestination, delay, params);
+
+        packer = MessagePack.newDefaultBufferPacker();
+        try {
+            packer.packArrayHeader(2);
+            packer.packBinaryHeader(destination.length);
+            packer.writePayload(destination);
+            packer.packBinaryHeader(message.length);
+            packer.writePayload(message);
+            packer.close();
+        } catch (IOException ex) {
+            throw new SphinxException("Failed to pack destination and message");
+        }
+
+        byte[] encodedDestAndMsg = packer.toByteArray();
+
+        byte[][] secrets = headerAndSecrets.secrets();
+        byte[] payload = padBody(params.bodyLength() - params.keyLength(), encodedDestAndMsg);
+        byte[] mac = params.mu(params.hpi(secrets[nodelist.length - 1]), payload);
+        byte[] body = concatenate(mac, payload);
+
+        byte[] delta = params.pi(params.hpi(secrets[nodelist.length - 1]), body);
+
+        for (int i = nodelist.length - 2; i >= 0; i--) {
+            delta = params.pi(params.hpi(secrets[i]), delta);
+        }
+
+        return new SphinxPacket(params, headerAndSecrets.sphinxHeader(), delta);
+    }
+
+
+    /**
      * Create a single-use reply block to receive replies anonymously.
      * @param nodelist List of encoded mix node identifiers used to route the Sphinx packet.
      * @param dest Final destination of the Sphinx packet.
@@ -186,7 +323,8 @@ public class SphinxClient {
      */
     public static SingleUseReplyBlock createSurb(byte[][] nodelist, ECPoint[] alphas,
                                                  ECPoint[] sharedSecrets, byte[] dest,
-                                                 Params params) throws SphinxException, IOException {        SecureRandom secureRandom = new SecureRandom();
+                                                 Params params) throws SphinxException, IOException {
+        SecureRandom secureRandom = new SecureRandom();
         int nu = nodelist.length;
 
         byte[] xid = new byte[params.keyLength()];
