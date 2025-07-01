@@ -25,7 +25,7 @@ import java.util.Arrays;
 import static MasterThesisFormat.VM.VMUtil.*;
 
 
-public class SphinxVM {
+public class VM {
     private SphinxPacket RecievedPacket;
     private ProcessedSphinxPacket processedSphinxPacket;
     private BigInteger nodeSecret;
@@ -33,7 +33,7 @@ public class SphinxVM {
     private byte[] rawpacket;
     private SphinxParams params;
 
-    public SphinxVM(BigInteger nodeSecret, SphinxParams params) {
+    public VM(BigInteger nodeSecret, SphinxParams params) {
         this.registers = new byte[256][64];
         this.nodeSecret = nodeSecret;
         this.params = params;
@@ -324,13 +324,6 @@ public class SphinxVM {
             ECPoint pubPoint = curve.decodePoint(pubKeyBytes);
             ECPoint s = pubPoint.multiply(nodeSecret);
 
-            //Debug Code damit alles richtig ist!
-            if(!pubPoint.equals(RecievedPacket.packetContent().header().alpha())) {
-                throw new VMException("computeSharedSecret kaputt 2!");
-            }
-            if(!s.equals(RecievedPacket.packetContent().header().alpha().multiply(nodeSecret))) {
-                throw new VMException("computeSharedSecret kaputt 2!");
-            }
             byte[] result = s.getEncoded(false);
             registers[destReg] = result;
 

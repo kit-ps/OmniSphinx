@@ -2,7 +2,7 @@ import javasphinx.SerializationUtils;
 import javasphinx.SphinxClient;
 import javasphinx.SphinxException;
 import javasphinx.SphinxParams;
-import MasterThesisFormat.VM.SphinxVM;
+import MasterThesisFormat.VM.VM;
 import MasterThesisFormat.VM.VMException;
 import javasphinx.packet.ProcessedSphinxPacket;
 import javasphinx.packet.SphinxPacket;
@@ -11,7 +11,6 @@ import javasphinx.packet.header.SphinxPacketContent;
 import MasterThesisFormat.instruction.Instruction;
 import MasterThesisFormat.instruction.SphinxInstructionPresets;
 import javasphinx.pki.PkiEntry;
-import MasterThesisFormat.routing.RandomRoutingStrategy;
 import org.junit.Before;
 import org.junit.Test;
 import org.bouncycastle.math.ec.ECPoint;
@@ -22,7 +21,7 @@ import java.util.*;
 
 import static org.junit.Assert.*;
 
-public class SphinxVMIntegrationTest {
+public class VMIntegrationTest {
 
     private SphinxParams params;
     private SphinxClient client;
@@ -96,7 +95,7 @@ public class SphinxVMIntegrationTest {
         BigInteger secret = pkiPriv.get(useNodes[0]).priv(); // Private key of first node
         //SphinxNode node = new SphinxNode(params, new RandomRoutingStrategy(), secret);
         //node.sphinxProcess(packet.packetContent());
-        SphinxVM vm = new SphinxVM(secret, params);
+        VM vm = new VM(secret, params);
         ProcessedSphinxPacket result = vm.interpret(rawPacket, instructions, packet);
 
         assertNotNull("Processed packet should not be null", result);
@@ -120,7 +119,7 @@ public class SphinxVMIntegrationTest {
         instr.write(Instruction.concate((byte) 0x00, (byte) 0x00, (byte) 0x00));
         byte[] inst = instr.toByteArray();
 
-        SphinxVM vm = new SphinxVM(null, params);
+        VM vm = new VM(null, params);
 
         vm.interpret(null, inst, null);
     }
