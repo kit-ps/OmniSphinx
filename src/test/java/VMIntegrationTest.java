@@ -1,7 +1,7 @@
+import MasterThesisFormat.Params;
 import javasphinx.SerializationUtils;
 import javasphinx.SphinxClient;
 import javasphinx.SphinxException;
-import javasphinx.SphinxParams;
 import MasterThesisFormat.VM.VM;
 import MasterThesisFormat.VM.VMException;
 import javasphinx.packet.ProcessedSphinxPacket;
@@ -23,7 +23,7 @@ import static org.junit.Assert.*;
 
 public class VMIntegrationTest {
 
-    private SphinxParams params;
+    private Params params;
     private SphinxClient client;
     private HashMap<Integer, PkiEntry> pkiPriv;
     private byte[][] nodesRouting;
@@ -32,7 +32,7 @@ public class VMIntegrationTest {
 
     @Before
     public void setUp() throws SphinxException {
-        params = new SphinxParams();
+        params = new Params();
         //client = new SphinxClient(params);
 
         int r = 5;

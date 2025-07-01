@@ -1,5 +1,6 @@
 package javasphinx;
 
+import MasterThesisFormat.Params;
 import javasphinx.crypto.ECCGroup;
 import javasphinx.packet.ProcessedSphinxPacket;
 import java.nio.ByteBuffer;
@@ -16,10 +17,10 @@ import java.util.Arrays;
  */
 public class SphinxNode {
 
-    private final SphinxParams params;
+    private final Params params;
     private final BigInteger secret;
 
-    public SphinxNode(final SphinxParams params, final BigInteger secret) {
+    public SphinxNode(final Params params, final BigInteger secret) {
         this.params = params;
         this.secret = secret;
     }

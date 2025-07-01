@@ -1,6 +1,6 @@
 package MasterThesisFormat.VM;
 
-import javasphinx.SphinxParams;
+import MasterThesisFormat.Params;
 import javasphinx.packet.ProcessedSphinxPacket;
 import javasphinx.packet.SphinxPacket;
 import MasterThesisFormat.instruction.OpCode;
@@ -26,14 +26,13 @@ import static MasterThesisFormat.VM.VMUtil.*;
 
 
 public class VM {
-    private SphinxPacket RecievedPacket;
     private ProcessedSphinxPacket processedSphinxPacket;
     private BigInteger nodeSecret;
     private byte[][] registers;
     private byte[] rawpacket;
-    private SphinxParams params;
+    private Params params;
 
-    public VM(BigInteger nodeSecret, SphinxParams params) {
+    public VM(BigInteger nodeSecret, Params params) {
         this.registers = new byte[256][64];
         this.nodeSecret = nodeSecret;
         this.params = params;
@@ -41,7 +40,6 @@ public class VM {
 
     public ProcessedSphinxPacket interpret(byte[] Rawpacket, byte[] instructions, SphinxPacket packet) throws VMException {
         registers[0x00] = Rawpacket;
-        RecievedPacket = packet;
         rawpacket = Rawpacket;
         interpretInstructions(instructions);
         return processedSphinxPacket;
@@ -140,7 +138,7 @@ public class VM {
                         encrypt(keyReg, inputReg, destReg);
                     }
                     case MIX_NONE -> {
-                        // Direkt weiterleiten → keine Aktion nötig
+                        applyMixNone();
                     }
 
                     case MIX_TIMED -> {
@@ -262,7 +260,7 @@ public class VM {
                         encrypt(keyReg, inputReg, destReg);
                     }
                     case MIX_NONE -> {
-                        // Direkt weiterleiten → keine Aktion nötig
+                        applyMixNone();
                     }
 
                     case MIX_TIMED -> {
@@ -482,6 +480,10 @@ public class VM {
 
 
     private void forward(byte idReg, byte payloadReg) throws VMException {
+    }
+
+    private void applyMixNone() {
+        // intentionally left blank
     }
 
     private void applyTimedMix(byte delay) throws VMException {

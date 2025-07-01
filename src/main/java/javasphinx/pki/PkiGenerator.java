@@ -1,12 +1,12 @@
 package javasphinx.pki;
 
-import javasphinx.SphinxParams;
+import MasterThesisFormat.Params;
 
 public class PkiGenerator {
 
-    private final SphinxParams params;
+    private final Params params;
 
-    public PkiGenerator(final SphinxParams params) {
+    public PkiGenerator(final Params params) {
         this.params = params;
     }
 

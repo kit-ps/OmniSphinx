@@ -2,9 +2,7 @@ package javasphinx.packet;
 
 import MasterThesisFormat.MixFormats.Packet;
 import MasterThesisFormat.Params;
-import javasphinx.SphinxParams;
 import javasphinx.packet.header.SphinxHeader;
-import javasphinx.packet.header.SphinxPacketContent;
 
 import java.util.Arrays;
 import java.util.Objects;
