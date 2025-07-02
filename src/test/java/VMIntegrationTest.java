@@ -1,5 +1,5 @@
 import MasterThesisFormat.Params;
-import javasphinx.SerializationUtils;
+import MasterThesisFormat.SerializationUtils;
 import javasphinx.SphinxClient;
 import javasphinx.SphinxException;
 import MasterThesisFormat.VM.VM;
@@ -96,7 +96,7 @@ public class VMIntegrationTest {
         //SphinxNode node = new SphinxNode(params, new RandomRoutingStrategy(), secret);
         //node.sphinxProcess(packet.packetContent());
         VM vm = new VM(secret, params);
-        ProcessedSphinxPacket result = vm.interpret(rawPacket, instructions, packet);
+        ProcessedSphinxPacket result = vm.interpret(rawPacket, instructions);
 
         assertNotNull("Processed packet should not be null", result);
         assertNotNull("Routing field must be extracted", result.routing());
@@ -121,7 +121,7 @@ public class VMIntegrationTest {
 
         VM vm = new VM(null, params);
 
-        vm.interpret(null, inst, null);
+        vm.interpret(null, inst);
     }
 
     private byte getAlphaLen(SphinxPacket packet) throws VMException {

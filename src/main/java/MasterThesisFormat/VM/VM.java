@@ -38,7 +38,7 @@ public class VM {
         this.params = params;
     }
 
-    public ProcessedSphinxPacket interpret(byte[] Rawpacket, byte[] instructions, SphinxPacket packet) throws VMException {
+    public ProcessedSphinxPacket interpret(byte[] Rawpacket, byte[] instructions) throws VMException {
         registers[0x00] = Rawpacket;
         rawpacket = Rawpacket;
         interpretInstructions(instructions);

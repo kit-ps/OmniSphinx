@@ -133,5 +133,44 @@ public class Client {
 
         return new InstructionPacket(header, packet);
     }
+
+    /**
+     *
+     * Layout:
+     * [alpha | MAC | encrypted instructions | sphinx packet]
+     *
+     */
+    public byte[] packInstructionPacket(InstructionPacket packet) throws SphinxException {
+        InstructionHeader header = packet.getHeader();
+
+        byte[] encodedAlpha = SerializationUtils.encodeECPoint(header.getAlpha());
+        byte[] mac = header.getMAC();
+        byte[] instructions = header.getInstructions();
+
+        byte[] packetRaw;
+        if (packet.getPacket() instanceof SphinxPacket sphinxPacket) {
+            packetRaw = SphinxClient.packMessageForInstructions(sphinxPacket);
+        } else {
+            throw new SphinxException("Unsupported inner packet type");
+        }
+
+        MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
+        try {
+            packer.packArrayHeader(4);
+            packer.packBinaryHeader(encodedAlpha.length);
+            packer.writePayload(encodedAlpha);
+            packer.packBinaryHeader(mac.length);
+            packer.writePayload(mac);
+            packer.packBinaryHeader(instructions.length);
+            packer.writePayload(instructions);
+            packer.packBinaryHeader(packetRaw.length);
+            packer.writePayload(packetRaw);
+            packer.close();
+        } catch (IOException ex) {
+            throw new SphinxException("Failed to pack instruction packet");
+        }
+
+        return packer.toByteArray();
+    }
 }
 

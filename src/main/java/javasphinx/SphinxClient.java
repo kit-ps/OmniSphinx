@@ -1,6 +1,7 @@
 package javasphinx;
 
 import MasterThesisFormat.Params;
+import MasterThesisFormat.SerializationUtils;
 import javasphinx.crypto.ECCGroup;
 import javasphinx.packet.RoutingFlag;
 import javasphinx.packet.SphinxPacket;
@@ -23,8 +24,8 @@ import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
-import static javasphinx.SerializationUtils.concatenate;
-import static javasphinx.SerializationUtils.slice;
+import static MasterThesisFormat.SerializationUtils.concatenate;
+import static MasterThesisFormat.SerializationUtils.slice;
 
 /**
  * Class housing the methods to create, package and receive Sphinx messages.

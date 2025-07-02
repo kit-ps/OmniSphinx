@@ -1,6 +1,7 @@
 package javasphinx;
 
 import MasterThesisFormat.Params;
+import MasterThesisFormat.SerializationUtils;
 import javasphinx.crypto.ECCGroup;
 import javasphinx.packet.ProcessedSphinxPacket;
 import java.nio.ByteBuffer;
@@ -33,9 +34,9 @@ public class SphinxNode {
     public ProcessedSphinxPacket sphinxProcess(SphinxPacketContent sphinxPacketContent) throws SphinxException {
         // Sammle notwendige Daten
         ECCGroup group = params.getGroup();
-        ECPoint alpha = sphinxPacketContent.headerAndSecrets().sphinxHeader().getAlpha();
-        byte[] beta = sphinxPacketContent.headerAndSecrets().sphinxHeader().getBeta();
-        byte[] gamma = sphinxPacketContent.headerAndSecrets().sphinxHeader().getGamma();
+        ECPoint alpha = sphinxPacketContent.header().getAlpha();
+        byte[] beta = sphinxPacketContent.header().getBeta();
+        byte[] gamma = sphinxPacketContent.header().getGamma();
         byte[] delta = sphinxPacketContent.delta();
 
         //Berechne das Shared Secret

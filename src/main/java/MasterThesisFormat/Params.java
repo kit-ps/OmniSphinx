@@ -15,8 +15,8 @@ import org.bouncycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
 
-import static javasphinx.SerializationUtils.concatenate;
-import static javasphinx.SerializationUtils.slice;
+import static MasterThesisFormat.SerializationUtils.concatenate;
+import static MasterThesisFormat.SerializationUtils.slice;
 
 public class Params {
     private final int keyLength;
