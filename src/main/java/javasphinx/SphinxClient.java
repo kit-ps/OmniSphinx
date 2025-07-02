@@ -496,18 +496,18 @@ public class SphinxClient {
     }
 
     /**
-     * Create a Sphinx header that additionally encodes a delay inside the beta
-     * field. The delay is stored as a 4 byte integer at the start of beta.
+     * Create a Sphinx header that additionally encodes a delay inside the beta. Delay is in routing information
      */
     private static HeaderAndSecrets createHeaderWithDelay(byte[][] nodelist, ECPoint[] alphas,
                                                           ECPoint[] sharedSecrets, byte[] dest,
                                                           int delay, Params params) throws SphinxException, IOException {
 
+        byte[] delayBytes = ByteBuffer.allocate(4).putInt(delay).array();
         byte[][] nodeMeta = new byte[nodelist.length][];
         for (int i = 0; i < nodelist.length; i++) {
             byte[] node = nodelist[i];
             byte[] nodeLength = {(byte) node.length};
-            nodeMeta[i] = concatenate(nodeLength, node);
+            nodeMeta[i] = concatenate( nodeLength, node, delayBytes);
         }
 
         int nu = nodelist.length;
@@ -548,7 +548,6 @@ public class SphinxClient {
         }
 
         byte[] destLength = {(byte) dest.length};
-        byte[] delayBytes = ByteBuffer.allocate(4).putInt(delay).array();
         byte[] finalRouting = concatenate(delayBytes, destLength, dest);
 
         int randomPadLen = (params.headerLength() - 32) - lenMeta - (nu-1)*params.keyLength() - finalRouting.length;
