@@ -9,7 +9,6 @@ import javasphinx.packet.header.SphinxHeader;
 import javasphinx.packet.header.HeaderAndSecrets;
 import java.nio.ByteBuffer;
 
-import javasphinx.packet.header.SphinxPacketContent;
 import javasphinx.packet.message.DestinationAndMessage;
 import javasphinx.packet.reply.NymTuple;
 import javasphinx.packet.reply.SingleUseReplyBlock;
@@ -199,15 +198,14 @@ public class SphinxClient {
      * @param message The data payload of the Sphinx packet.
      * @return Header and payload of a Sphinx packet encrypted in a nested manner.
      */
-    public SphinxPacketContent packageSurb(NymTuple nymTuple, byte[] message, Params params) throws SphinxException {
+    public SphinxPacket packageSurb(NymTuple nymTuple, byte[] message, Params params) throws SphinxException {
         byte[] zeroes = new byte[params.keyLength()];
         Arrays.fill(zeroes, (byte) 0x00);
         byte[] zeroPaddedMessage = concatenate(zeroes, message);
         byte[] body = padBody(params.bodyLength(), zeroPaddedMessage);
         byte[] delta = params.pi(nymTuple.kTilde(), body);
 
-        return null;
-        //return new SphinxPacketContent(nymTuple.sphinxHeader(), delta);
+        return new SphinxPacket(params, nymTuple.sphinxHeader(), delta);
     }
 
     /**
@@ -379,10 +377,9 @@ public class SphinxClient {
 
         SphinxHeader sphinxHeader = new SphinxHeader(alpha, beta, gamma);
 
-        //SphinxPacketContent sphinxPacketContent = new SphinxPacketContent(sphinxHeader, delta);
 
-        return null;
-        //return new SphinxPacket(params, sphinxPacketContent.sphinxHeader(), sphinxPacketContent.delta());
+
+        return new SphinxPacket(params, sphinxHeader, delta);
     }
 
     /**

@@ -1,6 +1,5 @@
 package javasphinx.packet;
 
-import javasphinx.packet.header.SphinxPacketContent;
 import org.msgpack.core.MessagePack;
 
 import java.io.IOException;
@@ -8,7 +7,7 @@ import java.io.IOException;
 /**
  * Type to represent the return value of the mix node processing method
  */
-public record ProcessedSphinxPacket(byte[] tag, byte[] routing, SphinxPacketContent sphinxPacketContent, byte[] macKey) {
+public record ProcessedSphinxPacket(byte[] tag, byte[] routing, SphinxPacket sphinxPacket, byte[] macKey) {
 
     public RoutingFlag routingFlag() throws IOException {
         final var unpacker = MessagePack.newDefaultUnpacker(routing);

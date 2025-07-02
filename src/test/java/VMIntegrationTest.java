@@ -7,7 +7,6 @@ import MasterThesisFormat.VM.VMException;
 import javasphinx.packet.ProcessedSphinxPacket;
 import javasphinx.packet.SphinxPacket;
 import javasphinx.packet.header.SphinxHeader;
-import javasphinx.packet.header.SphinxPacketContent;
 import MasterThesisFormat.instruction.Instruction;
 import MasterThesisFormat.instruction.SphinxInstructionPresets;
 import javasphinx.pki.PkiEntry;
@@ -76,9 +75,7 @@ public class VMIntegrationTest {
         byte[] message = "Hello world from instructions!".getBytes();
 
         // Create packet (using classic Sphinx logic)
-        //SphinxPacketContent content = client.createForwardMessage(nodesRouting, nodeKeys, dest, message);
-        SphinxPacketContent content = null;
-        //SphinxPacket packet = new SphinxPacket(params, content.sphinxHeader(), content.delta());
+        //SphinxPacket packet = client.createForwardMessage(nodesRouting, nodeKeys, dest, message);
         SphinxPacket packet = null;
         byte[] rawPacket = client.packMessageForInstructions(packet);
 
@@ -100,7 +97,7 @@ public class VMIntegrationTest {
 
         assertNotNull("Processed packet should not be null", result);
         assertNotNull("Routing field must be extracted", result.routing());
-        assertNotNull("Payload must be processed", result.sphinxPacketContent());
+        assertNotNull("Payload must be processed", result.sphinxPacket());
     }
 
     @Test

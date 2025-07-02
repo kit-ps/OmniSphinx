@@ -5,8 +5,9 @@ import MasterThesisFormat.SerializationUtils;
 import javasphinx.crypto.ECCGroup;
 import javasphinx.packet.ProcessedSphinxPacket;
 import java.nio.ByteBuffer;
+
+import javasphinx.packet.SphinxPacket;
 import javasphinx.packet.header.SphinxHeader;
-import javasphinx.packet.header.SphinxPacketContent;
 
 import org.bouncycastle.math.ec.ECPoint;
 
@@ -31,13 +32,13 @@ public class SphinxNode {
      * @param sphinxPacketContent Header and encrypted payload of the Sphinx packet
      * @return The new header and payload of the Sphinx packet along with some auxiliary information
      */
-    public ProcessedSphinxPacket sphinxProcess(SphinxPacketContent sphinxPacketContent) throws SphinxException {
+    public ProcessedSphinxPacket sphinxProcess(SphinxPacket sphinxPacketContent) throws SphinxException {
         // Sammle notwendige Daten
         ECCGroup group = params.getGroup();
-        ECPoint alpha = sphinxPacketContent.header().getAlpha();
-        byte[] beta = sphinxPacketContent.header().getBeta();
-        byte[] gamma = sphinxPacketContent.header().getGamma();
-        byte[] delta = sphinxPacketContent.delta();
+        ECPoint alpha = sphinxPacketContent.getHeader().getAlpha();
+        byte[] beta = sphinxPacketContent.getHeader().getBeta();
+        byte[] gamma = sphinxPacketContent.getHeader().getGamma();
+        byte[] delta = sphinxPacketContent.getDelta();
 
         //Berechne das Shared Secret
         ECPoint s = group.expon(alpha, secret);
@@ -99,10 +100,9 @@ public class SphinxNode {
 
         SphinxHeader sphinxHeader = new SphinxHeader(alpha, beta, gamma);
 
-        //SphinxPacketContent sphinxPacketContent1 = new SphinxPacketContent(sphinxHeader, delta);
+        SphinxPacket processedPacket = new SphinxPacket(params, sphinxHeader, delta);
 
-        //return new ProcessedSphinxPacket(tag, routing, sphinxPacketContent1, macKey);
-        return null;
+        return new ProcessedSphinxPacket(tag, routing, processedPacket, macKey);
     }
 
 
