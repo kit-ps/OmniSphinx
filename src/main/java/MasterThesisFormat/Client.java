@@ -104,10 +104,7 @@ public class Client {
         byte[] sigma = new byte[params.keyLength()];
 
         for (int i = nodelist.length - 1; i >= 0; i--) {
-            byte[] instr = SphinxInstructionPresets.createInstructions(
-                    (byte) alphas[i].getEncoded(false).length,
-                    (byte) packet.getHeader().getBeta().length,
-                    (byte) params.keyLength());
+            byte[] instr = SphinxInstructionPresets.createInstructions();
 
             int plainLen = instr.length + onion.length;
             if (plainLen + params.keyLength() > MAX_INSTRUCTION_SIZE) {
