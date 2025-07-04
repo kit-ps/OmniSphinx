@@ -1,6 +1,7 @@
 package MasterThesisFormat;
 
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
+import MasterThesisFormat.Sphinx.SphinxUtil;
 import MasterThesisFormat.VM.VMUtil;
 import MasterThesisFormat.header.InstructionHeader;
 import MasterThesisFormat.instruction.SphinxInstructionPresets;
@@ -98,13 +99,13 @@ public class Client {
             blindFactor = blindFactor.multiply(b).mod(group.getOrder());
         }
 
-        SphinxPacket packet = SphinxClient.createForwardPacket(nodelist, alphas, sharedSecrets, destination, message, params);
+        byte[] delta = SphinxUtil.createForwardPayload(params, secrets, destination, message);
 
         byte[] onion = new byte[0];
-        byte[] sigma = new byte[params.keyLength()];
+        byte[] sigma;
 
         for (int i = nodelist.length - 1; i >= 0; i--) {
-            byte[] instr = SphinxInstructionPresets.createInstructions();
+            byte[] instr = SphinxInstructionPresets.createInstructions(nodelist[i][0]);
 
             int plainLen = instr.length + onion.length;
             if (plainLen + params.keyLength() > MAX_INSTRUCTION_SIZE) {
@@ -128,7 +129,7 @@ public class Client {
 
         InstructionHeader header = new InstructionHeader(alphas[0], finalOnion, finalSigma);
 
-        return new InstructionPacket(header, packet.getDelta());
+        return new InstructionPacket(header, delta);
     }
 
     /**
