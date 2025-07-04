@@ -6,6 +6,8 @@ import MasterThesisFormat.VM.VM;
 import MasterThesisFormat.header.InstructionHeader;
 import javasphinx.packet.SphinxPacket;
 import org.bouncycastle.math.ec.ECPoint;
+import org.msgpack.core.MessagePack;
+import org.msgpack.core.MessageUnpacker;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -23,19 +25,19 @@ public class MixNode {
 
     /**
      *
-     * The expected layout matches [alpha | MAC | encrypted instructions | packet]:
+     * The expected layout matches [alpha | encrypted instructions | MAC | packet]:
      */
     public Packet process(byte[] rawPacket) {
-        org.msgpack.core.MessageUnpacker unpacker = org.msgpack.core.MessagePack.newDefaultUnpacker(rawPacket);
-        byte[] encodedAlpha, mac, encInstr, packetRaw;
+        MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(rawPacket);
+        byte[] encodedAlpha, encInstr, mac, packetRaw;
         try {
             int arrLen = unpacker.unpackArrayHeader();
             if (arrLen != 4) {
                 throw new IllegalArgumentException("Invalid instruction packet layout");
             }
             encodedAlpha = unpacker.readPayload(unpacker.unpackBinaryHeader());
-            mac = unpacker.readPayload(unpacker.unpackBinaryHeader());
             encInstr = unpacker.readPayload(unpacker.unpackBinaryHeader());
+            mac = unpacker.readPayload(unpacker.unpackBinaryHeader());
             packetRaw = unpacker.readPayload(unpacker.unpackBinaryHeader());
             unpacker.close();
         } catch (java.io.IOException e) {

@@ -5,18 +5,18 @@ import MasterThesisFormat.header.InstructionHeader;
 
 public class InstructionPacket {
     private final InstructionHeader header;
-    private final Packet packet;
+    private final byte[] payload;
 
-    public InstructionPacket(InstructionHeader header, Packet packet) {
+    public InstructionPacket(InstructionHeader header, byte[] payload) {
         this.header = header;
-        this.packet = packet;
+        this.payload = payload.clone();
     }
 
     public InstructionHeader getHeader() {
         return header;
     }
 
-    public Packet getPacket() {
-        return packet;
+    public byte[] getPayload() {
+        return payload.clone();
     }
 }

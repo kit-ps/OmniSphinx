@@ -8,7 +8,7 @@ instructions directly in the sphinxHeader. A packet now has the following
 layout:
 
 ```
-[Alpha | MAC over instructions | encrypted instructions | onion instructions | original packet]
+[Alpha | encrypted instructions | MAC | payload]
 ```
 
 The instructions are interpreted by each hop to process the enclosed

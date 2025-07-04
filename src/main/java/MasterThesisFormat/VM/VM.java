@@ -1,5 +1,6 @@
 package MasterThesisFormat.VM;
 
+import MasterThesisFormat.MixFormats.Packet;
 import MasterThesisFormat.Params;
 import javasphinx.packet.ProcessedSphinxPacket;
 import javasphinx.packet.SphinxPacket;
@@ -26,7 +27,6 @@ import static MasterThesisFormat.VM.VMUtil.*;
 
 
 public class VM {
-    private ProcessedSphinxPacket processedSphinxPacket;
     private BigInteger nodeSecret;
     private byte[][] registers;
     private byte[] rawpacket;
@@ -38,11 +38,11 @@ public class VM {
         this.params = params;
     }
 
-    public ProcessedSphinxPacket interpret(byte[] Rawpacket, byte[] instructions) throws VMException {
+    public Packet interpret(byte[] Rawpacket, byte[] instructions) throws VMException {
         registers[0x00] = Rawpacket;
         rawpacket = Rawpacket;
         interpretInstructions(instructions);
-        return processedSphinxPacket;
+        return null;
     }
 
     private void interpretInstructions(byte[] instructions) throws VMException {

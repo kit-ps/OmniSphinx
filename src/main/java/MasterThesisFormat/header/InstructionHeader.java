@@ -5,11 +5,11 @@ import org.bouncycastle.math.ec.ECPoint;
 
 public class InstructionHeader {
     private final ECPoint alpha;
-    private final byte[] MAC;
     private final byte[] instructions;
+    private final byte[] MAC;
 
 
-    public InstructionHeader(ECPoint alpha, byte[] MAC, byte[] instructions) {
+    public InstructionHeader(ECPoint alpha, byte[] instructions, byte[] MAC) {
         this.alpha = alpha;
         this.MAC = MAC;
         this.instructions = instructions.clone();
@@ -20,7 +20,7 @@ public class InstructionHeader {
     }
 
     public byte[] getMAC() {
-        return MAC;
+        return MAC.clone();
     }
 
     public ECPoint getAlpha() {

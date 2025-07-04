@@ -129,45 +129,40 @@ public class Client {
         byte[] finalSigma = VMUtil.slice(onion, 0, params.keyLength());
         byte[] finalOnion = VMUtil.slice(onion, params.keyLength(), onion.length);
 
-        InstructionHeader header = new InstructionHeader(alphas[0], finalSigma, finalOnion);
+        InstructionHeader header = new InstructionHeader(alphas[0], finalOnion, finalSigma);
 
-        return new InstructionPacket(header, packet);
+        return new InstructionPacket(header, packet.getDelta());
     }
 
     /**
      *
      * Layout:
-     * [alpha | MAC | encrypted instructions | sphinx packet]
+     * [alpha | encrypted instructions | MAC | payload]
      *
      */
-    public byte[] packInstructionPacket(InstructionPacket packet) throws SphinxException {
+    public byte[] packInstructionPacket(InstructionPacket packet) throws Exception {
         InstructionHeader header = packet.getHeader();
 
         byte[] encodedAlpha = SerializationUtils.encodeECPoint(header.getAlpha());
-        byte[] mac = header.getMAC();
         byte[] instructions = header.getInstructions();
+        byte[] mac = header.getMAC();
 
-        byte[] packetRaw;
-        if (packet.getPacket() instanceof SphinxPacket sphinxPacket) {
-            packetRaw = SphinxClient.packMessageForInstructions(sphinxPacket);
-        } else {
-            throw new SphinxException("Unsupported inner packet type");
-        }
+        byte[] payload = packet.getPayload();
 
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
         try {
             packer.packArrayHeader(4);
             packer.packBinaryHeader(encodedAlpha.length);
             packer.writePayload(encodedAlpha);
-            packer.packBinaryHeader(mac.length);
-            packer.writePayload(mac);
             packer.packBinaryHeader(instructions.length);
             packer.writePayload(instructions);
-            packer.packBinaryHeader(packetRaw.length);
-            packer.writePayload(packetRaw);
+            packer.packBinaryHeader(mac.length);
+            packer.writePayload(mac);
+            packer.packBinaryHeader(payload.length);
+            packer.writePayload(payload);
             packer.close();
         } catch (IOException ex) {
-            throw new SphinxException("Failed to pack instruction packet");
+            throw new Exception("Failed to pack instruction packet");
         }
 
         return packer.toByteArray();
