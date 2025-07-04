@@ -11,7 +11,7 @@ public class SphinxInstructionPresets {
     private static final byte REG_NEXT_HOP     = 0x02;
     private static final byte REG_HASH_PAYLOAD     = 0x03;
 
-    public static byte[] createInstructions() throws IOException {
+    public static byte[] createInstructions(byte nextHop) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
 
         //Payload entschlüsseln
@@ -22,7 +22,7 @@ public class SphinxInstructionPresets {
 
 
         //Paket an nächste Node weiterleiten
-        instr.write(Instruction.forward(REG_NEXT_HOP, REG_PAYLOAD));
+        instr.write(Instruction.forward(nextHop));
 
         return instr.toByteArray();
     }

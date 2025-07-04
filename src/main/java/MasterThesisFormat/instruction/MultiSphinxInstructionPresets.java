@@ -65,7 +65,7 @@ public class MultiSphinxInstructionPresets {
         instr.write(Instruction.concate(REG_ALPHA, REG_PAYLOAD, REG_PAYLOAD));
 
         // Forward packet
-        instr.write(Instruction.forward(REG_ROUTE_INFO, REG_PAYLOAD));
+        instr.write(Instruction.forward(REG_ROUTE_INFO));
 
         return instr.toByteArray();
     }

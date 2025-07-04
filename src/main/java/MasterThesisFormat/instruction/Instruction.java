@@ -128,13 +128,14 @@ public class Instruction {
         return new byte[]{OpCode.ENCRYPT.getCode(), keyReg, inputReg, destReg};
     }
 
-    /** Leitet ein Paket an den ncäshten Node.
+    /**
+     * Leitet ein Paket an den ncäshten Node.
+     *
      * @param idReg Register mit der ID der nächsten Node
-     * @param payloadReg Register mit dem Payload
      * @return Instruction für das Forwarding
      */
-    public static byte[] forward(byte idReg, byte payloadReg) {
-        return new byte[]{OpCode.FORWARD.getCode(), idReg, payloadReg};
+    public static byte[] forward(byte idReg) {
+        return new byte[]{OpCode.FORWARD.getCode(), idReg};
     }
 
     /**

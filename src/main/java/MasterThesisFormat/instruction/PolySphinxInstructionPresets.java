@@ -100,7 +100,7 @@ public class PolySphinxInstructionPresets {
         instr.write(Instruction.concate(REG_ALPHA, REG_PAYLOAD, REG_PAYLOAD));
 
         //Paket an nächste Node weiterleiten
-        instr.write(Instruction.forward(REG_ROUTE_INFO, REG_PAYLOAD));
+        instr.write(Instruction.forward(REG_ROUTE_INFO));
         return instr.toByteArray();
     }
 
@@ -127,7 +127,7 @@ public class PolySphinxInstructionPresets {
         instr.write(Instruction.concate(REG_ALPHA, REG_BETA, REG_ALPHA));         // 9
         instr.write(Instruction.concate(REG_ALPHA, REG_GAMMA, REG_ALPHA));        //10
         instr.write(Instruction.concate(REG_ALPHA, REG_PAYLOAD, REG_PAYLOAD));    //11
-        instr.write(Instruction.forward(REG_PATH, REG_PAYLOAD));                  //12
+        instr.write(Instruction.forward(REG_PATH));                  //12
 
         return instr.toByteArray();
     }
@@ -165,7 +165,7 @@ public class PolySphinxInstructionPresets {
 
 
         // 5) Forward Klartext
-        instr.write(Instruction.forward(REG_ROUTE_INFO, REG_PAYLOAD));
+        instr.write(Instruction.forward(REG_ROUTE_INFO));
 
         return instr.toByteArray();
     }
@@ -203,7 +203,7 @@ public class PolySphinxInstructionPresets {
             instr.write(Instruction.concate(REG_ALPHA, REG_PAYLOAD, REG_PAYLOAD));
 
             // Packet weiterleiten an Next Hop
-            instr.write(Instruction.forward(REG_PATH, REG_PAYLOAD));
+            instr.write(Instruction.forward(REG_PATH));
         }
 
         return instr.toByteArray();
@@ -240,7 +240,7 @@ public class PolySphinxInstructionPresets {
         }
 
         // Ist jetzt REG_PAYLOAD im Klartext? Oder muss ich nochmal mit K[] entschlüsseln?
-        instr.write(Instruction.forward(REG_ROUTE_INFO, REG_PAYLOAD));
+        instr.write(Instruction.forward(REG_ROUTE_INFO));
         return instr.toByteArray();
     }
 }
