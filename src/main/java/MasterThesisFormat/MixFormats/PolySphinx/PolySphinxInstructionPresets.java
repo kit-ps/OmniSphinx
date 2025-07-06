@@ -1,4 +1,6 @@
-package MasterThesisFormat.instruction;
+package MasterThesisFormat.MixFormats.PolySphinx;
+
+import MasterThesisFormat.instruction.Instruction;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

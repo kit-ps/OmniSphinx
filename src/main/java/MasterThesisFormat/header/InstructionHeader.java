@@ -1,6 +1,5 @@
 package MasterThesisFormat.header;
 
-import MasterThesisFormat.MixFormats.Packet;
 import org.bouncycastle.math.ec.ECPoint;
 
 public class InstructionHeader {
