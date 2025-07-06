@@ -2,7 +2,7 @@ package javasphinx;
 
 import MasterThesisFormat.Params;
 import MasterThesisFormat.SerializationUtils;
-import javasphinx.crypto.ECCGroup;
+import MasterThesisFormat.crypto.ECCGroup;
 import javasphinx.packet.RoutingFlag;
 import javasphinx.packet.SphinxPacket;
 import javasphinx.packet.header.SphinxHeader;

@@ -1,4 +1,4 @@
-package javasphinx.crypto;
+package MasterThesisFormat.crypto;
 
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.math.ec.ECPoint;

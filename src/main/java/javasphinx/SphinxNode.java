@@ -2,7 +2,7 @@ package javasphinx;
 
 import MasterThesisFormat.Params;
 import MasterThesisFormat.SerializationUtils;
-import javasphinx.crypto.ECCGroup;
+import MasterThesisFormat.crypto.ECCGroup;
 import javasphinx.packet.ProcessedSphinxPacket;
 import java.nio.ByteBuffer;
 

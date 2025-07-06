@@ -1,13 +1,10 @@
-package MasterThesisFormat.Sphinx;
+package MasterThesisFormat.MixFormats.Sphinx;
 
 import MasterThesisFormat.Params;
-import javasphinx.crypto.ECCGroup;
-import org.bouncycastle.math.ec.ECPoint;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.Arrays;
 
 import static MasterThesisFormat.SerializationUtils.concatenate;

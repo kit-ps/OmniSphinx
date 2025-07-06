@@ -1,4 +1,4 @@
-package javasphinx.pki;
+package MasterThesisFormat.pki;
 
 import org.bouncycastle.math.ec.ECPoint;
 

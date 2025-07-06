@@ -1,16 +1,13 @@
 package MasterThesisFormat;
 
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
-import MasterThesisFormat.Sphinx.SphinxUtil;
+import MasterThesisFormat.MixFormats.Sphinx.SphinxUtil;
 import MasterThesisFormat.VM.VMUtil;
 import MasterThesisFormat.header.InstructionHeader;
-import MasterThesisFormat.instruction.SphinxInstructionPresets;
+import MasterThesisFormat.MixFormats.Sphinx.SphinxInstructionPresets;
 import MasterThesisFormat.routing.RoutingStrategy;
-import javasphinx.SphinxClient;
 import javasphinx.SphinxException;
-import javasphinx.crypto.ECCGroup;
-import javasphinx.packet.RoutingFlag;
-import javasphinx.packet.SphinxPacket;
+import MasterThesisFormat.crypto.ECCGroup;
 import org.bouncycastle.math.ec.ECPoint;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
@@ -38,42 +35,6 @@ public class Client {
         return routingStrategy;
     }
 
-    /**
-     * Select a subset of mix node identifiers according to the Client's {@link RoutingStrategy}
-     * @param identifiers list of mix node ids
-     * @param mixCount count of ids to select from identifiers
-     * @return mix identifiers
-     */
-    public int[] route(int[] identifiers, int mixCount) throws Exception {
-        if (identifiers.length < mixCount) {
-            throw new Exception("Number of possible elements (%d) was less than the requested number (%d)"
-                    .formatted(identifiers.length, mixCount));
-        }
-        return routingStrategy.route(identifiers, mixCount);
-    }
-
-    /**
-     * Encode the mix node nextNodeId into binary format.
-     * @param idnum Identifier of the mix node.
-     * @param additionalInfo packet identifier, the first mix uses this to route reply packets
-     * @return Identifier of the mix node in binary format.
-     */
-    public byte[] encodeNode(int idnum, int additionalInfo) throws SphinxException {
-        MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
-
-        try {
-            // This is NOT specific to the string, this is the amount of 2 byte values following, regardless of type!!!
-            packer.packArrayHeader(3);
-            packer.packString(RoutingFlag.RELAY.value()); //2 bytes
-            packer.packInt(idnum); //2 bytes
-            packer.packInt(additionalInfo); //2 bytes
-            packer.close();
-        } catch (IOException ex) {
-            throw new SphinxException("Failed to encode node");
-        }
-
-        return packer.toByteArray();
-    }
 
     /**
      * Create a forward instruction Sphinx packet.

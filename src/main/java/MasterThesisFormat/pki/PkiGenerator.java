@@ -1,4 +1,4 @@
-package javasphinx.pki;
+package MasterThesisFormat.pki;
 
 import MasterThesisFormat.Params;
 

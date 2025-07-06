@@ -2,7 +2,7 @@ package MasterThesisFormat;
 
 
 import javasphinx.SphinxException;
-import javasphinx.crypto.ECCGroup;
+import MasterThesisFormat.crypto.ECCGroup;
 import org.bouncycastle.crypto.CipherParameters;
 import org.bouncycastle.crypto.Mac;
 import org.bouncycastle.crypto.digests.SHA256Digest;

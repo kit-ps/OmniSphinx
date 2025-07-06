@@ -1,6 +1,6 @@
 package MasterThesisFormat;
 
-import javasphinx.crypto.ECCGroup;
+import MasterThesisFormat.crypto.ECCGroup;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.math.ec.ECCurve;
 import org.bouncycastle.math.ec.ECPoint;
