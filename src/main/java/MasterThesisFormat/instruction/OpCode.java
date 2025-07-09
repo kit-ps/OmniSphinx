@@ -20,7 +20,9 @@ public enum OpCode {
     MIX_TIMED((byte) 0x11),
     MIX_THRESHOLD((byte) 0x12),
     MIX_POOL((byte) 0x13),
-    MIX_POISSON((byte) 0x14);
+    MIX_POISSON((byte) 0x14),
+    LOAD((byte) 0x15),
+    ADD((byte) 0x16);
 
 
     private final byte code;

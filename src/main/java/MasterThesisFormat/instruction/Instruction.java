@@ -1,6 +1,9 @@
 package MasterThesisFormat.instruction;
 
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
 public class Instruction {
 
     /**
@@ -175,5 +178,18 @@ public class Instruction {
 
     public static byte[] mixPoisson(byte meanDelay) {
         return new byte[]{OpCode.MIX_POISSON.getCode(), meanDelay};
+    }
+
+    public static byte[] load(byte[] value, byte register) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write(OpCode.LOAD.getCode());
+        out.write((byte) value.length);
+        out.write(value);
+        out.write(register);
+        return out.toByteArray();
+    }
+
+    public static byte[] addRight(byte Register, byte addition, byte dest) {
+        return new byte[]{OpCode.ADD.getCode(), Register, addition, dest};
     }
 }
