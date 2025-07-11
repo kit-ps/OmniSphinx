@@ -1,6 +1,5 @@
 package MasterThesisFormat.InstructionPacket;
 
-import MasterThesisFormat.MixFormats.Packet;
 import MasterThesisFormat.header.InstructionHeader;
 
 public class InstructionPacket {

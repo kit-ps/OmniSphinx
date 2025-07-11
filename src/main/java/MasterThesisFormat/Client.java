@@ -94,7 +94,6 @@ public class Client {
     }
 
     /**
-     *
      * Layout:
      * [alpha | encrypted instructions | MAC | payload]
      *

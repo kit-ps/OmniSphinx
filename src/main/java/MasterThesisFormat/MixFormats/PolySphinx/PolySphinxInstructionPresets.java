@@ -54,7 +54,7 @@ public class PolySphinxInstructionPresets {
         instr.write(Instruction.storeBytes(REG_PATH, log2p, REG_P_I_J));  // P_i_j
         instr.write(Instruction.addRight(REG_SIGMA, REG_P_I_J, REG_SIGMA));      // K + index
         instr.write(Instruction.hash(REG_SIGMA, REG_SIGMA));                 // K = h(K)
-        //TODO Nochmal hashen?
+        instr.write(Instruction.hash(REG_SIGMA, REG_SIGMA));                 //nochmal hashen für den Key
         instr.write(Instruction.concate(REG_SIGMA, REG_KEYS, REG_KEYS));
 
 

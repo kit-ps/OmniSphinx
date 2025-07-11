@@ -19,13 +19,9 @@ public class SphinxInstructionPresets {
         instr.write(Instruction.hash(REG_SHARED_SECRET, REG_HASH_PAYLOAD));
         instr.write(Instruction.decrypt(REG_HASH_PAYLOAD, REG_PAYLOAD,  REG_PAYLOAD));
 
-        //TODO: Sollte Blinding hier rein?!
-
         //Mixen
 
 
-        //Paket an nächste Node weiterleiten
-        //TODO: nexthop maybe ein byte[]? Mit Store befehl den reinladen und dann nextHop auf den Register?
         instr.write(Instruction.forward(nextHop));
 
         return instr.toByteArray();

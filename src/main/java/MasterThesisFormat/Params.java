@@ -5,8 +5,10 @@ import javasphinx.SphinxException;
 import MasterThesisFormat.crypto.ECCGroup;
 import org.bouncycastle.crypto.CipherParameters;
 import org.bouncycastle.crypto.Mac;
+import org.bouncycastle.crypto.StreamCipher;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.crypto.engines.AESEngine;
+import org.bouncycastle.crypto.engines.AESFastEngine;
 import org.bouncycastle.crypto.macs.HMac;
 import org.bouncycastle.crypto.modes.SICBlockCipher;
 import org.bouncycastle.crypto.params.KeyParameter;
@@ -191,6 +193,26 @@ public class Params {
             throw new SphinxException("Length of provided message (" + data.length + ") did not match the required message body length (" + bodyLength + ")");
         }
         return lionessDec(key, data);
+    }
+
+    public byte[] encrypt(byte[] key, byte[] plaintext) {
+        byte[] iv = new byte[16]; // 16 null bytes as IV (CTR mode requirement)
+        StreamCipher cipher = new SICBlockCipher(new AESFastEngine());
+        cipher.init(true, new ParametersWithIV(new KeyParameter(key), iv));
+
+        byte[] ciphertext = new byte[plaintext.length];
+        cipher.processBytes(plaintext, 0, plaintext.length, ciphertext, 0);
+        return ciphertext;
+    }
+
+    public byte[] mac(byte[] key, byte[] data) {
+        Mac hmac = new HMac(new SHA256Digest());
+        hmac.init(new KeyParameter(key));
+        hmac.update(data, 0, data.length);
+
+        byte[] out = new byte[hmac.getMacSize()];
+        hmac.doFinal(out, 0);
+        return out;
     }
 
     public byte[] hash(byte[] data) {
