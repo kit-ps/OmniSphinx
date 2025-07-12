@@ -2,9 +2,12 @@ package MasterThesisFormat.MixFormats.PolySphinx;
 
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.Params;
+import MasterThesisFormat.SerializationUtils;
 import MasterThesisFormat.crypto.ECCGroup;
+import MasterThesisFormat.header.InstructionHeader;
 import org.bouncycastle.math.ec.ECPoint;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -14,15 +17,14 @@ import java.util.List;
 public class PolySphinxUtil {
 
     private static class SubHeader {
-        public byte[] nextHop;
-        public final byte[] omega;
         public final byte[] alpha;
+        public final byte[] instructions;
+        public final byte[] MAC;
 
-
-        public SubHeader(byte[] nextHop, byte[] omega, byte[] alpha) {
-            this.nextHop = nextHop;
-            this.omega = omega;
+        public SubHeader(byte[] alpha, byte[] instructions, byte[] MAC) {
             this.alpha = alpha;
+            this.instructions = instructions;
+            this.MAC = MAC;
         }
     }
 
@@ -63,10 +65,35 @@ public class PolySphinxUtil {
                 pathPrefix[pathPrefix.length - 1] = (byte) (1);
             }
 
+            if (nodelist.length > 0) {
+                byte[] nextHop = Arrays.copyOf(nodelist[0], params.keyLength());
+                byte[] omega = Arrays.copyOf(sigmas[0], params.keyLength());
+                byte[] alphaBytes = Arrays.copyOf(SerializationUtils.encodeECPoint(alphas[0]), params.keyLength());
+                subheaders.add(new SubHeader(nextHop, omega, alphaBytes));
+            }
 
         }
 
-        return null;
+        ByteArrayOutputStream shOut = new ByteArrayOutputStream();
+        for (SubHeader sh : subheaders) {
+            //shOut.write(sh.nextHop);
+            //shOut.write(sh.omega);
+            shOut.write(sh.alpha);
+        }
+        byte[] B = shOut.toByteArray();
+
+        byte kappaLen = (byte) params.keyLength();
+        byte p = (byte) subheaders.size();
+        byte tauPost = (byte) params.headerLength();
+        byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, p, tauPost, B);
+
+        byte[] encInstr = params.encrypt(K, instructions);
+        byte[] mac = params.mac(params.hmu(K), instructions);
+        ECPoint alpha0 = group.expon(group.getGenerator(), group.genSecret());
+
+        InstructionHeader header = new InstructionHeader(alpha0, encInstr, mac);
+
+        return new InstructionPacket(header, encryptedPayload);
     }
 
     public static byte[] keyTreeKey(Params params, byte[] seed, byte[] path) {
