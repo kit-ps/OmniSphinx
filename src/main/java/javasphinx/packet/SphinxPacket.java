@@ -1,6 +1,5 @@
 package javasphinx.packet;
 
-import MasterThesisFormat.MixFormats.Packet;
 import MasterThesisFormat.Params;
 import javasphinx.packet.header.SphinxHeader;
 
@@ -10,7 +9,7 @@ import java.util.Objects;
 /**
  * Type used to represent the Sphinx packet as it is encoded into a binary format
  */
-public final class SphinxPacket extends Packet {
+public final class SphinxPacket  {
     private final int headerLength;
     private final int bodyLength;
     private final SphinxHeader sphinxHeader;

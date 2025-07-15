@@ -1,9 +1,8 @@
 package javasphinx.packet.header;
 
-import MasterThesisFormat.MixFormats.Header;
 import org.bouncycastle.math.ec.ECPoint;
 
-public class SphinxHeader extends Header {
+public class SphinxHeader {
     private final ECPoint alpha;
     private final byte[] beta;
     private final byte[] gamma;

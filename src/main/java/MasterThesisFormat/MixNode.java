@@ -1,16 +1,17 @@
 package MasterThesisFormat;
 
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
-import MasterThesisFormat.MixFormats.Packet;
 import MasterThesisFormat.VM.VM;
-import MasterThesisFormat.header.InstructionHeader;
-import javasphinx.packet.SphinxPacket;
+import MasterThesisFormat.VM.VMContext;
+import MasterThesisFormat.VM.VMException;
+import MasterThesisFormat.instruction.InstructionRegister;
 import org.bouncycastle.math.ec.ECPoint;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.HashMap;
 
 public class MixNode {
     private final BigInteger secret;
@@ -24,10 +25,10 @@ public class MixNode {
     }
 
     /**
-     *
-     * The expected layout matches [alpha | encrypted instructions | MAC | packet]:
+     * layout: [alpha | encrypted instructions | MAC | packet]
+     * Layout der encrypted Instructions: [len(instr) | instr | len(nextEncInst) | nextEncInst | len(nextMac) | nextMac]
      */
-    public Packet process(byte[] rawPacket) {
+    public InstructionPacket process(byte[] rawPacket) throws VMException {
         MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(rawPacket);
         byte[] encodedAlpha, encInstr, mac, packetRaw;
         try {
@@ -44,11 +45,12 @@ public class MixNode {
             throw new RuntimeException("Failed to unpack instruction packet", e);
         }
 
-        ECPoint headerAlpha = SerializationUtils.decodeECPoint(encodedAlpha);
+        //Preprocessing
+        ECPoint alpha = SerializationUtils.decodeECPoint(encodedAlpha);
 
-        ECPoint shared  = params.getGroup().expon(headerAlpha, secret);
+        ECPoint sharedSecret  = params.getGroup().expon(alpha, secret);
 
-        byte[] aesKey = params.getAesKey(shared);
+        byte[] aesKey = params.getAesKey(sharedSecret);
 
         byte[] plainInstr;
         try {
@@ -62,13 +64,22 @@ public class MixNode {
             throw new RuntimeException("Instruction MAC mismatch");
         }
 
-        try {
-            vm.interpret(packetRaw, plainInstr);
-        } catch (Exception e) {
-            throw new RuntimeException("VM execution failed", e);
-        }
+        //compute blinding factors
+        BigInteger b = params.hb(alpha, aesKey);
 
-        //TODO weiter machen!
+        //Blinding
+        alpha = params.getGroup().expon(alpha, b);
+
+
+        HashMap<Byte, byte[]> register = new HashMap<>();
+        register.put(InstructionRegister.NEXT_ALPHA.getCode(), alpha.getEncoded(true));
+        register.put(InstructionRegister.INSTRUCTIONS.getCode(), plainInstr);
+        register.put(InstructionRegister.MAC.getCode(), mac);
+        register.put(InstructionRegister.PAYLOAD.getCode(), packetRaw);
+        VMContext vmContext = new VMContext(register);
+        vm.interpret(vmContext);
+
         return null;
     }
+
 }

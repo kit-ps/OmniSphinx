@@ -1,9 +1,8 @@
 package MasterThesisFormat.VM;
 
-import MasterThesisFormat.MixFormats.Packet;
+import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.Params;
-import javasphinx.packet.ProcessedSphinxPacket;
-import javasphinx.packet.SphinxPacket;
+import MasterThesisFormat.instruction.InstructionRegister;
 import MasterThesisFormat.instruction.OpCode;
 
 import javax.crypto.Cipher;
@@ -22,26 +21,24 @@ import org.bouncycastle.math.ec.custom.sec.SecP224R1Curve;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Map;
 
 import static MasterThesisFormat.VM.VMUtil.*;
 
 
 public class VM {
-    private BigInteger nodeSecret;
-    private byte[][] registers;
-    private byte[] rawpacket;
+    private final BigInteger nodeSecret;
+    private Map<Byte, byte[]> registers;
     private Params params;
 
     public VM(BigInteger nodeSecret, Params params) {
-        this.registers = new byte[256][64];
         this.nodeSecret = nodeSecret;
         this.params = params;
     }
 
-    public Packet interpret(byte[] Rawpacket, byte[] instructions) throws VMException {
-        registers[0x00] = Rawpacket;
-        rawpacket = Rawpacket;
-        interpretInstructions(instructions);
+    public InstructionPacket interpret(VMContext context) throws VMException {
+        registers = context.registers;
+        interpretInstructions(registers.get(InstructionRegister.INSTRUCTIONS.getCode()));
         return null;
     }
 
@@ -296,7 +293,7 @@ public class VM {
         int startByte = 0;
         int lengthBytes = Byte.toUnsignedInt(length);
 
-        byte[] src = registers[source];
+        byte[] src = registers.get(source);
 
 
         if (startByte + lengthBytes > src.length) {
@@ -304,18 +301,18 @@ public class VM {
         }
 
         byte[] extracted = Arrays.copyOfRange(src, startByte, startByte + lengthBytes);
-        registers[destReg] = extracted;
+        registers.put(destReg, extracted);
 
         // Entferne aus source
         byte[] newSrc = new byte[src.length - lengthBytes];
         System.arraycopy(src, 0, newSrc, 0, startByte);
         System.arraycopy(src, startByte + lengthBytes, newSrc, startByte, src.length - (startByte + lengthBytes));
-        registers[source] = newSrc;
+        registers.put(source, newSrc);
     }
 
     private void computeSharedSecret(byte pubKeyReg, byte destReg) throws VMException {
         try {
-            byte[] pubKeyBytes = registers[pubKeyReg];
+            byte[] pubKeyBytes = registers.get(pubKeyReg);
 
             // EC-Gruppe: secp224r1
             ECCurve curve = new SecP224R1Curve();
@@ -323,7 +320,7 @@ public class VM {
             ECPoint s = pubPoint.multiply(nodeSecret);
 
             byte[] result = s.getEncoded(false);
-            registers[destReg] = result;
+            registers.put(destReg, result);
 
         } catch (Exception e) {
             throw new VMException("Shared secret computation failed: " + e.getMessage(), e);
@@ -335,9 +332,9 @@ public class VM {
     private void hash(byte inputReg, byte destReg) throws VMException {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-512");
-            byte[] input = registers[inputReg];
+            byte[] input = registers.get(inputReg);
             byte[] result = digest.digest(input);
-            System.arraycopy(result, 0, registers[destReg], 0, result.length);
+            System.arraycopy(result, 0, registers.get(destReg), 0, result.length);
         } catch (NoSuchAlgorithmException e) {
             throw new VMException("SHA-512 not available");
         }
@@ -346,21 +343,21 @@ public class VM {
     private void mac(byte keyReg, byte dataReg, byte length, byte destReg) throws VMException {
         try {
             Mac mac = new HMac(new SHA256Digest());
-            CipherParameters cipherParameters = new KeyParameter(registers[keyReg]);
+            CipherParameters cipherParameters = new KeyParameter(registers.get(keyReg));
             mac.init(cipherParameters);
             byte[] output = new byte[mac.getMacSize()];
 
-            mac.update(registers[dataReg], 0, registers[dataReg].length);
+            mac.update(registers.get(dataReg), 0, registers.get(dataReg).length);
             mac.doFinal(output, 0);
 
-            registers[destReg] = slice(output, length);
+            registers.put(destReg,slice(output, length));
         } catch (Exception e) {
             throw new VMException("MAC funkt nicht!");
         }
     }
 
     private void verify(byte expectedReg, byte computedReg) throws VMException {
-        if (!Arrays.equals(registers[expectedReg], registers[computedReg])) {
+        if (!Arrays.equals(registers.get(expectedReg), registers.get(computedReg))) {
             throw new VMException("MAC verification failed");
         }
     }
@@ -369,10 +366,10 @@ public class VM {
         try {
             // EC-Gruppe: secp224r1
             ECCurve curve = new SecP224R1Curve();
-            ECPoint pubPoint = curve.decodePoint(registers[baseReg]);
-            BigInteger scalar = new BigInteger(1, registers[expReg]);
+            ECPoint pubPoint = curve.decodePoint(registers.get(baseReg));
+            BigInteger scalar = new BigInteger(1, registers.get(expReg));
             ECPoint result = pubPoint.multiply(scalar);
-            registers[destReg] = result.getEncoded(false);
+            registers.put(destReg, result.getEncoded(false));
         } catch (Exception e) {
             throw new VMException("exponend failed: " + e.getMessage(), e);
         }
@@ -380,25 +377,25 @@ public class VM {
 
     private void pad(byte inputReg, byte targetLength, byte destReg) throws VMException {
         int len = Byte.toUnsignedInt(targetLength);
-        byte[] input = registers[inputReg];
+        byte[] input = registers.get(inputReg);
 
-        if (len > registers[destReg].length) {
+        if (len > registers.get(destReg).length) {
             throw new VMException("Target length exceeds destination register size.");
         }
 
-        byte[] output = new byte[registers[destReg].length + len];
+        byte[] output = new byte[registers.get(destReg).length + len];
         Arrays.fill(output, (byte) 0x00);
 
         System.arraycopy(input, 0, output, 0, input.length);
 
-        registers[destReg] = output;
+        registers.put(destReg, output);
     }
 
 
     private void prgGenerate(byte seedReg, byte destReg) throws VMException {
         byte[] iv = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
         try {
-            registers[destReg] = aesCtrKeystream(registers[seedReg], iv);
+            registers.put(destReg, aesCtrKeystream(registers.get(seedReg), iv));
         } catch (Exception e) {
             throw new VMException("PRG Generate mit AESCTR Keystream hat nicht so geklappt?!");
         }
@@ -406,8 +403,8 @@ public class VM {
 
 
     private void xor(byte inputA, byte inputB, byte destReg) throws VMException {
-        byte[] a = registers[inputA];
-        byte[] b = registers[inputB];
+        byte[] a = registers.get(inputA);
+        byte[] b = registers.get(inputB);
 
         byte[] result;
         if (a.length < b.length) {
@@ -419,16 +416,16 @@ public class VM {
         for (int i = 0; i < result.length; i++) {
             result[i] = (byte) (a[i] ^ b[i]);
         }
-        registers[destReg] = result;
+        registers.put(destReg, result);
     }
 
     private void decrypt(byte keyReg, byte inputReg, byte destReg) throws VMException {
         try {
             Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
-            SecretKeySpec key = new SecretKeySpec(registers[keyReg], cipher.getAlgorithm());
+            SecretKeySpec key = new SecretKeySpec(registers.get(keyReg), cipher.getAlgorithm());
             cipher.init(Cipher.DECRYPT_MODE, key);
-            byte[] result = cipher.doFinal(registers[inputReg]);
-            System.arraycopy(result, 0, registers[destReg], 0, Math.min(result.length, registers[destReg].length));
+            byte[] result = cipher.doFinal(registers.get(inputReg));
+            System.arraycopy(result, 0, registers.get(destReg), 0, Math.min(result.length, registers.get(destReg).length));
         } catch(Exception e) {
             throw new VMException("Decrypt with AES ECB does not work");
         }
@@ -437,17 +434,17 @@ public class VM {
     private void encrypt(byte keyReg, byte inputReg, byte destReg) throws VMException {
         try {
             Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
-            SecretKeySpec key = new SecretKeySpec(registers[keyReg], cipher.getAlgorithm());
+            SecretKeySpec key = new SecretKeySpec(registers.get(keyReg), cipher.getAlgorithm());
             cipher.init(Cipher.ENCRYPT_MODE, key);
-            byte[] result = cipher.doFinal(registers[inputReg]);
-            System.arraycopy(result, 0, registers[destReg], 0, Math.min(result.length, registers[destReg].length));
+            byte[] result = cipher.doFinal(registers.get(inputReg));
+            System.arraycopy(result, 0, registers.get(destReg), 0, Math.min(result.length, registers.get(destReg).length));
         } catch (Exception e) {
             throw new VMException("Encrypt with AES ECB does not work");
         }
     }
 
     private void findNext(byte sourceReg, byte destReg) throws VMException {
-        byte[] src = registers[sourceReg];
+        byte[] src = registers.get(sourceReg);
 
         if (src.length < 1) {
             throw new VMException("findNext: source too short");
@@ -460,22 +457,22 @@ public class VM {
 
         // Extrahiere Routing-Info
         byte[] routing = Arrays.copyOfRange(src, 1, 1 + len);
-        registers[destReg] = routing;
+        registers.put(destReg, routing);
 
         // Entferne die genutzten Bytes aus source
         byte[] remainder = Arrays.copyOfRange(src, 1 + len, src.length);
-        registers[sourceReg] = remainder;
+        registers.put(sourceReg, remainder);
     }
 
     private void concate(byte reg1, byte reg2, byte destReg) throws VMException {
-        byte[] data1 = registers[reg1];
-        byte[] data2 = registers[reg2];
+        byte[] data1 = registers.get(reg1);
+        byte[] data2 = registers.get(reg2);
 
         byte[] result = new byte[data1.length + data2.length];
         System.arraycopy(data1, 0, result, 0, data1.length);
         System.arraycopy(data2, 0, result, data1.length, data2.length);
 
-        registers[destReg] = result;
+        registers.put(destReg, result);
     }
 
 
