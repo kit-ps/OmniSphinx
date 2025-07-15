@@ -13,7 +13,9 @@ import org.bouncycastle.crypto.macs.HMac;
 import org.bouncycastle.crypto.modes.SICBlockCipher;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.crypto.params.ParametersWithIV;
+import org.bouncycastle.math.ec.ECCurve;
 import org.bouncycastle.math.ec.ECPoint;
+import org.bouncycastle.math.ec.custom.sec.SecP224R1Curve;
 
 import java.math.BigInteger;
 
@@ -203,6 +205,32 @@ public class Params {
         byte[] ciphertext = new byte[plaintext.length];
         cipher.processBytes(plaintext, 0, plaintext.length, ciphertext, 0);
         return ciphertext;
+    }
+
+    public byte[] decrypt(byte[] key, byte[] ciphertext) {
+        // CTR mode decryption is identical to encryption
+        return encrypt(key, ciphertext);
+    }
+
+    public byte[] prg(byte[] key) {
+        byte[] iv = new byte[16];
+        byte[] zeroInput = new byte[1024];
+        return aesCtr(key, zeroInput, iv);
+    }
+
+    public byte[] computeSharedSecret(BigInteger priv, byte[] pubKey) {
+        ECCurve curve = new SecP224R1Curve();
+        ECPoint pub = curve.decodePoint(pubKey);
+        ECPoint secret = pub.multiply(priv);
+        return secret.getEncoded(false);
+    }
+
+    public byte[] exponent(byte[] base, byte[] exponent) {
+        ECCurve curve = new SecP224R1Curve();
+        ECPoint basePoint = curve.decodePoint(base);
+        BigInteger exp = new BigInteger(1, exponent);
+        ECPoint result = basePoint.multiply(exp);
+        return result.getEncoded(false);
     }
 
     public byte[] mac(byte[] key, byte[] data) {

@@ -313,15 +313,8 @@ public class VM {
     private void computeSharedSecret(byte pubKeyReg, byte destReg) throws VMException {
         try {
             byte[] pubKeyBytes = registers.get(pubKeyReg);
-
-            // EC-Gruppe: secp224r1
-            ECCurve curve = new SecP224R1Curve();
-            ECPoint pubPoint = curve.decodePoint(pubKeyBytes);
-            ECPoint s = pubPoint.multiply(nodeSecret);
-
-            byte[] result = s.getEncoded(false);
+            byte[] result = params.computeSharedSecret(nodeSecret, pubKeyBytes);
             registers.put(destReg, result);
-
         } catch (Exception e) {
             throw new VMException("Shared secret computation failed: " + e.getMessage(), e);
         }
@@ -330,30 +323,14 @@ public class VM {
 
 
     private void hash(byte inputReg, byte destReg) throws VMException {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-512");
-            byte[] input = registers.get(inputReg);
-            byte[] result = digest.digest(input);
-            System.arraycopy(result, 0, registers.get(destReg), 0, result.length);
-        } catch (NoSuchAlgorithmException e) {
-            throw new VMException("SHA-512 not available");
-        }
+        byte[] input = registers.get(inputReg);
+        byte[] result = params.hash(input);
+        registers.put(destReg, result);
     }
 
     private void mac(byte keyReg, byte dataReg, byte length, byte destReg) throws VMException {
-        try {
-            Mac mac = new HMac(new SHA256Digest());
-            CipherParameters cipherParameters = new KeyParameter(registers.get(keyReg));
-            mac.init(cipherParameters);
-            byte[] output = new byte[mac.getMacSize()];
-
-            mac.update(registers.get(dataReg), 0, registers.get(dataReg).length);
-            mac.doFinal(output, 0);
-
-            registers.put(destReg,slice(output, length));
-        } catch (Exception e) {
-            throw new VMException("MAC funkt nicht!");
-        }
+        byte[] mac = params.mac(registers.get(keyReg), registers.get(dataReg));
+        registers.put(destReg, slice(mac, Byte.toUnsignedInt(length)));
     }
 
     private void verify(byte expectedReg, byte computedReg) throws VMException {
@@ -364,12 +341,8 @@ public class VM {
 
     private void exponent(byte baseReg, byte expReg, byte destReg, byte outputLength) throws VMException {
         try {
-            // EC-Gruppe: secp224r1
-            ECCurve curve = new SecP224R1Curve();
-            ECPoint pubPoint = curve.decodePoint(registers.get(baseReg));
-            BigInteger scalar = new BigInteger(1, registers.get(expReg));
-            ECPoint result = pubPoint.multiply(scalar);
-            registers.put(destReg, result.getEncoded(false));
+            byte[] result = params.exponent(registers.get(baseReg), registers.get(expReg));
+            registers.put(destReg, result);
         } catch (Exception e) {
             throw new VMException("exponend failed: " + e.getMessage(), e);
         }
@@ -393,12 +366,8 @@ public class VM {
 
 
     private void prgGenerate(byte seedReg, byte destReg) throws VMException {
-        byte[] iv = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-        try {
-            registers.put(destReg, aesCtrKeystream(registers.get(seedReg), iv));
-        } catch (Exception e) {
-            throw new VMException("PRG Generate mit AESCTR Keystream hat nicht so geklappt?!");
-        }
+        byte[] stream = params.prg(registers.get(seedReg));
+        registers.put(destReg, stream);
     }
 
 
@@ -420,27 +389,13 @@ public class VM {
     }
 
     private void decrypt(byte keyReg, byte inputReg, byte destReg) throws VMException {
-        try {
-            Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
-            SecretKeySpec key = new SecretKeySpec(registers.get(keyReg), cipher.getAlgorithm());
-            cipher.init(Cipher.DECRYPT_MODE, key);
-            byte[] result = cipher.doFinal(registers.get(inputReg));
-            System.arraycopy(result, 0, registers.get(destReg), 0, Math.min(result.length, registers.get(destReg).length));
-        } catch(Exception e) {
-            throw new VMException("Decrypt with AES ECB does not work");
-        }
+        byte[] result = params.decrypt(registers.get(keyReg), registers.get(inputReg));
+        registers.put(destReg, result);
     }
 
     private void encrypt(byte keyReg, byte inputReg, byte destReg) throws VMException {
-        try {
-            Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
-            SecretKeySpec key = new SecretKeySpec(registers.get(keyReg), cipher.getAlgorithm());
-            cipher.init(Cipher.ENCRYPT_MODE, key);
-            byte[] result = cipher.doFinal(registers.get(inputReg));
-            System.arraycopy(result, 0, registers.get(destReg), 0, Math.min(result.length, registers.get(destReg).length));
-        } catch (Exception e) {
-            throw new VMException("Encrypt with AES ECB does not work");
-        }
+        byte[] result = params.encrypt(registers.get(keyReg), registers.get(inputReg));
+        registers.put(destReg, result);
     }
 
     private void findNext(byte sourceReg, byte destReg) throws VMException {
