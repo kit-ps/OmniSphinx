@@ -1,25 +1,11 @@
 package MasterThesisFormat.VM;
 
-import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.Params;
 import MasterThesisFormat.instruction.InstructionRegister;
 import MasterThesisFormat.instruction.OpCode;
 
-import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
 
-import org.bouncycastle.crypto.CipherParameters;
-import org.bouncycastle.crypto.Mac;
-import org.bouncycastle.crypto.digests.SHA256Digest;
-import org.bouncycastle.crypto.macs.HMac;
-import org.bouncycastle.crypto.params.KeyParameter;
-import org.bouncycastle.math.ec.ECPoint;
-import org.bouncycastle.math.ec.ECCurve;
-import org.bouncycastle.math.ec.custom.sec.SecP224R1Curve;
-
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -36,10 +22,9 @@ public class VM {
         this.params = params;
     }
 
-    public InstructionPacket interpret(VMContext context) throws VMException {
+    public void interpret(VMContext context) throws VMException {
         registers = context.registers;
         interpretInstructions(registers.get(InstructionRegister.INSTRUCTIONS.getCode()));
-        return null;
     }
 
     private void interpretInstructions(byte[] instructions) throws VMException {
@@ -157,6 +142,17 @@ public class VM {
                     case MIX_POISSON -> {
                         byte meanDelay = instructions[pc++];
                         applyPoissonMix(meanDelay);
+                    }
+
+                    case LOAD -> {
+                        int len = Byte.toUnsignedInt(instructions[pc++]);
+                        if (pc + len > instructions.length) {
+                            throw new VMException("LOAD length out of bounds");
+                        }
+                        byte[] value = Arrays.copyOfRange(instructions, pc, pc + len);
+                        pc += len;
+                        byte destReg = instructions[pc++];
+                        load(value, destReg);
                     }
                     default -> throw new VMException("Unknown OpCode: " + opcode);
                 }
@@ -279,6 +275,17 @@ public class VM {
                     case MIX_POISSON -> {
                         byte meanDelay = instructions[innerPc++];
                         applyPoissonMix(meanDelay);
+                    }
+
+                    case LOAD -> {
+                        int len = Byte.toUnsignedInt(instructions[innerPc++]);
+                        if (innerPc + len > instructions.length) {
+                            throw new VMException("LOAD length out of bounds");
+                        }
+                        byte[] value = Arrays.copyOfRange(instructions, innerPc, innerPc + len);
+                        innerPc += len;
+                        byte destReg = instructions[innerPc++];
+                        load(value, destReg);
                     }
                     default -> throw new VMException("Unknown OpCode in FOR block: " + innerOpcode);
                 }
@@ -428,6 +435,10 @@ public class VM {
         System.arraycopy(data2, 0, result, data1.length, data2.length);
 
         registers.put(destReg, result);
+    }
+
+    private void load(byte[] value, byte destReg) {
+        registers.put(destReg, value);
     }
 
 
