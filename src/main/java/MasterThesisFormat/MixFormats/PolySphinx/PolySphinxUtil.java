@@ -114,8 +114,8 @@ public class PolySphinxUtil {
         ECPoint[] sharedSecrets = new ECPoint[nodeList.length];
         byte[][] secrets = new byte[nodeList.length][];
         byte[][] sigmas = new byte[nodeList.length][];
-        byte[] pathPrefix = new byte[1];
-        pathPrefix[0] = (byte) (pathIndex + 1);
+        byte[] path = new byte[1];
+        path[0] = (byte) (pathIndex + 1);
 
         for (int i = 0; i < nodeList.length; i++) {
             alphas[i] = group.expon(group.getGenerator(), x);
@@ -124,11 +124,11 @@ public class PolySphinxUtil {
             BigInteger b = params.hb(alphas[i], secrets[i]);
             x = x.multiply(b).mod(group.getOrder());
 
-            byte[] sigma = keyTreeKey(params, seed, pathPrefix);
+            byte[] sigma = keyTreeKey(params, seed, path);
             sigmas[i] = params.hash(sigma);
 
-            pathPrefix = Arrays.copyOf(pathPrefix, pathPrefix.length + 1);
-            pathPrefix[pathPrefix.length - 1] = (byte) 1;
+            path = Arrays.copyOf(path, path.length + 1);
+            path[path.length - 1] = (byte) 1;
         }
 
         if (nodeList.length == 0) {
@@ -136,17 +136,16 @@ public class PolySphinxUtil {
         }
 
         byte[] nextHop = Arrays.copyOf(nodeList[0], params.keyLength());
-        byte[] omega = Arrays.copyOf(sigmas[0], params.keyLength());
 
         byte[] onion = new byte[0];
         for (int i = nodeList.length - 1; i >= 0; i--) {
             byte[] instr;
 
+            //Letzte Mix node = Exit Node
             if (i == nodeList.length - 1) {
-                byte[] pathId = {(byte) pathIndex};
                 byte r = (byte) (nodeList.length - 1);
                 byte log2p = (byte) Integer.toBinaryString(numberOfPaths).length();
-                instr = PolySphinxInstructionPresets.createExitInstructions(seed, pathId, nodeList[i], r, log2p, (byte) params.keyLength());
+                instr = PolySphinxInstructionPresets.createExitInstructions(seed, path, nodeList[i], r, log2p, (byte) params.keyLength());
             } else {
                 instr = PolySphinxInstructionPresets.createRelayInstructions(nodeList[i + 1], sigmas[i + 1]);
             }
@@ -156,18 +155,18 @@ public class PolySphinxUtil {
             System.arraycopy(onion, 0, plain, instr.length, onion.length);
 
             byte[] enc = params.xorRho(params.hrho(secrets[i]), plain);
-            byte[] sigma = params.mu(params.hmu(secrets[i]), plain);
+            byte[] gamma = params.mu(params.hmu(secrets[i]), plain);
 
-            onion = new byte[sigma.length + enc.length];
-            System.arraycopy(sigma, 0, onion, 0, sigma.length);
-            System.arraycopy(enc, 0, onion, sigma.length, enc.length);
+            onion = new byte[gamma.length + enc.length];
+            System.arraycopy(gamma, 0, onion, 0, gamma.length);
+            System.arraycopy(enc, 0, onion, gamma.length, enc.length);
         }
 
         byte[] finalMac = Arrays.copyOfRange(onion, 0, params.keyLength());
         byte[] finalInstr = Arrays.copyOfRange(onion, params.keyLength(), onion.length);
         byte[] alphaBytes = SerializationUtils.encodeECPoint(alphas[0]);
 
-        return new SubHeader(nextHop, omega, alphaBytes, finalInstr, finalMac);
+        return new SubHeader(nextHop, sigmas[0], alphaBytes, finalInstr, finalMac);
     }
 
 }
