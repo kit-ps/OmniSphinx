@@ -44,78 +44,7 @@ public class PolySphinxUtil {
         byte[] K = params.hash(seed);
         byte[] encryptedPayload = params.encrypt(K, payload);
 
-        List<SubHeader> subheaders = new ArrayList<>();
-
-        for (int pathIndex = 0; pathIndex < suffixPaths.size(); pathIndex++) {
-            BigInteger x = group.genSecret();
-
-            byte[][] nodelist = suffixPaths.get(pathIndex);
-            ECPoint[] pubKeys = keys.get(pathIndex);
-            ECPoint[] alphas = new ECPoint[nodelist.length];
-            ECPoint[] sharedSecrets = new ECPoint[nodelist.length];
-            byte[][] secrets = new byte[nodelist.length][];
-            byte[][] sigmas = new byte[nodelist.length][];
-            byte[] pathPrefix = new byte[1];
-            pathPrefix[0] = (byte) (pathIndex + 1);
-
-            // Berechne oben definierte Variablen
-            for (int i = 0; i < nodelist.length; i++) {
-                alphas[i] = group.expon(group.getGenerator(), x);
-                sharedSecrets[i] = group.expon(pubKeys[i], x);
-                secrets[i] = params.getAesKey(sharedSecrets[i]);
-                BigInteger b = params.hb(alphas[i], secrets[i]);
-                x = x.multiply(b).mod(group.getOrder());
-
-                byte[] sigma = keyTreeKey(params, seed, pathPrefix);
-                sigmas[i] = params.hash(sigma);
-
-                pathPrefix = Arrays.copyOf(pathPrefix, pathPrefix.length + 1);
-                pathPrefix[pathPrefix.length - 1] = (byte) (1);
-            }
-
-            if (nodelist.length > 0) {
-                byte[] nextHop = Arrays.copyOf(nodelist[0], params.keyLength());
-                byte[] omega = Arrays.copyOf(sigmas[0], params.keyLength());
-
-
-                byte[] onion = new byte[0];
-                for (int i = nodelist.length - 1; i >= 0; i--) {
-                    byte[] instr;
-
-                    //Letzte Node in der Liste = exitInstructions!
-                    if (i == nodelist.length - 1) {
-                        byte[] pathId = {(byte) pathIndex};
-                        byte r = (byte) (nodelist.length - 1);
-                        byte log2p = (byte) Integer.toBinaryString(suffixPaths.size()).length();
-                        instr = PolySphinxInstructionPresets.createExitInstructions(seed, pathId,
-                                nodelist[i], r, log2p, (byte) params.keyLength());
-                    }
-                    // Sonst nur Relay Instructions!
-                    else {
-                        instr = PolySphinxInstructionPresets.createRelayInstructions(nodelist[i + 1],
-                                sigmas[i + 1]);
-                    }
-
-                    byte[] plain = new byte[instr.length + onion.length];
-                    System.arraycopy(instr, 0, plain, 0, instr.length);
-                    System.arraycopy(onion, 0, plain, instr.length, onion.length);
-
-                    byte[] enc = params.xorRho(params.hrho(secrets[i]), plain);
-                    byte[] sigma = params.mu(params.hmu(secrets[i]), plain);
-
-                    onion = new byte[sigma.length + enc.length];
-                    System.arraycopy(sigma, 0, onion, 0, sigma.length);
-                    System.arraycopy(enc, 0, onion, sigma.length, enc.length);
-                }
-
-                byte[] finalMac = Arrays.copyOfRange(onion, 0, params.keyLength());
-                byte[] finalInstr = Arrays.copyOfRange(onion, params.keyLength(), onion.length);
-                byte[] alphaBytes = SerializationUtils.encodeECPoint(alphas[0]);
-
-                subheaders.add(new SubHeader(nextHop, omega, alphaBytes, finalInstr, finalMac));
-            }
-
-        }
+        List<SubHeader> subheaders = buildSubHeaderList(params, seed, suffixPaths, keys);
 
         ByteArrayOutputStream shOut = new ByteArrayOutputStream();
         for (SubHeader sh : subheaders) {
@@ -161,11 +90,84 @@ public class PolySphinxUtil {
         }
     }
 
-    private SubHeader createSubHeader(Params params, int index, byte[] nextHop, byte[] seed, byte[] alpha, byte[] instructions, byte[] mac) throws IOException {
-        byte[] pathIndex = new byte[]{(byte) index};
-        byte[] omega = keyTreeKey(params, seed, pathIndex);
+    private static List<SubHeader> buildSubHeaderList(Params params, byte[] seed, List<byte[][]> suffixPaths, List<ECPoint[]> keys) throws IOException, SphinxException {
+        List<SubHeader> subheaders = new ArrayList<>();
+        ECCGroup group = params.getGroup();
 
-        return new SubHeader(nextHop, omega, alpha, instructions, mac);
+        for (int pathIndex = 0; pathIndex < suffixPaths.size(); pathIndex++) {
+            byte[][] nodeList = suffixPaths.get(pathIndex);
+            ECPoint[] pubKeys = keys.get(pathIndex);
+
+            SubHeader sh = buildSingleSubHeader(params, group, seed, nodeList, pubKeys, pathIndex, suffixPaths.size());
+            if (sh != null) {
+                subheaders.add(sh);
+            }
+        }
+
+        return subheaders;
+    }
+
+    private static SubHeader buildSingleSubHeader(Params params, ECCGroup group, byte[] seed, byte[][] nodeList, ECPoint[] pubKeys, int pathIndex, int numberOfPaths) throws IOException, SphinxException {
+        BigInteger x = group.genSecret();
+
+        ECPoint[] alphas = new ECPoint[nodeList.length];
+        ECPoint[] sharedSecrets = new ECPoint[nodeList.length];
+        byte[][] secrets = new byte[nodeList.length][];
+        byte[][] sigmas = new byte[nodeList.length][];
+        byte[] pathPrefix = new byte[1];
+        pathPrefix[0] = (byte) (pathIndex + 1);
+
+        for (int i = 0; i < nodeList.length; i++) {
+            alphas[i] = group.expon(group.getGenerator(), x);
+            sharedSecrets[i] = group.expon(pubKeys[i], x);
+            secrets[i] = params.getAesKey(sharedSecrets[i]);
+            BigInteger b = params.hb(alphas[i], secrets[i]);
+            x = x.multiply(b).mod(group.getOrder());
+
+            byte[] sigma = keyTreeKey(params, seed, pathPrefix);
+            sigmas[i] = params.hash(sigma);
+
+            pathPrefix = Arrays.copyOf(pathPrefix, pathPrefix.length + 1);
+            pathPrefix[pathPrefix.length - 1] = (byte) 1;
+        }
+
+        if (nodeList.length == 0) {
+            return null;
+        }
+
+        byte[] nextHop = Arrays.copyOf(nodeList[0], params.keyLength());
+        byte[] omega = Arrays.copyOf(sigmas[0], params.keyLength());
+
+        byte[] onion = new byte[0];
+        for (int i = nodeList.length - 1; i >= 0; i--) {
+            byte[] instr;
+
+            if (i == nodeList.length - 1) {
+                byte[] pathId = {(byte) pathIndex};
+                byte r = (byte) (nodeList.length - 1);
+                byte log2p = (byte) Integer.toBinaryString(numberOfPaths).length();
+                instr = PolySphinxInstructionPresets.createExitInstructions(seed, pathId, nodeList[i], r, log2p, (byte) params.keyLength());
+            } else {
+                instr = PolySphinxInstructionPresets.createRelayInstructions(nodeList[i + 1], sigmas[i + 1]);
+            }
+
+            byte[] plain = new byte[instr.length + onion.length];
+            System.arraycopy(instr, 0, plain, 0, instr.length);
+            System.arraycopy(onion, 0, plain, instr.length, onion.length);
+
+            byte[] enc = params.xorRho(params.hrho(secrets[i]), plain);
+            byte[] sigma = params.mu(params.hmu(secrets[i]), plain);
+
+            onion = new byte[sigma.length + enc.length];
+            System.arraycopy(sigma, 0, onion, 0, sigma.length);
+            System.arraycopy(enc, 0, onion, sigma.length, enc.length);
+        }
+
+        byte[] finalMac = Arrays.copyOfRange(onion, 0, params.keyLength());
+        byte[] finalInstr = Arrays.copyOfRange(onion, params.keyLength(), onion.length);
+        byte[] alphaBytes = SerializationUtils.encodeECPoint(alphas[0]);
+
+        return new SubHeader(nextHop, omega, alphaBytes, finalInstr, finalMac);
     }
 
 }
