@@ -50,7 +50,7 @@ public class PolySphinxInstructionPresets {
 
         // Den Key Tree anhand des Paths bauen und an den Keys appenden
         // REG_SIGMA = Aktueller schlüssel
-        instr.write(Instruction.forLoop((byte) (r), (byte) 5));
+        instr.write(Instruction.forLoop(r, (byte) 5));
         instr.write(Instruction.storeBytes(REG_PATH, log2p, REG_P_I_J));  // P_i_j
         instr.write(Instruction.addRight(REG_SIGMA, REG_P_I_J, REG_SIGMA));      // K + index
         instr.write(Instruction.hash(REG_SIGMA, REG_SIGMA));                 // K = h(K)
@@ -68,11 +68,11 @@ public class PolySphinxInstructionPresets {
         return instr.toByteArray();
     }
 
-    public static byte[] createReplicationInstructions(byte kappaLen, byte p, byte tauPost, byte[] B) throws IOException {
+    public static byte[] createReplicationInstructions(byte kappaLen, byte twoTimesKappaLen, byte p, byte tauPost, byte[] B) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
 
         instr.write(Instruction.load(B, REG_SUBHEADER));
-        byte instrCount = 9; // so viele Instruktionen sind in der Schleife!
+        byte instrCount = 8; // so viele Instruktionen sind in der Schleife!
 
         //Schleife definieren
         instr.write(Instruction.forLoop(p, instrCount));
@@ -80,13 +80,12 @@ public class PolySphinxInstructionPresets {
         //Schleifen-Block:
         instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_NEXT_HOP));    // 1
         instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_KEY));   // 2
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_ALPHA1));  // 3
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_ALPHA2));  // 4
-        instr.write(Instruction.concate(REG_ALPHA1, REG_ALPHA2, REG_ALPHA));      // 5
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_GAMMA));   // 6
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, tauPost, REG_BETA));     // 7
-        instr.write(Instruction.encrypt(REG_KEY, REG_PAYLOAD, REG_PAYLOAD));    // 8
-        instr.write(Instruction.forward(REG_PATH));                  //9
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, twoTimesKappaLen, REG_ALPHA1));  // 3
+        instr.write(Instruction.concate(REG_ALPHA1, REG_ALPHA2, REG_ALPHA));      // 4
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_GAMMA));   // 5
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, tauPost, REG_BETA));     // 6
+        instr.write(Instruction.encrypt(REG_KEY, REG_PAYLOAD, REG_PAYLOAD));    // 7
+        instr.write(Instruction.forward(REG_PATH));                  //8
 
         return instr.toByteArray();
     }

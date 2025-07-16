@@ -55,7 +55,10 @@ public class PolySphinxUtil {
             ECPoint[] sharedSecrets = new ECPoint[nodelist.length];
             byte[][] secrets = new byte[nodelist.length][];
             byte[][] sigmas = new byte[nodelist.length][];
-            byte[] pathPrefix = new byte[0];
+            byte[] pathPrefix = new byte[1];
+            pathPrefix[0] = (byte) (pathIndex + 1);
+
+            // Berechne oben definierte Variablen
             for (int i = 0; i < nodelist.length; i++) {
                 alphas[i] = group.expon(group.getGenerator(), x);
                 sharedSecrets[i] = group.expon(pubKeys[i], x);
@@ -64,7 +67,7 @@ public class PolySphinxUtil {
                 x = x.multiply(b).mod(group.getOrder());
 
                 byte[] sigma = keyTreeKey(params, seed, pathPrefix);
-                sigmas[i] = sigma;
+                sigmas[i] = params.hash(sigma);
 
                 pathPrefix = Arrays.copyOf(pathPrefix, pathPrefix.length + 1);
                 pathPrefix[pathPrefix.length - 1] = (byte) (1);
@@ -127,7 +130,7 @@ public class PolySphinxUtil {
         byte kappaLen = (byte) params.keyLength();
         byte p = (byte) subheaders.size();
         byte tauPost = subheaders.isEmpty() ? 0 : (byte) subheaders.get(0).instructions.length;
-        byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, p, tauPost, B);
+        byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, (byte) (2*kappaLen), p, tauPost, B);
 
         byte[] encInstr = params.encrypt(K, instructions);
         byte[] mac = params.mac(params.hmu(K), instructions);
