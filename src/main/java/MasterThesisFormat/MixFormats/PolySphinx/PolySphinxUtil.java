@@ -42,7 +42,8 @@ public class PolySphinxUtil {
 
         byte[] payload = message.clone();
         byte[] K = params.hash(seed);
-        byte[] encryptedPayload = params.encrypt(K, payload);
+        byte[] key = params.hash(K);
+        byte[] encryptedPayload = params.encrypt(key, payload);
 
         List<SubHeader> subheaders = buildSubHeaderList(params, seed, suffixPaths, keys);
 
@@ -61,8 +62,9 @@ public class PolySphinxUtil {
         byte tauPost = subheaders.isEmpty() ? 0 : (byte) subheaders.get(0).instructions.length;
         byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, (byte) (2*kappaLen), p, tauPost, B);
 
-        byte[] encInstr = params.encrypt(K, instructions);
-        byte[] mac = params.mac(params.hmu(K), instructions);
+        //TODO verschlüsselt wird mit dem Shared secret!
+        byte[] encInstr = params.encrypt(key, instructions);
+        byte[] mac = params.mac(params.hmu(key), instructions);
         ECPoint alpha0 = group.expon(group.getGenerator(), group.genSecret());
 
         InstructionHeader header = new InstructionHeader(alpha0, encInstr, mac);

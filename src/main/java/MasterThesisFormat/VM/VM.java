@@ -6,7 +6,9 @@ import MasterThesisFormat.instruction.OpCode;
 
 import java.math.BigInteger;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import static MasterThesisFormat.VM.VMUtil.*;
@@ -16,15 +18,18 @@ public class VM {
     private final BigInteger nodeSecret;
     private Map<Byte, byte[]> registers;
     private Params params;
+    private List<VMOutput> vmOutputs;
 
     public VM(BigInteger nodeSecret, Params params) {
         this.nodeSecret = nodeSecret;
         this.params = params;
     }
 
-    public void interpret(VMContext context) throws VMException {
+    public List<VMOutput> interpret(VMContext context) throws VMException {
         registers = context.registers;
+        vmOutputs = new ArrayList<>();
         interpretInstructions(registers.get(InstructionRegister.INSTRUCTIONS.getCode()));
+        return vmOutputs;
     }
 
     private void interpretInstructions(byte[] instructions) throws VMException {
@@ -110,8 +115,7 @@ public class VM {
                     }
                     case FORWARD -> {
                         byte idReg = instructions[pc++];
-                        byte payloadReg = instructions[pc++];
-                        forward(idReg, payloadReg);
+                        forward(idReg);
                     }
                     case ENCRYPT -> {
                         byte keyReg = instructions[pc++];
@@ -243,8 +247,7 @@ public class VM {
                     }
                     case FORWARD -> {
                         byte idReg = instructions[innerPc++];
-                        byte payloadReg = instructions[innerPc++];
-                        forward(idReg, payloadReg);
+                        forward(idReg);
                     }
                     case ENCRYPT -> {
                         byte keyReg = instructions[innerPc++];
@@ -442,7 +445,19 @@ public class VM {
     }
 
 
-    private void forward(byte idReg, byte payloadReg) throws VMException {
+    private void forward(byte idReg) throws VMException {
+        byte[] nextHop = registers.get(idReg);
+        byte[] nextAlpha = registers.get(InstructionRegister.NEXT_ALPHA.getCode());
+        byte[] instructions = registers.get(InstructionRegister.INSTRUCTIONS.getCode());
+        byte[] mac = registers.get(InstructionRegister.MAC.getCode());
+        byte[] payload = registers.get(InstructionRegister.PAYLOAD.getCode());
+
+        if (nextHop == null || nextAlpha == null || instructions == null || mac == null || payload == null) {
+            throw new VMException("Missing register for forward operation");
+        }
+
+        VMOutput out = new VMOutput(nextHop, nextAlpha, instructions, mac, payload);
+        vmOutputs.add(out);
     }
 
     private void applyMixNone() {

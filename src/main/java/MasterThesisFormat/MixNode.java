@@ -4,14 +4,18 @@ import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.VM.VM;
 import MasterThesisFormat.VM.VMContext;
 import MasterThesisFormat.VM.VMException;
+import MasterThesisFormat.VM.VMOutput;
+import MasterThesisFormat.header.InstructionHeader;
 import MasterThesisFormat.instruction.InstructionRegister;
 import org.bouncycastle.math.ec.ECPoint;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 public class MixNode {
     private final BigInteger secret;
@@ -28,7 +32,7 @@ public class MixNode {
      * layout: [alpha | encrypted instructions | MAC | packet]
      * Layout der encrypted Instructions: [len(instr) | instr | len(nextEncInst) | nextEncInst | len(nextMac) | nextMac]
      */
-    public InstructionPacket process(byte[] rawPacket) throws VMException {
+    public List<InstructionPacket> process(byte[] rawPacket) throws VMException {
         MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(rawPacket);
         byte[] encodedAlpha, encInstr, mac, packetRaw;
         try {
@@ -77,9 +81,22 @@ public class MixNode {
         register.put(InstructionRegister.MAC.getCode(), mac);
         register.put(InstructionRegister.PAYLOAD.getCode(), packetRaw);
         VMContext vmContext = new VMContext(register);
-        vm.interpret(vmContext);
+        List<VMOutput> outputs = vm.interpret(vmContext);
 
-        return null;
+        List<InstructionPacket> packets = new ArrayList<>();
+        for (VMOutput out : outputs) {
+            ECPoint nextAlpha = SerializationUtils.decodeECPoint(out.getNextAlpha());
+            InstructionHeader header = new InstructionHeader(nextAlpha, out.getInstructions(), out.getMAC());
+            InstructionPacket packet = new InstructionPacket(header, out.getOutgoingPayload());
+            packets.add(packet);
+            sendToNextNode(out.getNextHop(), packet);
+        }
+
+        return packets;
+    }
+
+    private void sendToNextNode(byte[] nextHop, InstructionPacket packet) {
+        // Placeholder for network forwarding logic
     }
 
 }
