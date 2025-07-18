@@ -35,7 +35,7 @@ public class PolySphinxUtil {
 
     // erste Mix-Node, ist die replicationNode
     // suffixPaths sind die Pfade von der Replication-Node zu jedem Empfänger
-    public static InstructionPacket createPolySphinxPacket(Params params, byte[] replicationNode, List<byte[][]> suffixPaths, byte[] message, byte[] seed, List<ECPoint[]> keys) throws IOException, SphinxException {
+    public static InstructionPacket createPolySphinxPacket(Params params, byte[] replicationNode, ECPoint replicationNodePubKey, List<byte[][]> suffixPaths, byte[] message, byte[] seed, List<ECPoint[]> keys) throws IOException, SphinxException {
         ECCGroup group = params.getGroup();
 
 
@@ -57,15 +57,18 @@ public class PolySphinxUtil {
         }
         byte[] B = shOut.toByteArray();
 
+        BigInteger r = group.genSecret();
+        ECPoint alpha0 = group.expon(group.getGenerator(), r);
+        ECPoint sharedSecret = group.expon(replicationNodePubKey, r);
+        byte[] sharedSecretKey = params.getAesKey(sharedSecret);
+
         byte kappaLen = (byte) params.keyLength();
         byte p = (byte) subheaders.size();
         byte tauPost = subheaders.isEmpty() ? 0 : (byte) subheaders.get(0).instructions.length;
         byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, (byte) (2*kappaLen), p, tauPost, B);
 
-        //TODO verschlüsselt wird mit dem Shared secret!
-        byte[] encInstr = params.encrypt(key, instructions);
-        byte[] mac = params.mac(params.hmu(key), instructions);
-        ECPoint alpha0 = group.expon(group.getGenerator(), group.genSecret());
+        byte[] encInstr = params.encrypt(sharedSecretKey, instructions);
+        byte[] mac = params.mac(params.hmu(sharedSecretKey), instructions);
 
         InstructionHeader header = new InstructionHeader(alpha0, encInstr, mac);
 
