@@ -7,11 +7,20 @@ import MasterThesisFormat.VM.VMException;
 import MasterThesisFormat.VM.VMOutput;
 import MasterThesisFormat.header.InstructionHeader;
 import MasterThesisFormat.instruction.InstructionRegister;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+import okhttp3.*;
 import org.bouncycastle.math.ec.ECPoint;
+import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 
+import java.io.IOException;
 import java.math.BigInteger;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -21,11 +30,54 @@ public class MixNode {
     private final BigInteger secret;
     private final Params params;
     private final VM vm;
+    private final byte[] id;
+    private HttpServer server;
+    private final OkHttpClient httpClient = new OkHttpClient();
 
-    public MixNode(BigInteger secret, Params params) {
+
+    public MixNode(byte[] id, BigInteger secret, Params params) throws IOException {
+        this.id = id.clone();
         this.secret = secret;
         this.params = params;
         this.vm = new VM(secret, params);
+
+        URI uri = URI.create(new String(id, StandardCharsets.UTF_8));
+        int port = uri.getPort();
+        if (port == -1) {
+            port = uri.getScheme().equalsIgnoreCase("https") ? 443 : 80;
+        }
+        startListener(port);
+    }
+
+    public void startListener(int port) throws IOException {
+        server = HttpServer.create(new InetSocketAddress(port), 0);
+        server.createContext("/", new PacketHandler());
+        server.setExecutor(null);
+        server.start();
+    }
+
+    public void stopListener() {
+        if (server != null) {
+            server.stop(0);
+        }
+    }
+
+    private class PacketHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(405, -1);
+                return;
+            }
+            byte[] data = exchange.getRequestBody().readAllBytes();
+            exchange.sendResponseHeaders(200, 0);
+            exchange.getResponseBody().close();
+            try {
+                process(data);
+            } catch (VMException e) {
+                throw new IOException("Failed to process packet", e);
+            }
+        }
     }
 
     /**
@@ -96,7 +148,50 @@ public class MixNode {
     }
 
     private void sendToNextNode(byte[] nextHop, InstructionPacket packet) {
-        // Placeholder for network forwarding logic
+        String url = new String(nextHop, StandardCharsets.UTF_8);
+        byte[] data;
+        try {
+            data = packInstructionPacket(packet);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to pack instruction packet", e);
+        }
+
+        RequestBody body = RequestBody.create(data, MediaType.parse("application/octet-stream"));
+        Request request = new Request.Builder().url(url).post(body).build();
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new IOException("Failed to send packet: HTTP " + response.code());
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException("Error forwarding packet", ex);
+        }
+    }
+
+    private byte[] packInstructionPacket(InstructionPacket packet) throws Exception {
+        InstructionHeader header = packet.getHeader();
+
+        byte[] encodedAlpha = SerializationUtils.encodeECPoint(header.getAlpha());
+        byte[] instructions = header.getInstructions();
+        byte[] mac = header.getMAC();
+        byte[] payload = packet.getPayload();
+
+        MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
+        try {
+            packer.packArrayHeader(4);
+            packer.packBinaryHeader(encodedAlpha.length);
+            packer.writePayload(encodedAlpha);
+            packer.packBinaryHeader(instructions.length);
+            packer.writePayload(instructions);
+            packer.packBinaryHeader(mac.length);
+            packer.writePayload(mac);
+            packer.packBinaryHeader(payload.length);
+            packer.writePayload(payload);
+            packer.close();
+        } catch (IOException ex) {
+            throw new Exception("Failed to pack instruction packet");
+        }
+
+        return packer.toByteArray();
     }
 
 }
