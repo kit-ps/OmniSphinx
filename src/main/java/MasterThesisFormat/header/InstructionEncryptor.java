@@ -5,6 +5,9 @@ import MasterThesisFormat.SerializationUtils;
 
 import java.util.Arrays;
 
+import static MasterThesisFormat.SerializationUtils.concatenate;
+import static MasterThesisFormat.SerializationUtils.slice;
+
 public final class InstructionEncryptor {
     private InstructionEncryptor() {
     }
@@ -13,37 +16,39 @@ public final class InstructionEncryptor {
      * Erstellt Instruction für den Header mit fixer länger!
      *  totalSize = die gewünschte End größe
      */
-    public static byte[] encryptFixedSize(Params params,
-                                          byte[][] instructions,
-                                          byte[][] secrets,
-                                          int totalSize) throws Exception {
+    public static byte[] encryptFixedSize(Params params, byte[][] instructions, byte[][] secrets, int totalSize) throws Exception {
         int hops = instructions.length;
         if (hops != secrets.length) {
             throw new IllegalArgumentException("instructions/secrets length mismatch");
         }
 
+        // Gesamtlänge aller Instruktionen
         int plainInstrLen = 0;
         for (byte[] instr : instructions) {
             plainInstrLen += instr.length;
         }
 
-        int fillerLen = totalSize - plainInstrLen;
-
-        byte[] phi = new byte[0];
+        byte[] phi = {};
+        int minLen = totalSize;
         for (int i = 1; i < hops; i++) {
-            int len = totalSize - (phi.length + instructions[i].length);
-            byte[] tmp = new byte[len];
-            System.arraycopy(phi, 0, tmp, 0, phi.length);
+            byte[] zeroes1 = new byte[params.keyLength() + instructions[i].length];
+            Arrays.fill(zeroes1, (byte) 0x00);
+            byte[] plain = SerializationUtils.concatenate(phi, zeroes1);
 
-            byte[] prg = params.prg(params.hrho(secrets[i - 1]));
-            int off = phi.length;
-            byte[] slice = Arrays.copyOfRange(prg, off, off + len);
-            for (int j = 0; j < len; j++) {
-                tmp[j] ^= slice[j];
+            byte[] zeroes2 = new byte[minLen];
+            Arrays.fill(zeroes2, (byte) 0x00);
+            byte[] zeroes2plain = SerializationUtils.concatenate(zeroes2, plain);
+
+            byte[] prg = params.xorRho(params.hrho(secrets[i - 1]), zeroes2plain);
+            phi = Arrays.copyOfRange(prg, minLen, prg.length);
+
+            minLen -= instructions[i].length + params.keyLength();
+            if (minLen < 0) {
+                throw new IllegalArgumentException("Header too small for given instructions");
             }
-            phi = tmp;
         }
 
+        //Pad Instruktionen auf totalSize - phi.length
         int instrBlockSize = totalSize - phi.length;
         byte[] instrBlock = new byte[instrBlockSize];
         int pos = 0;
@@ -54,7 +59,7 @@ public final class InstructionEncryptor {
 
         byte[] onion = SerializationUtils.concatenate(instrBlock, phi);
 
-        // encrypt recursively from last hop to first
+        // Verschlüsselung
         for (int i = hops - 1; i >= 0; i--) {
             byte[] mac = params.mu(params.hmu(secrets[i]), onion);
             byte[] enc = params.xorRho(params.hrho(secrets[i]), onion);
