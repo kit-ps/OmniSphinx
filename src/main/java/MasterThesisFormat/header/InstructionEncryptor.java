@@ -48,24 +48,19 @@ public final class InstructionEncryptor {
             }
         }
 
-        //Pad Instruktionen auf totalSize - phi.length
-        int instrBlockSize = totalSize - phi.length;
-        byte[] instrBlock = new byte[instrBlockSize];
-        int pos = 0;
-        for (byte[] instr : instructions) {
-            System.arraycopy(instr, 0, instrBlock, pos, instr.length);
-            pos += instr.length;
+        byte[] Instr = params.xorRho(params.hrho(secrets[secrets.length - 1]), instructions[instructions.length - 1]); // letzte Node verschlüsseln
+        Instr = concatenate(Instr, phi);
+        byte[] gamma = params.mu(params.hmu(secrets[secrets.length - 1]), Instr);
+
+        for (int i = hops - 2; i >= 0; i--) {
+            byte[] currentInstr = instructions[i];
+            int InstrLen = Instr.length - currentInstr.length - params.keyLength();
+            byte[] plainInstr = slice(Instr, InstrLen);
+            byte[] plain = concatenate(currentInstr, gamma, plainInstr);
+            Instr = params.xorRho(params.hrho(secrets[i]), plain);
+            gamma = params.mu(params.hmu(secrets[i]), Instr);
         }
 
-        byte[] onion = SerializationUtils.concatenate(instrBlock, phi);
-
-        // Verschlüsselung
-        for (int i = hops - 1; i >= 0; i--) {
-            byte[] mac = params.mu(params.hmu(secrets[i]), onion);
-            byte[] enc = params.xorRho(params.hrho(secrets[i]), onion);
-            onion = SerializationUtils.concatenate(mac, enc);
-        }
-
-        return onion;
+        return Instr;
     }
 }
