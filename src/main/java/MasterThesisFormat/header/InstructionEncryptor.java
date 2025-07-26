@@ -22,11 +22,6 @@ public final class InstructionEncryptor {
             throw new IllegalArgumentException("instructions/secrets length mismatch");
         }
 
-        // Gesamtlänge aller Instruktionen
-        int plainInstrLen = 0;
-        for (byte[] instr : instructions) {
-            plainInstrLen += instr.length;
-        }
 
         byte[] phi = {};
         int minLen = totalSize;
@@ -62,5 +57,26 @@ public final class InstructionEncryptor {
         }
 
         return Instr;
+    }
+
+    public static byte[] padInstructions(Params params, byte[] instr, byte[] secret,
+                                         int index, int totalSize) {
+        if (instr.length > totalSize) {
+            throw new IllegalArgumentException("instructions exceed desired size");
+        }
+
+        int padLen = totalSize - instr.length;
+        if (padLen == 0) {
+            return instr.clone();
+        }
+
+        // Seed für den PRG aus Geheimnis und Hop-Index ableiten
+        byte[] idx = SerializationUtils.encodeInt(index);
+        byte[] seed = concatenate(secret, idx);
+        byte[] key = params.hash(seed);
+        byte[] stream = params.prg(key);
+        byte[] pad = Arrays.copyOf(stream, padLen);
+
+        return concatenate(instr, pad);
     }
 }
