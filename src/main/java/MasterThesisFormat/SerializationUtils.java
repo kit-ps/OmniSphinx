@@ -115,4 +115,19 @@ public final class SerializationUtils {
     public static byte[] slice(byte[] source, int end) {
         return slice(source, 0, end);
     }
+
+    public static byte[] xorByteArrays(byte[] byteArray1, byte[] byteArray2) {
+        int length = Math.max(byteArray1.length, byteArray2.length);
+        byte[] result = new byte[length];
+
+        // XOR der beiden byte[] Arrays
+        for (int i = 0; i < length; i++) {
+            int byte1 = (i < byteArray1.length) ? byteArray1[i] & 0xFF : 0;
+            int byte2 = (i < byteArray2.length) ? byteArray2[i] & 0xFF : 0;
+
+            result[i] = (byte) (byte1 ^ byte2);  // XOR
+        }
+
+        return result;
+    }
 }

@@ -2,11 +2,11 @@ package MasterThesisFormat.header;
 
 import MasterThesisFormat.Params;
 import MasterThesisFormat.SerializationUtils;
+import javasphinx.SphinxException;
 
 import java.util.Arrays;
 
-import static MasterThesisFormat.SerializationUtils.concatenate;
-import static MasterThesisFormat.SerializationUtils.slice;
+import static MasterThesisFormat.SerializationUtils.*;
 
 public final class InstructionEncryptor {
     private InstructionEncryptor() {
@@ -16,7 +16,7 @@ public final class InstructionEncryptor {
      * Erstellt Instruction für den Header mit fixer länger!
      *  totalSize = die gewünschte End größe
      */
-    public static byte[] encryptFixedSize(Params params, byte[][] instructions, byte[][] secrets, int totalSize) throws Exception {
+    public static byte[] encryptFixedSize(Params params, byte[][] instructions, byte[][] secrets, int totalSize, int index) throws Exception {
         int hops = instructions.length;
         if (hops != secrets.length) {
             throw new IllegalArgumentException("instructions/secrets length mismatch");
@@ -59,24 +59,23 @@ public final class InstructionEncryptor {
         return Instr;
     }
 
-    public static byte[] padInstructions(Params params, byte[] instr, byte[] secret,
-                                         int index, int totalSize) {
-        if (instr.length > totalSize) {
-            throw new IllegalArgumentException("instructions exceed desired size");
-        }
 
-        int padLen = totalSize - instr.length;
-        if (padLen == 0) {
-            return instr.clone();
-        }
+    public static byte[] padInstructions(Params params, int padding, int currentLen, byte[] secret,
+                                         int index) throws SphinxException {
+        byte[] phi = {};
+        byte[] zeroes1 = new byte[padding];
+        Arrays.fill(zeroes1, (byte) 0x00);
+        byte[] plain = SerializationUtils.concatenate(phi, zeroes1);
 
-        // Seed für den PRG aus Geheimnis und Hop-Index ableiten
+        byte[] zeroes2 = new byte[currentLen];
+        Arrays.fill(zeroes2, (byte) 0x00);
+        byte[] zeroes2plain = SerializationUtils.concatenate(zeroes2, plain);
         byte[] idx = SerializationUtils.encodeInt(index);
-        byte[] seed = concatenate(secret, idx);
-        byte[] key = params.hash(seed);
-        byte[] stream = params.prg(key);
-        byte[] pad = Arrays.copyOf(stream, padLen);
-
-        return concatenate(instr, pad);
+        secret = xorByteArrays(secret, idx);
+        byte[] prg = params.xorRho(params.hrho(secret), zeroes2plain);
+        phi = Arrays.copyOfRange(prg, currentLen, prg.length);
+        return phi;
     }
+
+
 }
