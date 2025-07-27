@@ -1,6 +1,11 @@
 package MasterThesisFormat.MixFormats.Sphinx;
 
+import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.Params;
+import MasterThesisFormat.crypto.ECCGroup;
+import MasterThesisFormat.header.InstructionEncryptor;
+import MasterThesisFormat.header.InstructionHeader;
+import org.bouncycastle.math.ec.ECPoint;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 
@@ -10,18 +15,31 @@ import java.util.Arrays;
 import static MasterThesisFormat.SerializationUtils.concatenate;
 
 public final class SphinxUtil {
-    public static final int MAX_DEST_SIZE = 127;
 
 
 
-    public static byte[] createForwardPayload(Params params, byte[][] secrets, byte[] destination, byte[] message) throws Exception, IOException {
-        if (!(destination.length > 0 && destination.length < MAX_DEST_SIZE)) {
-            throw new Exception("Destination has to be between 1 and " +
-                    MAX_DEST_SIZE + " bytes long");
+    public static InstructionPacket createSphinxInstructionPacket(Params params, byte[][] nodelist, ECPoint[] keys, byte[] destination, byte[] message) throws Exception {
+
+        int hops = nodelist.length;
+        if (keys.length != hops) {
+            throw new IllegalArgumentException("nodelist/keys length mismatch");
         }
 
-        int nu = secrets.length;
+        ECCGroup group = params.getGroup();
 
+        java.math.BigInteger x = group.genSecret();
+        ECPoint[] alphas = new ECPoint[hops];
+        ECPoint[] sharedSecrets = new ECPoint[hops];
+        byte[][] secrets = new byte[hops][];
+        for (int i = 0; i < hops; i++) {
+            alphas[i] = group.expon(group.getGenerator(), x);
+            sharedSecrets[i] = group.expon(keys[i], x);
+            secrets[i] = params.getAesKey(sharedSecrets[i]);
+            java.math.BigInteger b = params.hb(alphas[i], secrets[i]);
+            x = x.multiply(b).mod(group.getOrder());
+        }
+
+        //create Payload
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
         try {
             packer.packArrayHeader(2);
@@ -49,15 +67,35 @@ public final class SphinxUtil {
 
         byte[] payload = concatenate(encodedDestAndMsg, initialPad, padBytes);
 
-        byte[] mac = params.mu(params.hpi(secrets[nu - 1]), payload);
+        byte[] mac = params.mu(params.hpi(secrets[hops - 1]), payload);
+
         byte[] body = concatenate(mac, payload);
 
-        byte[] delta = params.pi(params.hpi(secrets[nu - 1]), body);
-
-        for (int i = nu - 2; i >= 0; i--) {
+        byte[] delta = params.pi(params.hpi(secrets[hops - 1]), body);
+        for (int i = hops - 2; i >= 0; i--) {
             delta = params.pi(params.hpi(secrets[i]), delta);
         }
 
-        return delta;
+        //create instruction header
+        byte[][] instructions = new byte[hops][];
+        for (int i = 0; i < hops; i++) {
+            instructions[i] = SphinxInstructionPresets.createInstructions(nodelist[i][0]);
+        }
+
+        int instructionLen = 0;
+        for(byte[] instruction: instructions) {
+            instructionLen += instruction.length;
+        }
+
+        int instPadLen = params.getInstructionTotalSize() - instructionLen;
+        byte[] padding = InstructionEncryptor.padInstructions(params, padLen, instructions.length, secrets[0], 0);
+
+        byte[] onion = InstructionEncryptor.encryptWithPadding(params, instructions, secrets, params.getInstructionTotalSize(), padding);
+
+        byte[] finalMac = params.mu(params.hmu(secrets[0]), onion);
+
+        InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
+
+        return new InstructionPacket(header, delta);
     }
 }
