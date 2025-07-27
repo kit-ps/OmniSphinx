@@ -4,6 +4,7 @@ import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.Params;
 import MasterThesisFormat.SerializationUtils;
 import MasterThesisFormat.crypto.ECCGroup;
+import MasterThesisFormat.header.InstructionEncryptor;
 import MasterThesisFormat.header.InstructionHeader;
 import javasphinx.SphinxException;
 import org.bouncycastle.math.ec.ECPoint;
@@ -14,6 +15,8 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import static MasterThesisFormat.SerializationUtils.concatenate;
 
 public class PolySphinxUtil {
 
@@ -35,7 +38,7 @@ public class PolySphinxUtil {
 
     // erste Mix-Node, ist die replicationNode
     // suffixPaths sind die Pfade von der Replication-Node zu jedem Empfänger
-    public static InstructionPacket createPolySphinxPacket(Params params, byte[] replicationNode, ECPoint replicationNodePubKey, List<byte[][]> suffixPaths, byte[] message, byte[] seed, List<ECPoint[]> keys) throws IOException, SphinxException {
+    public static InstructionPacket createPolySphinxPacket(Params params, byte[] replicationNode, ECPoint replicationNodePubKey, List<byte[][]> suffixPaths, byte[] message, byte[] seed, List<ECPoint[]> keys) throws Exception {
         ECCGroup group = params.getGroup();
 
 
@@ -45,7 +48,12 @@ public class PolySphinxUtil {
         byte[] key = params.hash(K);
         byte[] encryptedPayload = params.encrypt(key, payload);
 
-        List<SubHeader> subheaders = buildSubHeaderList(params, seed, suffixPaths, keys);
+        BigInteger r = group.genSecret();
+        ECPoint alpha0 = group.expon(group.getGenerator(), r);
+        ECPoint sharedSecret = group.expon(replicationNodePubKey, r);
+        byte[] sharedSecretKey = params.getAesKey(sharedSecret);
+
+        List<SubHeader> subheaders = buildSubHeaderList(params, seed, suffixPaths, keys, sharedSecretKey);
 
         ByteArrayOutputStream shOut = new ByteArrayOutputStream();
         for (SubHeader sh : subheaders) {
@@ -56,11 +64,6 @@ public class PolySphinxUtil {
             shOut.write(sh.instructions);
         }
         byte[] B = shOut.toByteArray();
-
-        BigInteger r = group.genSecret();
-        ECPoint alpha0 = group.expon(group.getGenerator(), r);
-        ECPoint sharedSecret = group.expon(replicationNodePubKey, r);
-        byte[] sharedSecretKey = params.getAesKey(sharedSecret);
 
         byte kappaLen = (byte) params.keyLength();
         byte p = (byte) subheaders.size();
@@ -95,7 +98,7 @@ public class PolySphinxUtil {
         }
     }
 
-    private static List<SubHeader> buildSubHeaderList(Params params, byte[] seed, List<byte[][]> suffixPaths, List<ECPoint[]> keys) throws IOException, SphinxException {
+    private static List<SubHeader> buildSubHeaderList(Params params, byte[] seed, List<byte[][]> suffixPaths, List<ECPoint[]> keys, byte[] replicationSecret) throws Exception {
         List<SubHeader> subheaders = new ArrayList<>();
         ECCGroup group = params.getGroup();
 
@@ -103,7 +106,7 @@ public class PolySphinxUtil {
             byte[][] nodeList = suffixPaths.get(pathIndex);
             ECPoint[] pubKeys = keys.get(pathIndex);
 
-            SubHeader sh = buildSingleSubHeader(params, group, seed, nodeList, pubKeys, pathIndex, suffixPaths.size());
+            SubHeader sh = buildSingleSubHeader(params, group, seed, nodeList, pubKeys, pathIndex, suffixPaths.size(), replicationSecret);
             if (sh != null) {
                 subheaders.add(sh);
             }
@@ -112,7 +115,7 @@ public class PolySphinxUtil {
         return subheaders;
     }
 
-    private static SubHeader buildSingleSubHeader(Params params, ECCGroup group, byte[] seed, byte[][] nodeList, ECPoint[] pubKeys, int pathIndex, int numberOfPaths) throws IOException, SphinxException {
+    private static SubHeader buildSingleSubHeader(Params params, ECCGroup group, byte[] seed, byte[][] nodeList, ECPoint[] pubKeys, int pathIndex, int numberOfPaths, byte[] replicationSecret) throws Exception {
         BigInteger x = group.genSecret();
 
         ECPoint[] alphas = new ECPoint[nodeList.length];
@@ -140,36 +143,37 @@ public class PolySphinxUtil {
             return null;
         }
 
-        byte[] nextHop = Arrays.copyOf(nodeList[0], params.keyLength());
-
-        byte[] onion = new byte[0];
+        byte[][] instructions = new byte[nodeList.length][];
         for (int i = nodeList.length - 1; i >= 0; i--) {
-            byte[] instr;
-
             //Letzte Mix node = Exit Node
             if (i == nodeList.length - 1) {
                 byte r = (byte) (nodeList.length - 1);
                 byte log2p = (byte) Integer.toBinaryString(numberOfPaths).length();
-                instr = PolySphinxInstructionPresets.createExitInstructions(seed, path, nodeList[i], r, log2p, (byte) params.keyLength());
+                instructions[i] = PolySphinxInstructionPresets.createExitInstructions(seed, path, nodeList[i], r, log2p, (byte) params.keyLength());
             } else {
-                instr = PolySphinxInstructionPresets.createRelayInstructions(nodeList[i + 1], sigmas[i + 1]);
+                instructions[i] = PolySphinxInstructionPresets.createRelayInstructions(nodeList[i + 1], sigmas[i + 1]);
             }
-
-            byte[] plain = new byte[instr.length + onion.length];
-            System.arraycopy(instr, 0, plain, 0, instr.length);
-            System.arraycopy(onion, 0, plain, instr.length, onion.length);
-
-            byte[] enc = params.xorRho(params.hrho(secrets[i]), plain);
-            byte[] gamma = params.mu(params.hmu(secrets[i]), plain);
-
-            onion = new byte[gamma.length + enc.length];
-            System.arraycopy(gamma, 0, onion, 0, gamma.length);
-            System.arraycopy(enc, 0, onion, gamma.length, enc.length);
         }
+
+        int instructionLength = 0;
+        for(byte[] instruction: instructions) {
+            instructionLength += instruction.length;
+        }
+        int toPad = params.getInstructionTotalSize() - instructionLength;
+
+        // compute padding for replication node but do not append
+        byte[] padding = InstructionEncryptor.padInstructions(params, toPad, instructionLength, replicationSecret, pathIndex);
+
+        instructions[instructions.length-1] = concatenate(instructions[instructions.length-1], padding);
+
+        byte[] onion = InstructionEncryptor.encryptFixedSize(params, instructions, secrets,
+                params.getInstructionTotalSize());
+
 
         byte[] finalMac = Arrays.copyOfRange(onion, 0, params.keyLength());
         byte[] finalInstr = Arrays.copyOfRange(onion, params.keyLength(), onion.length);
         byte[] alphaBytes = SerializationUtils.encodeECPoint(alphas[0]);
+        byte[] nextHop = Arrays.copyOf(nodeList[0], params.keyLength());
 
         return new SubHeader(nextHop, sigmas[0], alphaBytes, finalInstr, finalMac);
     }

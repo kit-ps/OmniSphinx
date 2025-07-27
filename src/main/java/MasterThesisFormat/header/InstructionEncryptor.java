@@ -16,7 +16,7 @@ public final class InstructionEncryptor {
      * Erstellt Instruction für den Header mit fixer länger!
      *  totalSize = die gewünschte End größe
      */
-    public static byte[] encryptFixedSize(Params params, byte[][] instructions, byte[][] secrets, int totalSize, int index) throws Exception {
+    public static byte[] encryptFixedSize(Params params, byte[][] instructions, byte[][] secrets, int totalSize) throws Exception {
         int hops = instructions.length;
         if (hops != secrets.length) {
             throw new IllegalArgumentException("instructions/secrets length mismatch");

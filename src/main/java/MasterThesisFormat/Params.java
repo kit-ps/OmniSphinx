@@ -27,6 +27,7 @@ public class Params {
     private final int bodyLength;
     private final int headerLength;
     private final ECCGroup group;
+    private final int instructionTotalSize = 512;
 
     public Params(int keyLength, int bodyLength, int headerLength, ECCGroup group) {
         this.keyLength = keyLength;
@@ -78,6 +79,10 @@ public class Params {
         engine.processBytes(message, 0, message.length, ciphertext, 0);
 
         return ciphertext;
+    }
+
+    public int getInstructionTotalSize() {
+        return instructionTotalSize;
     }
 
     public byte[] aesCtr(byte[] key, byte[] message) {
