@@ -70,8 +70,16 @@ public class PolySphinxUtil {
         byte tauPost = subheaders.isEmpty() ? 0 : (byte) subheaders.get(0).instructions.length;
         byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, (byte) (2*kappaLen), p, tauPost, B);
 
-        byte[] encInstr = params.encrypt(sharedSecretKey, instructions);
-        byte[] mac = params.mac(params.hmu(sharedSecretKey), instructions);
+        if (instructions.length > params.getInstructionTotalSize()) {
+            throw new IllegalArgumentException("Replication instructions exceed allowed size");
+        }
+
+        int padLen = params.getInstructionTotalSize() - instructions.length;
+        byte[] padding = InstructionEncryptor.padInstructions(params, padLen, instructions.length, sharedSecretKey, 0);
+
+        byte[] encInstr = params.xorRho(params.hrho(sharedSecretKey), instructions);
+        encInstr = concatenate(encInstr, padding);
+        byte[] mac = params.mac(params.hmu(sharedSecretKey), encInstr);
 
         InstructionHeader header = new InstructionHeader(alpha0, encInstr, mac);
 
