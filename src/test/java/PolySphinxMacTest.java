@@ -73,6 +73,13 @@ public class PolySphinxMacTest {
         // verify MAC at replication node and process packet
         packet = processAndCheck(packet, replicationPriv);
 
+        InstructionHeader header = packet.getHeader();
+
+        ECPoint alpha = header.getAlpha();
+        ECPoint shared = params.getGroup().expon(alpha, replicationPriv);
+        byte[] sharedReplicationKey = params.getAesKey(shared);
+
+
         // verify MACs for each relay node on the path
         for (BigInteger priv : pathPrivs) {
             packet = processAndCheck(packet, priv);

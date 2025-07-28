@@ -6,11 +6,9 @@ import MasterThesisFormat.SerializationUtils;
 import MasterThesisFormat.crypto.ECCGroup;
 import MasterThesisFormat.header.InstructionEncryptor;
 import MasterThesisFormat.header.InstructionHeader;
-import javasphinx.SphinxException;
 import org.bouncycastle.math.ec.ECPoint;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,22 +18,6 @@ import static MasterThesisFormat.SerializationUtils.concatenate;
 import static MasterThesisFormat.SerializationUtils.slice;
 
 public class PolySphinxUtil {
-
-    private static class SubHeader {
-        public final byte[] nextHop;
-        public final byte[] omega;
-        public final byte[] alpha;
-        public final byte[] instructions;
-        public final byte[] MAC;
-
-        public SubHeader(byte[] nextHop, byte[] omega, byte[] alpha, byte[] instructions, byte[] MAC) {
-            this.nextHop = nextHop;
-            this.omega = omega;
-            this.alpha = alpha;
-            this.instructions = instructions;
-            this.MAC = MAC;
-        }
-    }
 
     // erste Mix-Node, ist die replicationNode
     // suffixPaths sind die Pfade von der Replication-Node zu jedem Empfänger
