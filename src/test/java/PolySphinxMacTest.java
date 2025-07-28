@@ -1,13 +1,17 @@
+import MasterThesisFormat.MixFormats.PolySphinx.SubHeader;
 import MasterThesisFormat.Params;
 import MasterThesisFormat.ClientUtil;
 import MasterThesisFormat.MixFormats.PolySphinx.PolySphinxUtil;
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
+import MasterThesisFormat.header.InstructionEncryptor;
 import MasterThesisFormat.header.InstructionHeader;
 import MasterThesisFormat.SerializationUtils;
 import MasterThesisFormat.VM.VM;
 import MasterThesisFormat.VM.VMContext;
 import MasterThesisFormat.VM.VMOutput;
+import MasterThesisFormat.instruction.Instruction;
 import MasterThesisFormat.instruction.InstructionRegister;
+import kotlin.Pair;
 import org.bouncycastle.math.ec.ECPoint;
 import org.junit.Before;
 import org.junit.Test;
@@ -17,6 +21,7 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 
+import static MasterThesisFormat.SerializationUtils.concatenate;
 import static org.junit.Assert.assertArrayEquals;
 
 public class PolySphinxMacTest {
@@ -68,64 +73,55 @@ public class PolySphinxMacTest {
 
     @Test
     public void testHeaderMac() throws Exception {
-        InstructionPacket packet = PolySphinxUtil.createPolySphinxPacket(params, replicationNode, replicationPub, suffixPaths, message, seed, keys);
+        Pair<InstructionPacket, List<SubHeader>> pair = PolySphinxUtil.createPolySphinxPacketForTests(params, replicationNode, replicationPub, suffixPaths, message, seed, keys);
 
-        // verify MAC at replication node and process packet
-        packet = processAndCheck(packet, replicationPriv);
+        InstructionPacket packet = pair.component1();
+        List<SubHeader> subHeaders = pair.component2();
+
 
         InstructionHeader header = packet.getHeader();
 
         ECPoint alpha = header.getAlpha();
         ECPoint shared = params.getGroup().expon(alpha, replicationPriv);
-        byte[] sharedReplicationKey = params.getAesKey(shared);
+        byte[] replicationSecret = params.getAesKey(shared);
 
 
         // verify MACs for each relay node on the path
-        for (BigInteger priv : pathPrivs) {
-            packet = processAndCheck(packet, priv);
+        for (int i = 0; i < subHeaders.size(); i++) {
+            SubHeader subheader = subHeaders.get(i);
+
+            int instructionLength = subheader.instructions.length;
+            int toPad = params.getInstructionTotalSize() - instructionLength;
+
+            byte[] padding = InstructionEncryptor.padInstructions(params, toPad, instructionLength, replicationSecret, i);
+
+            subheader.instructions = concatenate(subheader.instructions, padding);
+
+            header = new InstructionHeader(SerializationUtils.decodeECPoint(subheader.getAlpha()), subheader.getInstructions(), subheader.getMAC());
+            for(int j = 0; j < pathPrivs.length; j++) {
+                header = processAndCheck(header, pathPrivs[j]);
+            }
         }
     }
 
-    private InstructionPacket processAndCheck(InstructionPacket packet, BigInteger privKey) throws Exception {
-        InstructionHeader header = packet.getHeader();
+    private InstructionHeader processAndCheck(InstructionHeader header, BigInteger privKey) throws Exception {
+
 
         ECPoint alpha = header.getAlpha();
         ECPoint shared = params.getGroup().expon(alpha, privKey);
         byte[] sharedKey = params.getAesKey(shared);
 
         byte[] encInstr = header.getInstructions();
-        byte[] plainInstr;
-        if (encInstr.length == params.getInstructionTotalSize() - params.keyLength()) {
-            plainInstr = params.xorRho(params.hrho(sharedKey), encInstr);
-        } else {
-            plainInstr = params.decrypt(sharedKey, encInstr);
-        }
+        byte[] plainInstr = params.xorRho(params.hrho(sharedKey), encInstr);
 
-        byte[] expectedMac = params.mac(params.hmu(sharedKey), plainInstr);
+        byte[] expectedMac = params.mac(params.hmu(sharedKey), encInstr);
         assertArrayEquals(expectedMac, header.getMAC());
 
         BigInteger b = params.hb(alpha, sharedKey);
         ECPoint nextAlpha = params.getGroup().expon(alpha, b);
 
-        java.util.HashMap<Byte, byte[]> reg = new java.util.HashMap<>();
-        reg.put(InstructionRegister.NEXT_ALPHA.getCode(), nextAlpha.getEncoded(true));
-        reg.put(InstructionRegister.INSTRUCTIONS.getCode(), plainInstr);
-        reg.put(InstructionRegister.MAC.getCode(), header.getMAC());
-        reg.put(InstructionRegister.PAYLOAD.getCode(), packet.getPayload());
+        byte[] nextMAC = {};
 
-        VMContext ctx = new VMContext(reg);
-        VM vm = new VM(privKey, params);
-        java.util.List<VMOutput> outputs = vm.interpret(ctx);
-        if (outputs.isEmpty()) {
-            return null;
-        }
-
-        VMOutput out = outputs.get(0);
-        InstructionHeader nextHeader = new InstructionHeader(
-                SerializationUtils.decodeECPoint(out.getNextAlpha()),
-                out.getInstructions(),
-                out.getMAC()
-        );
-        return new InstructionPacket(nextHeader, out.getOutgoingPayload());
+        return new InstructionHeader(nextAlpha, plainInstr, nextMAC);
     }
 }

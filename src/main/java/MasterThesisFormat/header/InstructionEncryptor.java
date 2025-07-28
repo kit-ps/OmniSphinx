@@ -130,8 +130,6 @@ public final class InstructionEncryptor {
         return Instr;
     }
 
-
-
     public static byte[] padInstructions(Params params, int padding, int currentLen, byte[] secret,
                                          int index) throws SphinxException {
         byte[] phi = {};

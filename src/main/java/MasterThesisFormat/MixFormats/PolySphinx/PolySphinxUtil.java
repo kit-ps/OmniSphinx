@@ -6,6 +6,7 @@ import MasterThesisFormat.SerializationUtils;
 import MasterThesisFormat.crypto.ECCGroup;
 import MasterThesisFormat.header.InstructionEncryptor;
 import MasterThesisFormat.header.InstructionHeader;
+import kotlin.Pair;
 import org.bouncycastle.math.ec.ECPoint;
 
 import java.io.ByteArrayOutputStream;
@@ -166,4 +167,52 @@ public class PolySphinxUtil {
         return new SubHeader(nextHop, sigmas[0], alphaBytes, encInstructions, finalMac);
     }
 
+    public static Pair<InstructionPacket, List<SubHeader>> createPolySphinxPacketForTests(Params params, byte[] replicationNode, ECPoint replicationNodePubKey, List<byte[][]> suffixPaths, byte[] message, byte[] seed, List<ECPoint[]> keys) throws Exception {
+        ECCGroup group = params.getGroup();
+
+
+
+        byte[] payload = message.clone();
+        byte[] K = params.hash(seed);
+        byte[] key = params.hash(K);
+        byte[] encryptedPayload = params.encrypt(key, payload);
+
+        BigInteger r = group.genSecret();
+        ECPoint alpha0 = group.expon(group.getGenerator(), r);
+        ECPoint sharedSecret = group.expon(replicationNodePubKey, r);
+        byte[] sharedSecretKey = params.getAesKey(sharedSecret);
+
+        List<SubHeader> subheaders = buildSubHeaderList(params, seed, suffixPaths, keys, sharedSecretKey);
+
+        ByteArrayOutputStream shOut = new ByteArrayOutputStream();
+        for (SubHeader sh : subheaders) {
+            shOut.write(sh.nextHop);
+            shOut.write(sh.omega);
+            shOut.write(sh.alpha);
+            shOut.write(sh.MAC);
+            shOut.write(sh.instructions);
+        }
+        byte[] B = shOut.toByteArray();
+
+        byte kappaLen = (byte) params.keyLength();
+        byte p = (byte) subheaders.size();
+        byte tauPost = subheaders.isEmpty() ? 0 : (byte) subheaders.get(0).instructions.length;
+        byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, (byte) (2*kappaLen), p, tauPost, B);
+
+        if (instructions.length > params.getInstructionTotalSize()) {
+            throw new IllegalArgumentException("Replication instructions exceed allowed size");
+        }
+
+        int padLen = params.getInstructionTotalSize() - instructions.length;
+        byte[] padding = InstructionEncryptor.padInstructions(params, padLen, instructions.length, sharedSecretKey, 0);
+
+        byte[] encInstr = params.xorRho(params.hrho(sharedSecretKey), instructions);
+        encInstr = concatenate(encInstr, padding);
+        byte[] mac = params.mac(params.hmu(sharedSecretKey), encInstr);
+
+        InstructionHeader header = new InstructionHeader(alpha0, encInstr, mac);
+
+        InstructionPacket packet = new InstructionPacket(header, encryptedPayload);
+        return new Pair<>(packet, subheaders);
+    }
 }
