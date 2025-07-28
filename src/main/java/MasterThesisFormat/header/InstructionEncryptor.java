@@ -15,6 +15,7 @@ public final class InstructionEncryptor {
     /**
      * Erstellt Instruction für den Header mit fixer länger!
      *  totalSize = die gewünschte End größe
+     *  Instructions sind schon gepaddet und sind insgesamt der Größe totalSize
      */
     public static byte[] encryptFixedSize(Params params, byte[][] instructions, byte[][] secrets, int totalSize) throws Exception {
         int hops = instructions.length;
@@ -61,6 +62,7 @@ public final class InstructionEncryptor {
 
     /**
      * Erstellt den Instruktionsheader, der zusätzlich zu den Instruktionen noch ein Padding besitzt um ihn auf die richtige länge zu padden
+     * Das heißt hier sind die Instructionen nicht auf die richtige länge gepaddet
      */
     public static byte[] encryptWithPadding(Params params, byte[][] instructions, byte[][] secrets, int totalSize, byte[] padding) throws Exception {
         int hops = instructions.length;

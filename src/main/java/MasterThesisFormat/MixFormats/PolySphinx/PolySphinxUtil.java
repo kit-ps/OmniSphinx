@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static MasterThesisFormat.SerializationUtils.concatenate;
+import static MasterThesisFormat.SerializationUtils.slice;
 
 public class PolySphinxUtil {
 
@@ -174,12 +175,13 @@ public class PolySphinxUtil {
 
         byte[] onion = InstructionEncryptor.encryptWithPadding(params, instructions, secrets, params.getInstructionTotalSize(), padding);
 
+        byte[] encInstructions = slice(onion, instructionLength);
 
-        byte[] finalMac = params.mu(params.hmu(secrets[0]), onion);
+        byte[] finalMac = params.mu(params.hmu(secrets[0]), concatenate(encInstructions, padding));
         byte[] alphaBytes = SerializationUtils.encodeECPoint(alphas[0]);
         byte[] nextHop = Arrays.copyOf(nodeList[0], params.keyLength());
 
-        return new SubHeader(nextHop, sigmas[0], alphaBytes, onion, finalMac);
+        return new SubHeader(nextHop, sigmas[0], alphaBytes, encInstructions, finalMac);
     }
 
 }
