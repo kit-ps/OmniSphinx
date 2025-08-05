@@ -14,3 +14,9 @@ layout:
 The instructions are interpreted by each hop to process the enclosed
 packet, allowing different mix formats (e.g. Sphinx or PolySphinx) to be
 emulated
+
+Encrypted instructions follow the structure:
+
+```
+[len(instructions) | instructions for this hop | MAC | remaining instructions]
+```

@@ -24,6 +24,13 @@ public class SphinxInstructionPresets {
 
         instr.write(Instruction.forward(nextHop));
 
-        return instr.toByteArray();
+        byte[] raw = instr.toByteArray();
+        if (raw.length > 255) {
+            throw new IOException("Instruction block too large");
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write((byte) raw.length);
+        out.write(raw);
+        return out.toByteArray();
     }
 }
