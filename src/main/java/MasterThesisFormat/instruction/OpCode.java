@@ -22,7 +22,8 @@ public enum OpCode {
     MIX_POOL((byte) 0x13),
     MIX_POISSON((byte) 0x14),
     LOAD((byte) 0x15),
-    ADD((byte) 0x16);
+    ADD((byte) 0x16),
+    IF((byte) 0x17);
 
 
     private final byte code;

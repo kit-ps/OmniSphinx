@@ -35,8 +35,8 @@ public class Instruction {
      * @param destReg Zielregister für den Hash-Wert
      * @return Instruction für die Hash-Berechnung
      */
-    public static byte[] hash(byte inputReg, byte destReg) {
-        return new byte[]{OpCode.HASH.getCode(), inputReg, destReg};
+    public static byte[] hash(byte inputReg, byte salt, byte destReg) {
+        return new byte[]{OpCode.HASH.getCode(), inputReg, salt, destReg};
     }
 
 
@@ -141,16 +141,6 @@ public class Instruction {
         return new byte[]{OpCode.FORWARD.getCode(), idReg};
     }
 
-    /**
-     * Extrahiert und analysiert Routing-Informationen aus dem entschlüsselten Beta.
-     * Parst das MessagePack-Format und bestimmt den nächsten Hop.
-     * @param sourceReg Register mit den entschlüsselten Routing-Daten
-     * @param destReg Zielregister für die extrahierten Routing-Informationen
-     * @return Instruction für die Routing-Analyse
-     */
-    public static byte[] findNext(byte sourceReg, byte destReg) {
-        return new byte[] {OpCode.FIND_NEXT.getCode() ,sourceReg, destReg };
-    }
 
     public static byte[] concate(byte reg1, byte reg2, byte destReg) {
         return new byte[] {OpCode.CONCATE.getCode() ,reg1, reg2, destReg };
