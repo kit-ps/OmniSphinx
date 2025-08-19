@@ -68,6 +68,10 @@ public class ProgramInstruction {
         return new ProgramInstruction(OpCode.XOR, destReg, src1, src2, null, null, null, null, null);
     }
 
+    public static ProgramInstruction add(Register src1, Register src2, Register destReg) {
+        return new ProgramInstruction(OpCode.ADD, destReg, src1, src2, null, null, null, null, null);
+    }
+
     public static ProgramInstruction decrypt(Register srcKey, Register srcInput, Register destReg) {
         return new ProgramInstruction(OpCode.DECRYPT, destReg, srcKey, srcInput, null, null, null, null, null);
     }

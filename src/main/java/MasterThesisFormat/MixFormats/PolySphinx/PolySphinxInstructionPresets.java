@@ -28,10 +28,12 @@ public class PolySphinxInstructionPresets {
 
     public static byte[] createRelayInstructions( byte[] nextHop, byte[] sigma) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
+
         instr.write(Instruction.load(sigma, REG_SIGMA));
         instr.write(Instruction.encrypt(REG_SIGMA, REG_PAYLOAD, REG_PAYLOAD));
         instr.write(Instruction.load(nextHop, REG_NEXT_HOP));
         instr.write(Instruction.forward(REG_NEXT_HOP));
+
         byte[] raw = instr.toByteArray();
         if (raw.length > 255) {
             throw new IOException("Instruction block too large");
@@ -94,12 +96,11 @@ public class PolySphinxInstructionPresets {
         //Schleifen-Block:
         instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_NEXT_HOP));    // 1
         instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_KEY));   // 2
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, twoTimesKappaLen, REG_ALPHA1));  // 3
-        instr.write(Instruction.concate(REG_ALPHA1, REG_ALPHA2, REG_ALPHA));      // 4
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_GAMMA));   // 5
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, tauPost, REG_BETA));     // 6
-        instr.write(Instruction.encrypt(REG_KEY, REG_PAYLOAD, REG_PAYLOAD));    // 7
-        instr.write(Instruction.forward(REG_PATH));                  //8
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, twoTimesKappaLen, REG_ALPHA));  // 3
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_GAMMA));   // 4
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, tauPost, REG_BETA));     // 5
+        instr.write(Instruction.encrypt(REG_KEY, REG_PAYLOAD, REG_PAYLOAD));    // 6
+        instr.write(Instruction.forward(REG_NEXT_HOP));                  //7
 
         byte[] raw = instr.toByteArray();
         if (raw.length > 255) {
