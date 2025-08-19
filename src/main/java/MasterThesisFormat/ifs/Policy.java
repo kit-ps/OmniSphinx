@@ -61,15 +61,11 @@ public class Policy {
      */
     public static Policy defaultPolicy() {
         return new Builder()
-                .secret(Register.R_SIGMA)
                 .secret(Register.R_SHARED_SECRET)
-                .secret(Register.R_MAC_KEY)
-                .secret(Register.R_PRG_SEED)
-                .publicOutput(Register.R_NEXTHOP_OUT)
-                .publicOutput(Register.R_ALPHA_OUT)
-                .publicOutput(Register.R_BETA_OUT)
-                .publicOutput(Register.R_GAMMA_OUT)
-                .publicOutput(Register.R_PAYLOAD_OUT)
+                .publicOutput(Register.R_ALPHA)
+                .publicOutput(Register.R_BETA)
+                .publicOutput(Register.R_GAMMA)
+                .publicOutput(Register.R_PAYLOAD)
                 .build();
     }
 }

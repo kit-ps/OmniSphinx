@@ -35,8 +35,8 @@ public class Instruction {
      * @param destReg Zielregister für den Hash-Wert
      * @return Instruction für die Hash-Berechnung
      */
-    public static byte[] hash(byte inputReg, byte salt, byte destReg) {
-        return new byte[]{OpCode.HASH.getCode(), inputReg, salt, destReg};
+    public static byte[] hash(byte inputReg, byte destReg) {
+        return new byte[]{OpCode.HASH.getCode(), inputReg,  destReg};
     }
 
 
@@ -144,6 +144,10 @@ public class Instruction {
 
     public static byte[] concate(byte reg1, byte reg2, byte destReg) {
         return new byte[] {OpCode.CONCATE.getCode() ,reg1, reg2, destReg };
+    }
+
+    public static byte[] concateWithByteValue(byte reg1, byte value, byte destReg) {
+        return new byte[] {OpCode.CONCATE_WITH_BYTE_VALUE.getCode() ,reg1, value, destReg };
     }
 
     public static byte[] forLoop(byte times, byte instrCount) {

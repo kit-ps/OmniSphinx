@@ -79,7 +79,8 @@ public final class SphinxUtil {
         //create instruction header
         byte[][] instructions = new byte[hops][];
         for (int i = 0; i < hops; i++) {
-            instructions[i] = SphinxInstructionPresets.createInstructions(nodelist[i][0]);
+            byte salt = 0x00;
+            instructions[i] = SphinxInstructionPresets.createInstructions(nodelist[i], salt);
         }
 
         int instructionLen = 0;

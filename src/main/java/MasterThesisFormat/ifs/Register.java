@@ -1,17 +1,11 @@
 package MasterThesisFormat.ifs;
 
 public enum Register {
-    R_SIGMA,
     R_SHARED_SECRET,
-    R_MAC_KEY,
-    R_PRG_SEED,
-    R_NEXTHOP_OUT,
-    R_ALPHA_OUT,
-    R_BETA_OUT,
-    R_GAMMA_OUT,
-    R_PAYLOAD_OUT,
-    R_PAYLOAD_IN,
-    R_BETA_IN,
+    R_ALPHA,
+    R_BETA,
+    R_GAMMA,
+    R_PAYLOAD,
     R0,
     R1,
     R2,

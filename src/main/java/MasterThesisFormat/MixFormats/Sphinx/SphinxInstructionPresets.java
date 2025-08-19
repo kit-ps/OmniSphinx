@@ -11,18 +11,20 @@ public class SphinxInstructionPresets {
     private static final byte REG_PAYLOAD     = 0x00;
     private static final byte REG_SHARED_SECRET     = 0x01;
     private static final byte REG_HASH_PAYLOAD     = 0x03;
+    private static final byte REG_NEXT_HOP     = 0x03;
 
-    public static byte[] createInstructions(byte nextHop) throws IOException {
+    public static byte[] createInstructions(byte[] nextHop, byte salt) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
 
         //Payload entschlüsseln
+        instr.write(Instruction.concateWithByteValue(REG_SHARED_SECRET, salt, REG_SHARED_SECRET));
         instr.write(Instruction.hash(REG_SHARED_SECRET, REG_HASH_PAYLOAD));
         instr.write(Instruction.decrypt(REG_HASH_PAYLOAD, REG_PAYLOAD,  REG_PAYLOAD));
 
         //Mixen
 
-
-        instr.write(Instruction.forward(nextHop));
+        instr.write(Instruction.load(nextHop, REG_NEXT_HOP));
+        instr.write(Instruction.forward(REG_NEXT_HOP));
 
         byte[] raw = instr.toByteArray();
         if (raw.length > 255) {

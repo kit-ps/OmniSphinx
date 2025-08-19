@@ -86,7 +86,7 @@ public class VMIntegrationTest {
         byte kappa = (byte) sphinxHeader.getGamma().length;
 
         // Generate VM instructions
-        byte[] instructions = SphinxInstructionPresets.createInstructions(nodesRouting[0][0]);
+        //byte[] instructions = SphinxInstructionPresets.createInstructions(nodesRouting[0][0]);
         // Run VM
         BigInteger secret = pkiPriv.get(useNodes[0]).priv(); // Private key of first node
         //SphinxNode node = new SphinxNode(params, new RandomRoutingStrategy(), secret);
