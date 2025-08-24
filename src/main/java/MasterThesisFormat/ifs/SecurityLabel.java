@@ -2,6 +2,7 @@ package MasterThesisFormat.ifs;
 
 public enum SecurityLabel {
     PUBLIC,
+    PUBLIC_ALLOWED,
     UNKNOWN,
     SECRET;
 
