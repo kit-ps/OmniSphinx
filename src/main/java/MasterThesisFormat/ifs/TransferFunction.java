@@ -23,6 +23,7 @@ public class TransferFunction {
         rules.put(OpCode.ENCRYPT, this::encrypt);
         rules.put(OpCode.DECRYPT, this::decrypt);
         rules.put(OpCode.MAC, this::mac);
+        rules.put(OpCode.FOR, this::forLoop);
     }
 
     public void apply(ProgramInstruction ins, TaintState state, List<Violation> violations, Policy policy) {
@@ -67,4 +68,68 @@ public class TransferFunction {
             v.add(new Violation(type, src, dest, ids));
         }
     }
+
+    private void forLoop(ProgramInstruction ins, TaintState state, List<Violation> v, Policy policy) {
+        Register countReg = ins.getSrc1();
+        List<ProgramInstruction> body = ins.getThenBranch();
+        if (countReg == null || body.isEmpty()) {
+            return;
+        }
+
+        Taint oldPc = state.getPc().copy();
+        Taint count = state.get(countReg);
+        Taint loopPc = oldPc.copy();
+        loopPc.label = SecurityLabel.join(loopPc.label, count.label);
+        loopPc.controlSecrets.addAll(count.dataSecrets);
+        loopPc.controlSecrets.addAll(count.controlSecrets);
+        loopPc.controlInstrs.addAll(count.controlInstrs);
+        loopPc.controlInstrs.add(ins.getId());
+
+        TaintState loopState = state.copy();
+        loopState.setPc(loopPc);
+
+        final int MAX_ITERS = 5;
+        int iter = 0;
+        while (true) {
+            TaintState before = loopState.copy();
+            for (ProgramInstruction b : body) {
+                apply(b, loopState, v, policy);
+            }
+            if (taintStateEquals(before, loopState)) {
+                break;
+            }
+            iter++;
+            if (iter >= MAX_ITERS) {
+                for (Register r : Register.values()) {
+                    Taint t = loopState.get(r);
+                    t.label = SecurityLabel.SECRET;
+                }
+                loopState.setPc(new Taint(SecurityLabel.SECRET));
+                break;
+            }
+        }
+
+        for (Register r : Register.values()) {
+            state.set(r, loopState.get(r));
+        }
+        state.setPc(oldPc);
+    }
+
+    private boolean taintStateEquals(TaintState a, TaintState b) {
+        for (Register r : Register.values()) {
+            Taint ta = a.get(r);
+            Taint tb = b.get(r);
+            if (ta.label != tb.label ||
+                    !ta.dataSecrets.equals(tb.dataSecrets) ||
+                    !ta.controlSecrets.equals(tb.controlSecrets)) {
+                return false;
+            }
+        }
+        Taint apc = a.getPc();
+        Taint bpc = b.getPc();
+        return apc.label == bpc.label &&
+                apc.dataSecrets.equals(bpc.dataSecrets) &&
+                apc.controlSecrets.equals(bpc.controlSecrets);
+    }
+
 }

@@ -124,6 +124,11 @@ public class ProgramInstruction {
         return src1;
     }
 
+    public List<ProgramInstruction> getBody() {
+        return thenBranch;
+    }
+
+
     public Register getSrc2() {
         return src2;
     }

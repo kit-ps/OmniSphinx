@@ -34,7 +34,6 @@ public class Analyzer {
             counter++;
             switch (ins.getOpCode()) {
                 case IF -> analyzeIf(ins, state, violations, counter);
-                case FOR -> analyzeFor(ins, state, violations, counter);
                 default -> tf.apply(ins, state, violations, policy);
             }
         }
@@ -59,12 +58,5 @@ public class Analyzer {
         analyzeSeq(ins.getElseBranch(), elseState, violations, counter);
 
         state.merge(thenState, elseState);
-    }
-
-    private void analyzeFor(ProgramInstruction ins, TaintState state,
-                            List<Violation> violations, int counter) {
-        for (int i = 0; i < ins.getInput1(); i++) {
-            analyzeSeq(ins.getThenBranch(), state, violations, counter);
-        }
     }
 }
