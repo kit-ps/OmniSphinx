@@ -1,5 +1,4 @@
 import MasterThesisFormat.ifs.*;
-import MasterThesisFormat.instruction.Instruction;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -58,17 +57,18 @@ public class InformationSecurityTest {
         program.add(ProgramInstruction.hash(Register.R2, Register.R0)); //R0 = REG_SIGMNA
         program.add(ProgramInstruction.concate(Register.R5, Register.R0, Register.R5)); // R5 = REG_KEYS
 
-        program.add(ProgramInstruction.forLoop((byte) 0x01, (byte) 5));
-        program.add(ProgramInstruction.StoreBytes(Register.R3, (byte) 1, Register.R6)); //R6 = REG_P_I_J
+        List<ProgramInstruction> loop1 = new ArrayList<>();
+        loop1.add(ProgramInstruction.StoreBytes(Register.R3, (byte) 1, Register.R6)); //R6 = REG_P_I_J
+        loop1.add(ProgramInstruction.add(Register.R0, Register.R6, Register.R0));
+        loop1.add(ProgramInstruction.hash(Register.R0, Register.R0));
+        loop1.add(ProgramInstruction.hash(Register.R0, Register.R0));
+        loop1.add(ProgramInstruction.concate(Register.R0, Register.R5, Register.R5));
+        program.add(ProgramInstruction.forLoop((byte) 0x01, loop1));
 
-        program.add(ProgramInstruction.add(Register.R0, Register.R6, Register.R0));
-        program.add(ProgramInstruction.hash(Register.R0, Register.R0));
-        program.add(ProgramInstruction.hash(Register.R0, Register.R0));
-        program.add(ProgramInstruction.concate(Register.R0, Register.R5, Register.R5));
-
-        program.add(ProgramInstruction.forLoop((byte) 0x02, (byte) 2));
-        program.add(ProgramInstruction.StoreBytes(Register.R5, (byte) 1, Register.R0));
-        program.add(ProgramInstruction.decrypt(Register.R0, Register.R_PAYLOAD, Register.R_PAYLOAD));
+        List<ProgramInstruction> loop2 = new ArrayList<>();
+        loop2.add(ProgramInstruction.StoreBytes(Register.R5, (byte) 1, Register.R0));
+        loop2.add(ProgramInstruction.decrypt(Register.R0, Register.R_PAYLOAD, Register.R_PAYLOAD));
+        program.add(ProgramInstruction.forLoop((byte) 0x02, loop2));
 
         program.add(ProgramInstruction.forward(Register.R4));
 
@@ -84,14 +84,15 @@ public class InformationSecurityTest {
 
         program.add(ProgramInstruction.load((byte) 0x10, Register.R7)); //R7 = REG_SUBHEADER
 
-        program.add(ProgramInstruction.forLoop((byte) 0x01, (byte) 8));
-        program.add(ProgramInstruction.StoreBytes(Register.R7, (byte) 1, Register.R1)); //R1 = REG_NEXT_HOP
-        program.add(ProgramInstruction.StoreBytes(Register.R7, (byte) 1, Register.R8)); //R8 = REG_KEY
-        program.add(ProgramInstruction.StoreBytes(Register.R7, (byte) 2, Register.R9)); //R9 = REG_ALPHA
-        program.add(ProgramInstruction.StoreBytes(Register.R7, (byte) 1, Register.R12)); //REG_GAMMA
-        program.add(ProgramInstruction.StoreBytes(Register.R7, (byte) 1, Register.R13)); //REG_BETA
-        program.add(ProgramInstruction.encrypt(Register.R8, Register.R_PAYLOAD, Register.R_PAYLOAD));
-        program.add(ProgramInstruction.forward(Register.R1));
+        List<ProgramInstruction> loop = new ArrayList<>();
+        loop.add(ProgramInstruction.StoreBytes(Register.R7, (byte) 1, Register.R1)); //R1 = REG_NEXT_HOP
+        loop.add(ProgramInstruction.StoreBytes(Register.R7, (byte) 1, Register.R8)); //R8 = REG_KEY
+        loop.add(ProgramInstruction.StoreBytes(Register.R7, (byte) 2, Register.R9)); //R9 = REG_ALPHA
+        loop.add(ProgramInstruction.StoreBytes(Register.R7, (byte) 1, Register.R12)); //REG_GAMMA
+        loop.add(ProgramInstruction.StoreBytes(Register.R7, (byte) 1, Register.R13)); //REG_BETA
+        loop.add(ProgramInstruction.encrypt(Register.R8, Register.R_PAYLOAD, Register.R_PAYLOAD));
+        loop.add(ProgramInstruction.forward(Register.R1));
+        program.add(ProgramInstruction.forLoop((byte) 0x01, loop));
 
         Analyzer analyzer = new Analyzer(Policy.defaultPolicy());
         Report report = analyzer.analyze(program);

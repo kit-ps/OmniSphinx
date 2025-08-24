@@ -88,12 +88,12 @@ public class ProgramInstruction {
         return new ProgramInstruction(OpCode.CONCATE, destReg, src1, src2, null, null, null, null, null);
     }
 
-    public static ProgramInstruction forLoop(byte times, byte instrCount) {
-        return new ProgramInstruction(OpCode.CONCATE, null, null, null, times, instrCount, null, null, null);
+    public static ProgramInstruction forLoop(byte times, List<ProgramInstruction> instructions) {
+        return new ProgramInstruction(OpCode.FOR, null, null, null, times, null, null, instructions, null);
     }
 
     public static ProgramInstruction concateWithByteValue(Register src1, byte value, Register destReg) {
-        return new ProgramInstruction(OpCode.CONCATE, destReg, src1, null, value, null, null, null, null);
+        return new ProgramInstruction(OpCode.CONCATE_WITH_BYTE_VALUE, destReg, src1, null, value, null, null, null, null);
     }
 
     public static ProgramInstruction load(byte value, Register dest) {
