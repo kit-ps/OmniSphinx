@@ -49,6 +49,10 @@ public class MixNode {
         startListener(port);
     }
 
+    public byte[] getId() {
+        return id.clone();
+    }
+
     public void startListener(int port) throws IOException {
         server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/", new PacketHandler());
@@ -148,7 +152,7 @@ public class MixNode {
         return packets;
     }
 
-    private void sendToNextNode(byte[] nextHop, InstructionPacket packet) {
+    protected void sendToNextNode(byte[] nextHop, InstructionPacket packet) {
         String url = new String(nextHop, StandardCharsets.UTF_8);
         byte[] data;
         try {
