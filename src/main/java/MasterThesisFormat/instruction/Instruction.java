@@ -18,6 +18,10 @@ public class Instruction {
         return new byte[]{OpCode.STORE_BYTES.getCode(), source,  length, destReg};
     }
 
+    public static byte[] storeMultipleBytes(byte source,  byte lengthReg, byte destReg) {
+        return new byte[]{OpCode.STORE_MULTIPLE_BYTES.getCode(), source,  lengthReg, destReg};
+    }
+
     /**
      * Berechnet ein gemeinsames Geheimnis (Shared Secret) aus einem öffentlichen Schlüssel.
      * Verwendet den privaten Schlüssel der Node und den übergebenen öffentlichen Schlüssel.
@@ -45,11 +49,11 @@ public class Instruction {
      * Berechnet einen MAC (Message Authentication Code) über Daten.
      * @param keyReg Register mit dem MAC-Schlüssel
      * @param dataReg Register mit den zu authentifizierenden Daten
-     * @param destReg Zielregister für den MAC-Wert
+     * TODO ändern : "destReg Zielregister für den MAC-Wert"
      * @return Instruction für die MAC-Berechnung
      */
-    public static byte[] mac(byte keyReg, byte dataReg, byte length,  byte destReg) {
-        return new byte[]{OpCode.MAC.getCode(), keyReg, dataReg, length, destReg};
+    public static byte[] mac(byte keyReg, byte dataReg) {
+        return new byte[]{OpCode.MAC.getCode(), keyReg, dataReg};
     }
 
     /**
@@ -91,10 +95,11 @@ public class Instruction {
      *
      * @param seedReg Register mit dem Seed für den PRG
      * @param destReg Zielregister für den generierten Keystream
+     *                TODO: lengthREG in der VM
      * @return Instruction für die PRG-Generation
      */
-    public static byte[] prgGenerate(byte seedReg,  byte destReg) {
-        return new byte[]{OpCode.PRG_GENERATE.getCode(), seedReg, destReg};
+    public static byte[] prgGenerate(byte seedReg, byte lengthReg,  byte destReg) {
+        return new byte[]{OpCode.PRG_GENERATE.getCode(), seedReg, lengthReg, destReg};
     }
 
     /**
@@ -175,10 +180,44 @@ public class Instruction {
     }
 
     public static byte[] load(byte[] value, byte register) throws IOException {
+        int length = value.length;
+        if(length <= 255) {
+            return load1(value[0], register);
+        } else if(length <= 65535) {
+            return load2(value, register);
+        } else if(length <= 16777215) {
+            return load3(value, register);
+        } else { throw new IOException("Invalid length for load operation");}
+    }
+
+    public static byte[] load(byte value, byte register) throws IOException {
+        return load1(value, register);
+    }
+
+
+    public static byte[] load1(byte value, byte register) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write(OpCode.LOAD.getCode());
-        out.write((byte) value.length);
+        out.write(OpCode.LOAD1.getCode());
         out.write(value);
+        out.write(register);
+        return out.toByteArray();
+    }
+
+    public static byte[] load2(byte[] value, byte register) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write(OpCode.LOAD2.getCode());
+        out.write(value[0]);
+        out.write(value[1]);
+        out.write(register);
+        return out.toByteArray();
+    }
+
+    public static byte[] load3(byte[] value, byte register) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write(OpCode.LOAD3.getCode());
+        out.write(value[0]);
+        out.write(value[1]);
+        out.write(value[2]);
         out.write(register);
         return out.toByteArray();
     }

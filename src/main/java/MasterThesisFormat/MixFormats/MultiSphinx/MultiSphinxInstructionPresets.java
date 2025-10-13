@@ -6,68 +6,85 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class MultiSphinxInstructionPresets {
-    private static final byte REG_PACKET     = 0x00;
-    private static final byte REG_ALPHA      = 0x04;
-    private static final byte REG_BETA       = 0x05;
-    private static final byte REG_GAMMA      = 0x06;
-    private static final byte REG_SECRET     = 0x07;
-    private static final byte REG_HASH_MAC   = 0x08;
-    private static final byte REG_MAC        = 0x09;
-    private static final byte REG_HASH_PRG   = 0x0A;
-    private static final byte REG_PRG        = 0x0B;
-    private static final byte REG_BETA_PAD   = 0x0C;
-    private static final byte REG_DEC_BETA   = 0x0D;
-    private static final byte REG_PAYLOAD    = 0x0E;
-    private static final byte REG_ROUTE_INFO = 0x0F;
-    private static final byte REG_BLIND      = 0x10;
-    private static final byte REG_HEADER      = 0x11;
-    private static final byte REG_HASH_PAYLOAD      = 0x12;
-    private static final byte REG_NEXT_BETA    = 0x13;
-    private static final byte REG_NEXT_GAMMA     = 0x14;
+    // Register-Definitionen
+    private static final byte REG_PAYLOAD     = 0x00;
+    private static final byte REG_SHARED_SECRET     = 0x01;
+    private static final byte REG_HASH_PAYLOAD     = 0x03;
+    private static final byte REG_NEXT_HOP     = 0x03;
+    private static final byte REG_PAYLOAD_MAC     = 0x04;
+    private static final byte REG_SHARED_SECRET_MAC     = 0x05;
+    private static final byte REG_EXP_MAC_PAYLOAD     = 0x06;
+    private static final byte REG_PACKETLENGTH     = 0x07;
+    private static final byte REG_PRG_SEEDS     = 0x08;
+    private static final byte REG_SHARED_SECRET_PRG     = 0x09;
+    private static final byte REG_NEW_PAYLOAD     = 0x0A;
+    private static final byte REG_HEADERLENGTH     = 0x0B;
+    private static final byte REG_PAYLOADLENGTH     = 0x0C;
+    private static final byte REG_HEADER     = 0x0D;
+    private static final byte REG_TEMP_PAYLOAD     = 0x0E;
+    private static final byte REG_NEXT_HOPS     = 0x0F;
 
-    public static byte[] Process(byte alphaLen, byte betaLen, byte kappaLen) throws IOException {
+    public static byte[] createInstructionsSolo(byte[] nextHop, byte saltDec, byte[] payloadMAC, byte saltMAC) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
 
-        // Extract input packet structure: [Alpha | Beta | Gamma | Payload]
-        instr.write(Instruction.storeBytes(REG_PACKET, alphaLen, REG_ALPHA));
-        instr.write(Instruction.storeBytes(REG_PACKET, betaLen, REG_BETA));
-        instr.write(Instruction.storeBytes(REG_PACKET, kappaLen, REG_GAMMA));
-
-        // Concatenate Beta with Payload for MAC
-        instr.write(Instruction.concate(REG_PACKET, REG_BETA, REG_HEADER));
-
-        // Compute shared secret s_i = DH(alpha_i, y_i)
-        instr.write(Instruction.computeSharedSecret(REG_ALPHA, REG_SECRET));
-
-        // Verify MAC
-        instr.write(Instruction.hash(REG_SECRET, REG_HASH_MAC));
-        instr.write(Instruction.mac(REG_HASH_MAC, REG_HEADER, kappaLen, REG_MAC));
-        instr.write(Instruction.verify(REG_GAMMA, REG_MAC));
+        //MAC verifizieren über Payload
+        instr.write(Instruction.load(payloadMAC, REG_PAYLOAD_MAC));
+        instr.write(Instruction.concateWithByteValue(REG_SHARED_SECRET, saltMAC, REG_SHARED_SECRET_MAC));
+        instr.write(Instruction.mac(REG_SHARED_SECRET_MAC, REG_EXP_MAC_PAYLOAD));
+        instr.write(Instruction.verify(REG_PAYLOAD_MAC, REG_EXP_MAC_PAYLOAD));
 
         //Payload entschlüsseln
-        instr.write(Instruction.hash( REG_SECRET, REG_HASH_PAYLOAD));
-        instr.write(Instruction.decrypt(REG_HASH_PAYLOAD, REG_PACKET,  REG_PAYLOAD));
+        instr.write(Instruction.concateWithByteValue(REG_SHARED_SECRET, saltDec, REG_SHARED_SECRET));
+        instr.write(Instruction.hash(REG_SHARED_SECRET, REG_HASH_PAYLOAD));
+        instr.write(Instruction.decrypt(REG_HASH_PAYLOAD, REG_PAYLOAD,  REG_PAYLOAD));
 
-        // Generate PRG stream and decrypt Beta
-        instr.write(Instruction.hash(REG_SECRET, REG_HASH_PRG));
-        instr.write(Instruction.prgGenerate(REG_HASH_PRG, REG_PRG));
-        instr.write(Instruction.xor(REG_HEADER, REG_PRG, REG_DEC_BETA));
+        //Mixen
 
-        // Extract fields for next hop
-        instr.write(Instruction.storeBytes(REG_DEC_BETA, kappaLen, REG_NEXT_BETA));
-        instr.write(Instruction.storeBytes(REG_DEC_BETA, kappaLen, REG_NEXT_GAMMA));
 
-        // Blinding update for Alpha
-        instr.write(Instruction.hash(REG_SECRET, REG_BLIND));
-        instr.write(Instruction.exponent(REG_ALPHA, REG_BLIND, REG_ALPHA, alphaLen));
+        instr.write(Instruction.load(nextHop,  REG_NEXT_HOP));
+        instr.write(Instruction.forward(REG_NEXT_HOP));
 
-        // Rebuild packet
-        instr.write(Instruction.concate(REG_ALPHA, REG_NEXT_BETA, REG_ALPHA));
-        instr.write(Instruction.concate(REG_ALPHA, REG_NEXT_GAMMA, REG_ALPHA));
-        instr.write(Instruction.concate(REG_ALPHA, REG_PAYLOAD, REG_PAYLOAD));
+        byte[] raw = instr.toByteArray();
+        if (raw.length > 255) {
+            throw new IOException("Instruction block too large");
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write((byte) raw.length);
+        out.write(raw);
+        return out.toByteArray();
+    }
 
-        // Forward packet
-        instr.write(Instruction.forward(REG_ROUTE_INFO));
+    public static byte[] createInstructionsMulti(byte[] nextHops, byte saltDec, byte[] payloadMAC, byte saltMAC, byte p,  byte[] prgSEEDs, byte[] payloadLength, byte[] headerLength) throws IOException {
+        ByteArrayOutputStream instr = new ByteArrayOutputStream();
+
+        //MAC verifizieren über Payload
+        instr.write(Instruction.load(payloadMAC,  REG_PAYLOAD_MAC));
+        instr.write(Instruction.concateWithByteValue(REG_SHARED_SECRET, saltMAC, REG_SHARED_SECRET_MAC));
+        instr.write(Instruction.mac(REG_SHARED_SECRET_MAC, REG_EXP_MAC_PAYLOAD));
+        instr.write(Instruction.verify(REG_PAYLOAD_MAC, REG_EXP_MAC_PAYLOAD));
+
+        //Payload entschlüsseln
+        instr.write(Instruction.concateWithByteValue(REG_SHARED_SECRET, saltDec, REG_SHARED_SECRET));
+        instr.write(Instruction.hash(REG_SHARED_SECRET, REG_HASH_PAYLOAD));
+        instr.write(Instruction.decrypt(REG_HASH_PAYLOAD, REG_PAYLOAD,  REG_PAYLOAD));
+
+        instr.write(Instruction.load(payloadLength,  REG_PAYLOADLENGTH));
+        instr.write(Instruction.load(headerLength, REG_HEADERLENGTH));
+        instr.write(Instruction.load(nextHops, REG_NEXT_HOPS));
+
+        //Jedes einzelnes unterpacket extrahieren und senden
+        instr.write(Instruction.forLoop(p, (byte) 9));
+        instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD, REG_HEADERLENGTH, REG_HEADER));
+        instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD, REG_PAYLOADLENGTH, REG_TEMP_PAYLOAD));
+        instr.write(Instruction.load(prgSEEDs[p],  REG_PRG_SEEDS));
+        instr.write(Instruction.concateWithByteValue(REG_SHARED_SECRET, REG_PRG_SEEDS, REG_SHARED_SECRET_PRG));
+        instr.write(Instruction.hash(REG_SHARED_SECRET_PRG, REG_SHARED_SECRET_PRG));
+        instr.write(Instruction.prgGenerate(REG_SHARED_SECRET_PRG, REG_PACKETLENGTH, REG_NEW_PAYLOAD));
+        instr.write(Instruction.concate(REG_TEMP_PAYLOAD, REG_NEW_PAYLOAD, REG_PAYLOAD));
+        instr.write(Instruction.storeBytes(REG_NEXT_HOPS, (byte) 16, REG_NEXT_HOP));
+
+        //Mixen
+        instr.write(Instruction.forward(REG_NEXT_HOP));
 
         byte[] raw = instr.toByteArray();
         if (raw.length > 255) {

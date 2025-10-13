@@ -97,7 +97,7 @@ public class ProgramInstruction {
     }
 
     public static ProgramInstruction load(byte value, Register dest) {
-        return new ProgramInstruction(OpCode.LOAD, dest, null, null, value, null, null, null, null);
+        return new ProgramInstruction(OpCode.LOAD1, dest, null, null, value, null, null, null, null);
     }
 
 
