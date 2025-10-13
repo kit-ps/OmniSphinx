@@ -23,6 +23,7 @@ public class MultiSphinxInstructionPresets {
     private static final byte REG_HEADER     = 0x0D;
     private static final byte REG_TEMP_PAYLOAD     = 0x0E;
     private static final byte REG_NEXT_HOPS     = 0x0F;
+    private static final byte REG_PRG_SEED     = 0x10;
 
     public static byte[] createInstructionsSolo(byte[] nextHop, byte saltDec, byte[] payloadMAC, byte saltMAC) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
@@ -71,13 +72,14 @@ public class MultiSphinxInstructionPresets {
         instr.write(Instruction.load(payloadLength,  REG_PAYLOADLENGTH));
         instr.write(Instruction.load(headerLength, REG_HEADERLENGTH));
         instr.write(Instruction.load(nextHops, REG_NEXT_HOPS));
+        instr.write(Instruction.load(prgSEEDs, REG_PRG_SEEDS));
 
         //Jedes einzelnes unterpacket extrahieren und senden
         instr.write(Instruction.forLoop(p, (byte) 9));
         instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD, REG_HEADERLENGTH, REG_HEADER));
         instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD, REG_PAYLOADLENGTH, REG_TEMP_PAYLOAD));
-        instr.write(Instruction.load(prgSEEDs[p],  REG_PRG_SEEDS));
-        instr.write(Instruction.concateWithByteValue(REG_SHARED_SECRET, REG_PRG_SEEDS, REG_SHARED_SECRET_PRG));
+        instr.write(Instruction.storeBytes(REG_PRG_SEEDS, (byte) 1, REG_PRG_SEED));
+        instr.write(Instruction.concateWithByteValue(REG_SHARED_SECRET, REG_PRG_SEED, REG_SHARED_SECRET_PRG));
         instr.write(Instruction.hash(REG_SHARED_SECRET_PRG, REG_SHARED_SECRET_PRG));
         instr.write(Instruction.prgGenerate(REG_SHARED_SECRET_PRG, REG_PACKETLENGTH, REG_NEW_PAYLOAD));
         instr.write(Instruction.concate(REG_TEMP_PAYLOAD, REG_NEW_PAYLOAD, REG_PAYLOAD));
