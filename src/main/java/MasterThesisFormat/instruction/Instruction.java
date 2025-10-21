@@ -49,10 +49,10 @@ public class Instruction {
      * Berechnet einen MAC (Message Authentication Code) über Daten.
      * @param keyReg Register mit dem MAC-Schlüssel
      * @param dataReg Register mit den zu authentifizierenden Daten
-     * TODO ändern : "destReg Zielregister für den MAC-Wert"
+     * "destReg Zielregister für den MAC-Wert"
      * @return Instruction für die MAC-Berechnung
      */
-    public static byte[] mac(byte keyReg, byte dataReg) {
+    public static byte[] mac(byte keyReg, byte dataReg, byte destReg) {
         return new byte[]{OpCode.MAC.getCode(), keyReg, dataReg};
     }
 
