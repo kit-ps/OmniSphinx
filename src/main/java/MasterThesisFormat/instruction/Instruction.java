@@ -53,7 +53,7 @@ public class Instruction {
      * @return Instruction für die MAC-Berechnung
      */
     public static byte[] mac(byte keyReg, byte dataReg, byte destReg) {
-        return new byte[]{OpCode.MAC.getCode(), keyReg, dataReg};
+        return new byte[]{OpCode.MAC.getCode(), keyReg, dataReg, destReg};
     }
 
     /**
