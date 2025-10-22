@@ -148,7 +148,7 @@ public class VM {
                         applyPoissonMix(meanDelay);
                     }
 
-                    case LOAD -> {
+                    case LOAD1 -> {
                         int len = Byte.toUnsignedInt(instructions[pc++]);
                         if (pc + len > instructions.length) {
                             throw new VMException("LOAD length out of bounds");
@@ -280,7 +280,7 @@ public class VM {
                         applyPoissonMix(meanDelay);
                     }
 
-                    case LOAD -> {
+                    case LOAD1 -> {
                         int len = Byte.toUnsignedInt(instructions[innerPc++]);
                         if (innerPc + len > instructions.length) {
                             throw new VMException("LOAD length out of bounds");

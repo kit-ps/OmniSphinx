@@ -2,7 +2,7 @@ package MasterThesisFormat.header;
 
 import MasterThesisFormat.Params;
 import MasterThesisFormat.SerializationUtils;
-import javasphinx.SphinxException;
+import MasterThesisFormat.OmniSphinxException;
 
 import java.util.Arrays;
 
@@ -131,7 +131,7 @@ public final class InstructionEncryptor {
     }
 
     public static byte[] padInstructions(Params params, int padding, int currentLen, byte[] secret,
-                                         int index) throws SphinxException {
+                                         int index) throws OmniSphinxException {
         byte[] phi = {};
         byte[] zeroes1 = new byte[padding];
         Arrays.fill(zeroes1, (byte) 0x00);

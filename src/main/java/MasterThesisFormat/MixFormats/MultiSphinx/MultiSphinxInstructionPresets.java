@@ -31,7 +31,7 @@ public class MultiSphinxInstructionPresets {
         //MAC verifizieren über Payload
         instr.write(Instruction.load(payloadMAC, REG_PAYLOAD_MAC));
         instr.write(Instruction.concateWithByteValue(REG_SHARED_SECRET, saltMAC, REG_SHARED_SECRET_MAC));
-        instr.write(Instruction.mac(REG_SHARED_SECRET_MAC, REG_EXP_MAC_PAYLOAD));
+        instr.write(Instruction.mac(REG_SHARED_SECRET_MAC, REG_PAYLOAD, REG_EXP_MAC_PAYLOAD));
         instr.write(Instruction.verify(REG_PAYLOAD_MAC, REG_EXP_MAC_PAYLOAD));
 
         //Payload entschlüsseln
@@ -61,7 +61,7 @@ public class MultiSphinxInstructionPresets {
         //MAC verifizieren über Payload
         instr.write(Instruction.load(payloadMAC,  REG_PAYLOAD_MAC));
         instr.write(Instruction.concateWithByteValue(REG_SHARED_SECRET, saltMAC, REG_SHARED_SECRET_MAC));
-        instr.write(Instruction.mac(REG_SHARED_SECRET_MAC, REG_EXP_MAC_PAYLOAD));
+        instr.write(Instruction.mac(REG_SHARED_SECRET_MAC, REG_PAYLOAD, REG_EXP_MAC_PAYLOAD));
         instr.write(Instruction.verify(REG_PAYLOAD_MAC, REG_EXP_MAC_PAYLOAD));
 
         //Payload entschlüsseln

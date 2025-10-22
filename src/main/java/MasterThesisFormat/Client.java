@@ -2,18 +2,15 @@ package MasterThesisFormat;
 
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.MixFormats.Sphinx.SphinxUtil;
-import MasterThesisFormat.VM.VMUtil;
 import MasterThesisFormat.header.InstructionHeader;
-import MasterThesisFormat.MixFormats.Sphinx.SphinxInstructionPresets;
+import MasterThesisFormat.SerializationUtils;
 import MasterThesisFormat.routing.RoutingStrategy;
-import javasphinx.SphinxException;
-import MasterThesisFormat.crypto.ECCGroup;
 import org.bouncycastle.math.ec.ECPoint;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 
 import java.io.IOException;
-import java.math.BigInteger;
+
 
 public class Client {
     public static final int MAX_INSTRUCTION_SIZE = 1024;

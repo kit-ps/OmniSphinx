@@ -1,7 +1,7 @@
 package MasterThesisFormat;
 
 import MasterThesisFormat.routing.RoutingStrategy;
-import javasphinx.packet.RoutingFlag;
+import MasterThesisFormat.routing.RoutingFlag;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 

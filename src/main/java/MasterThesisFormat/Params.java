@@ -1,7 +1,6 @@
 package MasterThesisFormat;
 
 
-import javasphinx.SphinxException;
 import MasterThesisFormat.crypto.ECCGroup;
 import org.bouncycastle.crypto.CipherParameters;
 import org.bouncycastle.crypto.Mac;
@@ -90,17 +89,17 @@ public class Params {
         return aesCtr(key, message, iv);
     }
 
-    public void lionessCheckLengths(byte[] key, byte[] message) throws SphinxException {
+    public void lionessCheckLengths(byte[] key, byte[] message) throws OmniSphinxException {
         if (key.length != keyLength) {
-            throw new SphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
+            throw new OmniSphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
         }
 
         if (message.length < keyLength * 2) {
-            throw new SphinxException("Length of provided message (" + message.length + ") needs to be at least double the length of the key (" + keyLength + ")");
+            throw new OmniSphinxException("Length of provided message (" + message.length + ") needs to be at least double the length of the key (" + keyLength + ")");
         }
     }
 
-    public byte[] lionessEnc(byte[] key, byte[] message) throws SphinxException {
+    public byte[] lionessEnc(byte[] key, byte[] message) throws OmniSphinxException {
         lionessCheckLengths(key, message);
 
         // Round 1
@@ -133,7 +132,7 @@ public class Params {
         return concatenate(r3Short, c);
     }
 
-    public byte[] lionessDec(byte[] key, byte[] message) throws SphinxException {
+    public byte[] lionessDec(byte[] key, byte[] message) throws OmniSphinxException {
         lionessCheckLengths(key, message);
 
         byte[] r4Short = slice(message, keyLength);
@@ -158,9 +157,9 @@ public class Params {
         return concatenate(c, r1Long);
     }
 
-    public byte[] xorRho(byte[] key, byte[] plain) throws SphinxException {
+    public byte[] xorRho(byte[] key, byte[] plain) throws OmniSphinxException {
         if (key.length != keyLength) {
-            throw new SphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
+            throw new OmniSphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
         }
 
         return aesCtr(key, plain);
@@ -178,26 +177,26 @@ public class Params {
         return slice(output, keyLength);
     }
 
-    public byte[] pi(byte[] key, byte[] data) throws SphinxException {
+    public byte[] pi(byte[] key, byte[] data) throws OmniSphinxException {
         if (key.length != keyLength) {
-            throw new SphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
+            throw new OmniSphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
         }
 
         if (data.length != bodyLength) {
-            throw new SphinxException("Length of provided message (" + data.length + ") did not match the required message body length (" + bodyLength + ")");
+            throw new OmniSphinxException("Length of provided message (" + data.length + ") did not match the required message body length (" + bodyLength + ")");
         }
 
         return lionessEnc(key, data);
     }
 
-    public byte[] pii(byte[] key, byte[] data) throws SphinxException {
+    public byte[] pii(byte[] key, byte[] data) throws OmniSphinxException {
 
         if (key.length != keyLength) {
-            throw new SphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
+            throw new OmniSphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
         }
 
         if (data.length != bodyLength) {
-            throw new SphinxException("Length of provided message (" + data.length + ") did not match the required message body length (" + bodyLength + ")");
+            throw new OmniSphinxException("Length of provided message (" + data.length + ") did not match the required message body length (" + bodyLength + ")");
         }
         return lionessDec(key, data);
     }
