@@ -26,17 +26,18 @@ public class Params {
     private final int bodyLength;
     private final int headerLength;
     private final ECCGroup group;
-    private final int instructionTotalSize = 512;
+    private final int instructionTotalSize;
 
-    public Params(int keyLength, int bodyLength, int headerLength, ECCGroup group) {
+    public Params(int keyLength, int bodyLength, int headerLength, ECCGroup group, int instructionTotalSize) {
         this.keyLength = keyLength;
         this.bodyLength = bodyLength;
         this.headerLength = headerLength;
         this.group = group;
+        this.instructionTotalSize = instructionTotalSize;
     }
 
     public Params() {
-        this(16, 1024, 192, new ECCGroup());
+        this(16, 1024, 192, new ECCGroup(), 8192);
     }
 
     public int keyLength() {
