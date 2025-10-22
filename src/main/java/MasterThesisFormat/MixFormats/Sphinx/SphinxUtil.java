@@ -89,7 +89,7 @@ public final class SphinxUtil {
         }
 
         int instPadLen = params.getInstructionTotalSize() - instructionLen;
-        byte[] padding = InstructionEncryptor.padInstructions(params, instPadLen, instructions.length, secrets[0], 0);
+        byte[] padding = InstructionEncryptor.padInstructions(params, instPadLen, instructionLen, secrets[0], 0);
 
         instructions[instructions.length - 1] = concatenate(instructions[instructions.length - 1], padding);
 

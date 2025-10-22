@@ -6,6 +6,7 @@ import MasterThesisFormat.MixNode;
 import MasterThesisFormat.Params;
 import MasterThesisFormat.MixFormats.PolySphinx.PolySphinxUtil;
 import MasterThesisFormat.MixFormats.PolySphinx.SubHeader;
+import MasterThesisFormat.VM.VMException;
 import MasterThesisFormat.pki.PkiEntry;
 import MasterThesisFormat.pki.PkiGenerator;
 import MasterThesisFormat.routing.RandomRoutingStrategy;
@@ -16,6 +17,7 @@ import org.junit.Test;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -32,7 +34,7 @@ public class OmniSphinxNetworkTest {
     private byte[][] mixNodeIds;
     private ECPoint[] mixNodePubs;
     private BigInteger[] mixNodePrivs;
-    private MixNode[] mixNodes;
+    private TestNode[] mixNodes;
     private Map<String, Integer> mixIdMap;
 
     private byte[][] clientIds;
@@ -49,7 +51,7 @@ public class OmniSphinxNetworkTest {
         mixNodeIds = new byte[MIX_NODE_COUNT][];
         mixNodePubs = new ECPoint[MIX_NODE_COUNT];
         mixNodePrivs = new BigInteger[MIX_NODE_COUNT];
-        mixNodes = new MixNode[MIX_NODE_COUNT];
+        mixNodes = new TestNode[MIX_NODE_COUNT];
         mixIdMap = new HashMap<>();
 
         for (int i = 0; i < MIX_NODE_COUNT; i++) {
@@ -58,9 +60,7 @@ public class OmniSphinxNetworkTest {
             mixNodePrivs[i] = entry.priv();
             mixNodeIds[i] = ClientUtil.encodeNode(i + 1, 0);
             String url = "http://localhost:" + (9000 + i);
-            MixNode node = new MixNode(url.getBytes(StandardCharsets.UTF_8), mixNodePrivs[i], params);
-            node.stopListener();
-            mixNodes[i] = node;
+            mixNodes[i] = new TestNode(url.getBytes(StandardCharsets.UTF_8), mixNodePrivs[i], params);
             mixIdMap.put(Base64.getEncoder().encodeToString(mixNodeIds[i]), i);
         }
 
@@ -101,8 +101,8 @@ public class OmniSphinxNetworkTest {
             byte[] nextHop = null;
 
             for (int i = 0; i < hopCount; i++) {
-                MixNode node = mixNodes[mixIndices[i]];
-                List<InstructionPacketAndNextHop> outs = node.processInstructionPacketAndNextHop(raw);
+                TestNode node = mixNodes[mixIndices[i]];
+                List<InstructionPacketAndNextHop> outs = node.processForTest(raw);
                 assertEquals(1, outs.size());
                 InstructionPacketAndNextHop res = outs.get(0);
                 nextHop = res.getNextHop();
@@ -166,17 +166,17 @@ public class OmniSphinxNetworkTest {
             InstructionPacket packet = pair.component1();
             byte[] raw = sender.packInstructionPacket(packet);
 
-            MixNode replicationNodeObj = mixNodes[replicationIndex];
-            List<InstructionPacketAndNextHop> replicationOutputs = replicationNodeObj.processInstructionPacketAndNextHop(raw);
+            TestNode replicationNodeObj = mixNodes[replicationIndex];
+            List<InstructionPacketAndNextHop> replicationOutputs = replicationNodeObj.processForTest(raw);
             assertEquals(receiverCount, replicationOutputs.size());
 
             for (InstructionPacketAndNextHop out : replicationOutputs) {
                 String key = Base64.getEncoder().encodeToString(out.getNextHop());
                 int exitIndex = mixIdMap.get(key);
-                MixNode exitNode = mixNodes[exitIndex];
+                TestNode exitNode = mixNodes[exitIndex];
 
                 List<InstructionPacketAndNextHop> exitOutputs =
-                        exitNode.processInstructionPacketAndNextHop(sender.packInstructionPacket(out.getPacket()));
+                        exitNode.processForTest(sender.packInstructionPacket(out.getPacket()));
                 assertEquals(1, exitOutputs.size());
                 InstructionPacketAndNextHop finalPacket = exitOutputs.get(0);
 
@@ -207,5 +207,30 @@ public class OmniSphinxNetworkTest {
             result[i] = list.get(i);
         }
         return result;
+    }
+
+
+    private static class TestNode extends MixNode {
+        private final List<InstructionPacketAndNextHop> forwarded = new ArrayList<>();
+
+        protected TestNode(byte[] id, BigInteger secret, Params params) throws IOException {
+            super(id, secret, params);
+        }
+
+        @Override
+        public void startListener(int port) {
+            // no network listener during tests
+        }
+
+        @Override
+        protected void sendToNextNode(byte[] nextHop, InstructionPacket packet) {
+            forwarded.add(new InstructionPacketAndNextHop(nextHop, packet));
+        }
+
+        public List<InstructionPacketAndNextHop> processForTest(byte[] rawPacket) throws VMException {
+            forwarded.clear();
+            super.process(rawPacket);
+            return new ArrayList<>(forwarded);
+        }
     }
 }
