@@ -63,7 +63,7 @@ public class InstructionBenchmark {
         scenarios.put(OpCode.MIX_THRESHOLD.name(), this::mixThresholdScenario);
         scenarios.put(OpCode.MIX_POOL.name(), this::mixPoolScenario);
         scenarios.put(OpCode.MIX_POISSON.name(), this::mixPoissonScenario);
-        scenarios.put(OpCode.LOAD.name(), this::loadScenario);
+        scenarios.put(OpCode.LOAD1.name(), this::loadScenario);
         scenarios.put(OpCode.FOR.name(), this::forScenario);
 
         Map<String, BenchmarkStats> results = new LinkedHashMap<>();
@@ -138,7 +138,7 @@ public class InstructionBenchmark {
     private byte[] macScenario(Map<Byte, byte[]> registers) {
         registers.put(REG_KEY, randomBytes(params.keyLength()));
         registers.put(REG_SOURCE, randomBytes(64));
-        return Instruction.mac(REG_KEY, REG_SOURCE, (byte) params.keyLength(), REG_DEST);
+        return Instruction.mac(REG_KEY, REG_SOURCE, REG_DEST);
     }
 
     private byte[] verifyScenario(Map<Byte, byte[]> registers) {
@@ -168,7 +168,9 @@ public class InstructionBenchmark {
 
     private byte[] prgScenario(Map<Byte, byte[]> registers) {
         registers.put(REG_KEY, randomBytes(params.keyLength()));
-        return Instruction.prgGenerate(REG_KEY, REG_DEST);
+        int maxLen = params.keyLength();
+        byte length = (byte) (1 + random.nextInt(Math.max(1, maxLen)));
+        return Instruction.prgGenerate(REG_KEY, length, REG_DEST);
     }
 
     private byte[] xorScenario(Map<Byte, byte[]> registers) {
