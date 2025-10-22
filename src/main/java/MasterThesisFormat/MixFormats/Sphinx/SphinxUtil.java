@@ -91,11 +91,10 @@ public final class SphinxUtil {
         int instPadLen = params.getInstructionTotalSize() - instructionLen;
         byte[] padding = InstructionEncryptor.padInstructions(params, instPadLen, instructionLen, secrets[0], 0);
 
-        instructions[instructions.length - 1] = concatenate(instructions[instructions.length - 1], padding);
+        byte[] onion = InstructionEncryptor.encryptWithPadding(params, instructions, secrets, params.getInstructionTotalSize(), padding);
 
-        byte[] onion = InstructionEncryptor.encryptFixedSize(params, instructions, secrets, params.getInstructionTotalSize());
-
-        byte[] finalMac = params.mu(params.hmu(secrets[0]), onion);
+        byte[] macPlain = params.xorRho(params.hrho(secrets[0]), onion);
+        byte[] finalMac = params.mu(params.hmu(secrets[0]), macPlain);
 
         InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
 
