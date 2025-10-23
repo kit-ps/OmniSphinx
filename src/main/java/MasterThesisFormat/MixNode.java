@@ -114,17 +114,7 @@ public class MixNode {
 
         byte[] aesKey = params.getAesKey(sharedSecret);
 
-        byte[] plainInstr;
-        try {
-            plainInstr = params.xorRho(params.hrho(aesKey), encInstr);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to decrypt instructions", e);
-        }
-
-        byte[] expectedMac = params.mu(params.hmu(aesKey), plainInstr);
-        if (!Arrays.equals(expectedMac, mac)) {
-            throw new RuntimeException("Instruction MAC mismatch");
-        }
+        InstructionLayer layer = decryptInstructionLayer(encInstr, aesKey, mac);
 
         //compute blinding factors
         BigInteger b = params.hb(alpha, aesKey);
@@ -135,9 +125,9 @@ public class MixNode {
 
         HashMap<Byte, byte[]> register = new HashMap<>();
         register.put(InstructionRegister.NEXT_ALPHA.getCode(), alpha.getEncoded(true));
-        register.put(InstructionRegister.INSTRUCTIONS.getCode(), plainInstr);
-        register.put(InstructionRegister.MAC.getCode(), mac);
-        register.put(InstructionRegister.PAYLOAD.getCode(), packetRaw);
+        register.put(InstructionRegister.INSTRUCTIONS.getCode(), layer.instructions());
+        register.put(InstructionRegister.NEXT_INSTRUCTIONS.getCode(), layer.nextInstructions());
+        register.put(InstructionRegister.MAC.getCode(), layer.mac());
         VMContext vmContext = new VMContext(register);
         List<VMOutput> outputs = vm.interpret(vmContext);
 
@@ -224,17 +214,7 @@ public class MixNode {
 
         byte[] aesKey = params.getAesKey(sharedSecret);
 
-        byte[] plainInstr;
-        try {
-            plainInstr = params.xorRho(params.hrho(aesKey), encInstr);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to decrypt instructions", e);
-        }
-
-        byte[] expectedMac = params.mu(params.hmu(aesKey), plainInstr);
-        if (!Arrays.equals(expectedMac, mac)) {
-            throw new RuntimeException("Instruction MAC mismatch");
-        }
+        InstructionLayer layer = decryptInstructionLayer(encInstr, aesKey, mac);
 
         //compute blinding factors
         BigInteger b = params.hb(alpha, aesKey);
@@ -245,9 +225,9 @@ public class MixNode {
 
         HashMap<Byte, byte[]> register = new HashMap<>();
         register.put(InstructionRegister.NEXT_ALPHA.getCode(), alpha.getEncoded(true));
-        register.put(InstructionRegister.INSTRUCTIONS.getCode(), plainInstr);
-        register.put(InstructionRegister.MAC.getCode(), mac);
-        register.put(InstructionRegister.PAYLOAD.getCode(), packetRaw);
+        register.put(InstructionRegister.INSTRUCTIONS.getCode(), layer.instructions());
+        register.put(InstructionRegister.NEXT_INSTRUCTIONS.getCode(), layer.nextInstructions());
+        register.put(InstructionRegister.MAC.getCode(), layer.mac());
         VMContext vmContext = new VMContext(register);
         List<VMOutput> outputs = vm.interpret(vmContext);
 
@@ -261,6 +241,77 @@ public class MixNode {
         }
 
         return packets;
+    }
+
+    private InstructionLayer decryptInstructionLayer(byte[] encInstr, byte[] aesKey, byte[] mac) {
+        byte[] hrhoKey;
+        try {
+            hrhoKey = params.hrho(aesKey);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to derive hrho key", e);
+        }
+
+        byte[] plain;
+        try {
+            plain = params.xorRho(hrhoKey, encInstr);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to decrypt instructions", e);
+        }
+
+        byte[] expectedMac = params.mu(params.hmu(aesKey), plain);
+        if (!Arrays.equals(expectedMac, mac)) {
+            throw new RuntimeException("Instruction MAC mismatch");
+        }
+
+        if (plain.length < 1) {
+            throw new RuntimeException("Instruction block too short");
+        }
+
+        int instrLen = Byte.toUnsignedInt(plain[0]);
+        int macLen = params.keyLength();
+        if (plain.length < 1 + instrLen + macLen) {
+            throw new RuntimeException("Instruction length out of bounds");
+        }
+
+        byte[] instructions = Arrays.copyOfRange(plain, 1, 1 + instrLen);
+        byte[] nextMac = Arrays.copyOfRange(plain, 1 + instrLen, 1 + instrLen + macLen);
+
+        int offset = 1 + instrLen + macLen;
+        byte[] zeros = new byte[offset];
+        byte[] paddedBeta = SerializationUtils.concatenate(encInstr, zeros);
+        byte[] prg;
+        try {
+            prg = params.xorRho(hrhoKey, paddedBeta);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to derive next instruction layer", e);
+        }
+
+        byte[] nextInstructions = Arrays.copyOfRange(prg, offset, prg.length);
+        return new InstructionLayer(instructions, nextMac, nextInstructions);
+    }
+
+    private static final class InstructionLayer {
+        private final byte[] instructions;
+        private final byte[] mac;
+        private final byte[] nextInstructions;
+
+        private InstructionLayer(byte[] instructions, byte[] mac, byte[] nextInstructions) {
+            this.instructions = instructions;
+            this.mac = mac;
+            this.nextInstructions = nextInstructions;
+        }
+
+        private byte[] instructions() {
+            return instructions.clone();
+        }
+
+        private byte[] mac() {
+            return mac.clone();
+        }
+
+        private byte[] nextInstructions() {
+            return nextInstructions.clone();
+        }
     }
 
 }
