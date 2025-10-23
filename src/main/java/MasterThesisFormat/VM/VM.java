@@ -148,16 +148,9 @@ public class VM {
                         applyPoissonMix(meanDelay);
                     }
 
-                    case LOAD1 -> {
-                        int len = Byte.toUnsignedInt(instructions[pc++]);
-                        if (pc + len > instructions.length) {
-                            throw new VMException("LOAD length out of bounds");
-                        }
-                        byte[] value = Arrays.copyOfRange(instructions, pc, pc + len);
-                        pc += len;
-                        byte destReg = instructions[pc++];
-                        load(value, destReg);
-                    }
+                    case LOAD1 -> pc = handleLoad(instructions, pc, 1);
+                    case LOAD2 -> pc = handleLoad(instructions, pc, 2);
+                    case LOAD3 -> pc = handleLoad(instructions, pc, 3);
                     default -> throw new VMException("Unknown OpCode: " + opcode);
                 }
             } catch (VMException e) {
@@ -197,7 +190,7 @@ public class VM {
                         byte dataReg = instructions[innerPc++];
                         byte length = instructions[innerPc++];
                         byte destReg = instructions[innerPc++];
-                        mac(keyReg, dataReg,length, destReg);
+                        mac(keyReg, dataReg, length, destReg);
                     }
                     case VERIFY -> {
                         byte expectedReg = instructions[innerPc++];
@@ -280,16 +273,9 @@ public class VM {
                         applyPoissonMix(meanDelay);
                     }
 
-                    case LOAD1 -> {
-                        int len = Byte.toUnsignedInt(instructions[innerPc++]);
-                        if (innerPc + len > instructions.length) {
-                            throw new VMException("LOAD length out of bounds");
-                        }
-                        byte[] value = Arrays.copyOfRange(instructions, innerPc, innerPc + len);
-                        innerPc += len;
-                        byte destReg = instructions[innerPc++];
-                        load(value, destReg);
-                    }
+                    case LOAD1 -> innerPc = handleLoad(instructions, innerPc, 1);
+                    case LOAD2 -> innerPc = handleLoad(instructions, innerPc, 2);
+                    case LOAD3 -> innerPc = handleLoad(instructions, innerPc, 3);
                     default -> throw new VMException("Unknown OpCode in FOR block: " + innerOpcode);
                 }
             }
@@ -298,6 +284,32 @@ public class VM {
         return blockEnd;
     }
 
+
+    private int handleLoad(byte[] instructions, int pc, int lengthBytes) throws VMException {
+        if (pc + lengthBytes > instructions.length) {
+            throw new VMException("LOAD length prefix out of bounds");
+        }
+
+        int len = 0;
+        for (int i = 0; i < lengthBytes; i++) {
+            len = (len << 8) | Byte.toUnsignedInt(instructions[pc++]);
+        }
+
+        if (pc + len > instructions.length) {
+            throw new VMException("LOAD length out of bounds");
+        }
+
+        int end = pc + len;
+        if (end >= instructions.length) {
+            throw new VMException("LOAD missing destination register");
+        }
+
+        byte[] value = Arrays.copyOfRange(instructions, pc, end);
+        pc = end;
+        byte destReg = instructions[pc++];
+        load(value, destReg);
+        return pc;
+    }
 
     private void storeBytes(byte source, byte length, byte destReg) throws VMException {
         int startByte = 0;

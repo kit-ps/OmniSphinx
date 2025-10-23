@@ -181,43 +181,54 @@ public class Instruction {
 
     public static byte[] load(byte[] value, byte register) throws IOException {
         int length = value.length;
-        if(length <= 255) {
-            return load1(value[0], register);
-        } else if(length <= 65535) {
+        if(length <= 0xFF) {
+            return load1(value, register);
+        } else if(length <= 0xFFFF) {
             return load2(value, register);
-        } else if(length <= 16777215) {
+        } else if(length <= 0xFFFFFF) {
             return load3(value, register);
-        } else { throw new IOException("Invalid length for load operation");}
+        } else {
+            throw new IOException("Invalid length for load operation");
+        }
     }
 
     public static byte[] load(byte value, byte register) throws IOException {
-        return load1(value, register);
+        return load1(new byte[]{value}, register);
     }
 
 
     public static byte[] load1(byte value, byte register) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write(OpCode.LOAD1.getCode());
-        out.write(value);
-        out.write(register);
-        return out.toByteArray();
+        return load1(new byte[]{value}, register);
+    }
+
+    public static byte[] load1(byte[] value, byte register) throws IOException {
+        if (value.length > 0xFF) {
+            throw new IOException("Value too large for LOAD1");
+        }
+        return encodeLoad(OpCode.LOAD1, value.length, value, register, 1);
     }
 
     public static byte[] load2(byte[] value, byte register) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write(OpCode.LOAD2.getCode());
-        out.write(value[0]);
-        out.write(value[1]);
-        out.write(register);
-        return out.toByteArray();
+        if (value.length > 0xFFFF) {
+            throw new IOException("Value too large for LOAD2");
+        }
+        return encodeLoad(OpCode.LOAD2, value.length, value, register, 2);
     }
 
     public static byte[] load3(byte[] value, byte register) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write(OpCode.LOAD3.getCode());
-        out.write(value[0]);
-        out.write(value[1]);
-        out.write(value[2]);
+        if (value.length > 0xFFFFFF) {
+            throw new IOException("Value too large for LOAD3");
+        }
+        return encodeLoad(OpCode.LOAD3, value.length, value, register, 3);
+    }
+
+    private static byte[] encodeLoad(OpCode opCode, int length, byte[] value, byte register, int lengthBytes) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(1 + lengthBytes + length + 1);
+        out.write(opCode.getCode());
+        for (int shift = (lengthBytes - 1) * 8; shift >= 0; shift -= 8) {
+            out.write((length >> shift) & 0xFF);
+        }
+        out.write(value);
         out.write(register);
         return out.toByteArray();
     }
