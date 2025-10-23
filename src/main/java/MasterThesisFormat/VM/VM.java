@@ -108,6 +108,12 @@ public class VM {
                         byte destReg = instructions[pc++];
                         concate(reg1, reg2, destReg);
                     }
+                    case CONCATE_WITH_BYTE_VALUE -> {
+                        byte reg1 = instructions[pc++];
+                        byte value = instructions[pc++];
+                        byte destReg = instructions[pc++];
+                        concateWithByteValue(reg1, value, destReg);
+                    }
                     case FIND_NEXT -> {
                         byte sourceReg = instructions[pc++];
                         byte destReg = instructions[pc++];
@@ -232,6 +238,12 @@ public class VM {
                         byte reg2 = instructions[innerPc++];
                         byte destReg = instructions[innerPc++];
                         concate(reg1, reg2, destReg);
+                    }
+                    case CONCATE_WITH_BYTE_VALUE -> {
+                        byte reg1 = instructions[innerPc++];
+                        byte value = instructions[innerPc++];
+                        byte destReg = instructions[innerPc++];
+                        concateWithByteValue(reg1, value, destReg);
                     }
                     case FIND_NEXT -> {
                         byte sourceReg = instructions[innerPc++];
@@ -486,6 +498,17 @@ public class VM {
         System.arraycopy(data1, 0, result, 0, data1.length);
         System.arraycopy(data2, 0, result, data1.length, data2.length);
 
+        registers.put(destReg, result);
+    }
+
+    private void concateWithByteValue(byte reg1, byte value, byte destReg) throws VMException {
+        byte[] data = registers.get(reg1);
+        if (data == null) {
+            throw new VMException("Source register for CONCATE_WITH_BYTE_VALUE not initialized");
+        }
+
+        byte[] result = Arrays.copyOf(data, data.length + 1);
+        result[result.length - 1] = value;
         registers.put(destReg, result);
     }
 

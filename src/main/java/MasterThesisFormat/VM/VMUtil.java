@@ -74,6 +74,7 @@ public final class VMUtil {
                 case XOR -> pc += 3;
                 case DECRYPT -> pc += 3;
                 case CONCATE -> pc += 3;
+                case CONCATE_WITH_BYTE_VALUE -> pc += 3;
                 case FIND_NEXT -> pc += 2;
                 case FORWARD -> pc += 2;
                 default -> throw new VMException("Unknown OpCode in block: " + op);
