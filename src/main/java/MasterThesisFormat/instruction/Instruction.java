@@ -95,7 +95,6 @@ public class Instruction {
      *
      * @param seedReg Register mit dem Seed für den PRG
      * @param destReg Zielregister für den generierten Keystream
-     *                TODO: lengthREG in der VM
      * @return Instruction für die PRG-Generation
      */
     public static byte[] prgGenerate(byte seedReg, byte lengthReg,  byte destReg) {
@@ -195,26 +194,31 @@ public class Instruction {
     public static byte[] load1(byte[] value, byte register) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write(OpCode.LOAD1.getCode());
-        out.write(value[0]);
+        out.write(value.length);
+        out.write(value);
         out.write(register);
         return out.toByteArray();
     }
 
     public static byte[] load2(byte[] value, byte register) throws IOException {
+        int length = value.length;
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write(OpCode.LOAD2.getCode());
-        out.write(value[0]);
-        out.write(value[1]);
+        out.write((length >> 8) & 0xFF);
+        out.write(length & 0xFF);
+        out.write(value);
         out.write(register);
         return out.toByteArray();
     }
 
     public static byte[] load3(byte[] value, byte register) throws IOException {
+        int length = value.length;
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write(OpCode.LOAD3.getCode());
-        out.write(value[0]);
-        out.write(value[1]);
-        out.write(value[2]);
+        out.write((length >> 16) & 0xFF);
+        out.write((length >> 8) & 0xFF);
+        out.write(length & 0xFF);
+        out.write(value);
         out.write(register);
         return out.toByteArray();
     }
