@@ -169,8 +169,16 @@ public class InstructionBenchmark {
     private byte[] prgScenario(Map<Byte, byte[]> registers) {
         registers.put(REG_KEY, randomBytes(params.keyLength()));
         int maxLen = params.keyLength();
-        byte length = (byte) (1 + random.nextInt(Math.max(1, maxLen)));
-        return Instruction.prgGenerate(REG_KEY, length, REG_DEST);
+        int length = 1 + random.nextInt(Math.max(1, maxLen));
+        registers.put(REG_A, toLengthBytes(length));
+        return Instruction.prgGenerate(REG_KEY, REG_A, REG_DEST);
+    }
+
+    private byte[] toLengthBytes(int length) {
+        if (length <= 0xFF) {
+            return new byte[]{(byte) length};
+        }
+        return new byte[]{(byte) (length >> 8), (byte) length};
     }
 
     private byte[] xorScenario(Map<Byte, byte[]> registers) {

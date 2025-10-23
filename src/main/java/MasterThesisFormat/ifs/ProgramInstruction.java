@@ -44,8 +44,8 @@ public class ProgramInstruction {
         return new ProgramInstruction(OpCode.HASH, dest, src, null, null, null, null, null, null);
     }
 
-    public static ProgramInstruction mac(Register srcKey, Register srcData, byte length, Register dest) {
-        return new ProgramInstruction(OpCode.MAC, dest, srcKey, srcData, length, null, null, null, null);
+    public static ProgramInstruction mac(Register srcKey, Register srcData, Register dest) {
+        return new ProgramInstruction(OpCode.MAC, dest, srcKey, srcData, null, null, null, null, null);
     }
 
     public static ProgramInstruction verify(Register srcExpected, Register srcActual) {
@@ -60,8 +60,8 @@ public class ProgramInstruction {
         return new ProgramInstruction(OpCode.PAD, destReg, src1, null, length, null, null, null, null);
     }
 
-    public static ProgramInstruction prgGenerate(Register src1,  Register destReg) {
-        return new ProgramInstruction(OpCode.PRG_GENERATE, destReg, src1, null, null, null, null, null, null);
+    public static ProgramInstruction prgGenerate(Register srcSeed, Register lengthReg, Register destReg) {
+        return new ProgramInstruction(OpCode.PRG_GENERATE, destReg, srcSeed, lengthReg, null, null, null, null, null);
     }
 
     public static ProgramInstruction xor(Register src1, Register src2, Register destReg) {

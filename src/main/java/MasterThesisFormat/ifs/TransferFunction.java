@@ -92,11 +92,12 @@ public class TransferFunction {
 
     private void prgGenerate(ProgramInstruction ins, TaintState state, List<Violation> v, Policy policy) {
         Taint key = state.get(ins.getSrc1());
+        Taint length = ins.getSrc2() == null ? new Taint(SecurityLabel.PUBLIC) : state.get(ins.getSrc2());
         Taint res;
         if (key.label == SecurityLabel.SECRET) {
             res = joinPc(state, new Taint(SecurityLabel.PUBLIC_ALLOWED));
         } else {
-            res = joinPc(state, key);
+            res = joinPc(state, key, length);
         }
         state.set(ins.getDest(), res);
         checkSink(ins, res, v, policy);

@@ -70,7 +70,7 @@ public final class VMUtil {
                 case VERIFY -> pc += 2;
                 case EXPONENT -> pc += 4;
                 case PAD -> pc += 3;
-                case PRG_GENERATE -> pc += 2;
+                case PRG_GENERATE -> pc += 3;
                 case XOR -> pc += 3;
                 case DECRYPT -> pc += 3;
                 case CONCATE -> pc += 3;

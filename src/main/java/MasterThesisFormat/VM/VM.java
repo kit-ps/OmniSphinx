@@ -63,9 +63,8 @@ public class VM {
                     case MAC -> {
                         byte keyReg = instructions[pc++];
                         byte dataReg = instructions[pc++];
-                        byte length = instructions[pc++];
                         byte destReg = instructions[pc++];
-                        mac(keyReg, dataReg, length, destReg);
+                        mac(keyReg, dataReg, destReg);
                     }
                     case VERIFY -> {
                         byte expectedReg = instructions[pc++];
@@ -87,8 +86,9 @@ public class VM {
                     }
                     case PRG_GENERATE -> {
                         byte seedReg = instructions[pc++];
+                        byte lengthREG = instructions[pc++];
                         byte destReg = instructions[pc++];
-                        prgGenerate(seedReg, destReg);
+                        prgGenerate(seedReg, lengthREG, destReg);
                     }
                     case XOR -> {
                         byte inputA = instructions[pc++];
@@ -188,9 +188,8 @@ public class VM {
                     case MAC -> {
                         byte keyReg = instructions[innerPc++];
                         byte dataReg = instructions[innerPc++];
-                        byte length = instructions[innerPc++];
                         byte destReg = instructions[innerPc++];
-                        mac(keyReg, dataReg, length, destReg);
+                        mac(keyReg, dataReg, destReg);
                     }
                     case VERIFY -> {
                         byte expectedReg = instructions[innerPc++];
@@ -212,8 +211,9 @@ public class VM {
                     }
                     case PRG_GENERATE -> {
                         byte seedReg = instructions[innerPc++];
+                        byte lengthREG = instructions[innerPc++];
                         byte destReg = instructions[innerPc++];
-                        prgGenerate(seedReg, destReg);
+                        prgGenerate(seedReg, lengthREG, destReg);
                     }
                     case XOR -> {
                         byte inputA = instructions[innerPc++];
@@ -350,9 +350,19 @@ public class VM {
         registers.put(destReg, result);
     }
 
-    private void mac(byte keyReg, byte dataReg, byte length, byte destReg) throws VMException {
-        byte[] mac = params.mac(registers.get(keyReg), registers.get(dataReg));
-        registers.put(destReg, slice(mac, Byte.toUnsignedInt(length)));
+    private void mac(byte keyReg, byte dataReg, byte destReg) throws VMException {
+        byte[] key = registers.get(keyReg);
+        byte[] data = registers.get(dataReg);
+
+        if (key == null) {
+            throw new VMException("MAC key register not initialized");
+        }
+        if (data == null) {
+            throw new VMException("MAC data register not initialized");
+        }
+
+        byte[] mac = params.mac(key, data);
+        registers.put(destReg, mac);
     }
 
     private void verify(byte expectedReg, byte computedReg) throws VMException {
@@ -387,9 +397,36 @@ public class VM {
     }
 
 
-    private void prgGenerate(byte seedReg, byte destReg) throws VMException {
-        byte[] stream = params.prg(registers.get(seedReg));
-        registers.put(destReg, stream);
+    private void prgGenerate(byte seedReg, byte lengthReg, byte destReg) throws VMException {
+        byte[] seed = registers.get(seedReg);
+        byte[] lengthBytes = registers.get(lengthReg);
+
+        if (seed == null) {
+            throw new VMException("PRG seed register not initialized");
+        }
+        if (lengthBytes == null || lengthBytes.length == 0) {
+            throw new VMException("PRG length register not initialized");
+        }
+
+        int outputLength = lengthBytes.length <= Integer.BYTES ? toUnsignedInt(lengthBytes) : lengthBytes.length;
+        if (outputLength < 0) {
+            throw new VMException("Invalid PRG output length");
+        }
+
+        byte[] stream = params.prg(seed);
+        if (outputLength > stream.length) {
+            throw new VMException("Requested PRG output exceeds available keystream");
+        }
+
+        registers.put(destReg, Arrays.copyOf(stream, outputLength));
+    }
+
+    private int toUnsignedInt(byte[] value) {
+        int result = 0;
+        for (byte b : value) {
+            result = (result << 8) | Byte.toUnsignedInt(b);
+        }
+        return result;
     }
 
 
