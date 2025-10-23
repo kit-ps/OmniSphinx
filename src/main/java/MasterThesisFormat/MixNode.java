@@ -261,7 +261,7 @@ public class MixNode {
             throw new RuntimeException("Failed to decrypt instructions", e);
         }
 
-        byte[] expectedMac = params.mu(params.hmu(aesKey), plain);
+        byte[] expectedMac = params.mac(params.hmu(aesKey), encInstr);
         if (!Arrays.equals(expectedMac, mac)) {
             throw new RuntimeException("Instruction MAC mismatch");
         }

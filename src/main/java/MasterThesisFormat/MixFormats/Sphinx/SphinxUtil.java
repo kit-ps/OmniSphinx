@@ -67,7 +67,7 @@ public final class SphinxUtil {
 
         byte[] payload = concatenate(encodedDestAndMsg, initialPad, padBytes);
 
-        byte[] mac = params.mu(params.hpi(secrets[hops - 1]), payload);
+        byte[] mac = params.mac(params.hpi(secrets[hops - 1]), payload);
 
         byte[] body = concatenate(mac, payload);
 
@@ -94,7 +94,7 @@ public final class SphinxUtil {
         byte[] onion = InstructionEncryptor.encryptWithPadding(params, instructions, secrets, params.getInstructionTotalSize(), padding);
 
         byte[] macPlain = params.xorRho(params.hrho(secrets[0]), onion);
-        byte[] finalMac = params.mu(params.hmu(secrets[0]), macPlain);
+        byte[] finalMac = params.mac(params.hmu(secrets[0]), macPlain);
 
         InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
 

@@ -46,7 +46,7 @@ public final class InstructionEncryptor {
 
         byte[] Instr = params.xorRho(params.hrho(secrets[secrets.length - 1]), instructions[instructions.length - 1]); // letzte Node verschlüsseln
         Instr = concatenate(Instr, phi);
-        byte[] gamma = params.mu(params.hmu(secrets[secrets.length - 1]), Instr);
+        byte[] gamma = params.mac(params.hmu(secrets[secrets.length - 1]), Instr);
 
         for (int i = hops - 2; i >= 0; i--) {
             byte[] currentInstr = instructions[i];
@@ -54,7 +54,7 @@ public final class InstructionEncryptor {
             byte[] plainInstr = slice(Instr, InstrLen);
             byte[] plain = concatenate(currentInstr, gamma, plainInstr);
             Instr = params.xorRho(params.hrho(secrets[i]), plain);
-            gamma = params.mu(params.hmu(secrets[i]), Instr);
+            gamma = params.mac(params.hmu(secrets[i]), Instr);
         }
 
         return Instr;
@@ -116,7 +116,7 @@ public final class InstructionEncryptor {
 
         byte[] Instr = params.xorRho(params.hrho(secrets[secrets.length - 1]), instructions[instructions.length - 1]); // letzte Node verschlüsseln
         Instr = concatenate(Instr, phi);
-        byte[] gamma = params.mu(params.hmu(secrets[secrets.length - 1]), Instr);
+        byte[] gamma = params.mac(params.hmu(secrets[secrets.length - 1]), Instr);
 
         for (int i = hops - 2; i >= 0; i--) {
             byte[] currentInstr = instructions[i];
@@ -124,7 +124,7 @@ public final class InstructionEncryptor {
             byte[] plainInstr = slice(Instr, InstrLen);
             plain = concatenate(currentInstr, gamma, plainInstr);
             Instr = params.xorRho(params.hrho(secrets[i]), plain);
-            gamma = params.mu(params.hmu(secrets[i]), Instr);
+            gamma = params.mac(params.hmu(secrets[i]), Instr);
         }
 
         return Instr;

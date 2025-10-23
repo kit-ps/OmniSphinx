@@ -142,18 +142,6 @@ public class Params {
         return result.getEncoded(false);
     }
 
-    public byte[] mu(byte[] key, byte[] data) {
-        Mac mac = new HMac(new SHA256Digest());
-        CipherParameters cipherParameters = new KeyParameter(key);
-        mac.init(cipherParameters);
-        byte[] output = new byte[mac.getMacSize()];
-
-        mac.update(data, 0, data.length);
-        mac.doFinal(output, 0);
-
-        return slice(output, keyLength);
-    }
-
     public byte[] mac(byte[] key, byte[] data) {
         Mac mac = new HMac(new SHA256Digest());
         CipherParameters cipherParameters = new KeyParameter(key);
