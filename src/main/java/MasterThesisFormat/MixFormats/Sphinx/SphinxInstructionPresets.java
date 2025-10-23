@@ -10,7 +10,7 @@ public class SphinxInstructionPresets {
 
     // Register-Definitionen
     private static final byte REG_PAYLOAD = InstructionRegister.PAYLOAD.getCode();
-    private static final byte REG_SHARED_SECRET = InstructionRegister.NEXT_ALPHA.getCode();
+    private static final byte REG_SHARED_SECRET = InstructionRegister.SHARED_SECRET.getCode();
     private static final byte REG_HASH_PAYLOAD = (byte) 0x20;
     private static final byte REG_NEXT_HOP = (byte) 0x21;
 

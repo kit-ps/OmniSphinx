@@ -128,6 +128,8 @@ public class MixNode {
         register.put(InstructionRegister.INSTRUCTIONS.getCode(), layer.instructions());
         register.put(InstructionRegister.NEXT_INSTRUCTIONS.getCode(), layer.nextInstructions());
         register.put(InstructionRegister.MAC.getCode(), layer.mac());
+        register.put(InstructionRegister.PAYLOAD.getCode(), packetRaw);
+        register.put(InstructionRegister.SHARED_SECRET.getCode(), sharedSecret.getEncoded(true));
         VMContext vmContext = new VMContext(register);
         List<VMOutput> outputs = vm.interpret(vmContext);
 
@@ -228,6 +230,7 @@ public class MixNode {
         register.put(InstructionRegister.INSTRUCTIONS.getCode(), layer.instructions());
         register.put(InstructionRegister.NEXT_INSTRUCTIONS.getCode(), layer.nextInstructions());
         register.put(InstructionRegister.MAC.getCode(), layer.mac());
+        register.put(InstructionRegister.PAYLOAD.getCode(), packetRaw);
         VMContext vmContext = new VMContext(register);
         List<VMOutput> outputs = vm.interpret(vmContext);
 
