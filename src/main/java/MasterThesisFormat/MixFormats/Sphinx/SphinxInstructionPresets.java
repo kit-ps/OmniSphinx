@@ -1,6 +1,7 @@
 package MasterThesisFormat.MixFormats.Sphinx;
 
 import MasterThesisFormat.instruction.Instruction;
+import MasterThesisFormat.instruction.InstructionRegister;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -8,10 +9,10 @@ import java.io.IOException;
 public class SphinxInstructionPresets {
 
     // Register-Definitionen
-    private static final byte REG_PAYLOAD     = 0x00;
-    private static final byte REG_SHARED_SECRET     = 0x01;
-    private static final byte REG_HASH_PAYLOAD     = 0x03;
-    private static final byte REG_NEXT_HOP     = 0x03;
+    private static final byte REG_PAYLOAD = InstructionRegister.PAYLOAD.getCode();
+    private static final byte REG_SHARED_SECRET = InstructionRegister.NEXT_ALPHA.getCode();
+    private static final byte REG_HASH_PAYLOAD = (byte) 0x20;
+    private static final byte REG_NEXT_HOP = (byte) 0x21;
 
     public static byte[] createInstructions(byte[] nextHop, byte salt) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
