@@ -19,6 +19,7 @@ public class VM {
     private Map<Byte, byte[]> registers;
     private Params params;
     private List<VMOutput> vmOutputs;
+    private boolean stopRequested;
 
     public VM(BigInteger nodeSecret, Params params) {
         this.nodeSecret = nodeSecret;
@@ -28,15 +29,17 @@ public class VM {
     public List<VMOutput> interpret(VMContext context) throws VMException {
         registers = context.registers;
         vmOutputs = new ArrayList<>();
+        stopRequested = false;
         interpretInstructions(registers.get(InstructionRegister.INSTRUCTIONS.getCode()));
         return vmOutputs;
     }
 
     private void interpretInstructions(byte[] instructions) throws VMException {
-        for (int pc = 0; pc < instructions.length;) {
+        for (int pc = 0; pc < instructions.length && !stopRequested;) {
             OpCode opcode = OpCode.fromByte(instructions[pc++]);
             try {
                 switch (opcode) {
+                    case STOP -> stopRequested = true;
                     case FOR -> {
                         int times = Byte.toUnsignedInt(instructions[pc++]);
                         int instrCount = Byte.toUnsignedInt(instructions[pc++]);
@@ -159,6 +162,9 @@ public class VM {
                     case LOAD3 -> pc = handleLoad(instructions, pc, 3);
                     default -> throw new VMException("Unknown OpCode: " + opcode);
                 }
+                if (stopRequested) {
+                    break;
+                }
             } catch (VMException e) {
                 throw new VMException("Error at instruction " + opcode + ": " + e.getMessage(), e);
             }
@@ -168,13 +174,14 @@ public class VM {
     private int executeFor(byte[] instructions, int times, int instrCount, int programCounter) throws VMException {
         int blockEnd = programCounter;
 
-        for (int i = 0; i < times; i++) {
+        for (int i = 0; i < times && !stopRequested; i++) {
             int innerPc = programCounter;
 
-            for (int j = 0; j < instrCount; j++) {
+            for (int j = 0; j < instrCount && !stopRequested; j++) {
                 OpCode innerOpcode = OpCode.fromByte(instructions[innerPc++]);
 
                 switch (innerOpcode) {
+                    case STOP -> stopRequested = true;
                     case STORE_BYTES -> {
                         byte source = instructions[innerPc++];
                         byte length = instructions[innerPc++];
@@ -289,6 +296,9 @@ public class VM {
                     case LOAD2 -> innerPc = handleLoad(instructions, innerPc, 2);
                     case LOAD3 -> innerPc = handleLoad(instructions, innerPc, 3);
                     default -> throw new VMException("Unknown OpCode in FOR block: " + innerOpcode);
+                }
+                if (stopRequested) {
+                    break;
                 }
             }
             blockEnd = innerPc;

@@ -56,6 +56,10 @@ public class Instruction {
         return new byte[]{OpCode.MAC.getCode(), keyReg, dataReg, destReg};
     }
 
+    public static byte[] stop() {
+        return new byte[]{OpCode.STOP.getCode()};
+    }
+
     /**
      * Überprüft, ob ein berechneter Wert mit einem erwarteten Wert übereinstimmt.
      * Wirft eine Exception, wenn die Werte nicht übereinstimmen.
