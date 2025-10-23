@@ -160,7 +160,7 @@ public class PolySphinxUtil {
 
         byte[] encInstructions = slice(onion, instructionLength);
 
-        byte[] finalMac = params.mu(params.hmu(secrets[0]), concatenate(encInstructions, padding));
+        byte[] finalMac = params.mac(params.hmu(secrets[0]), concatenate(encInstructions, padding));
         byte[] alphaBytes = SerializationUtils.encodeECPoint(alphas[0]);
         byte[] nextHop = Arrays.copyOf(nodeList[0], params.keyLength());
 

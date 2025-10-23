@@ -38,6 +38,17 @@ public final class SerializationUtils {
         return result;
     }
 
+    public static byte[] concatenate(byte[] array, byte toConcatenate) {
+
+        byte[] result = new byte[array.length + 1];
+
+        System.arraycopy(array, 0, result, 0, array.length);
+
+        System.arraycopy(new byte[]{toConcatenate}, 0, result, array.length, 1);
+
+        return result;
+    }
+
     public static byte[] encodeUuid(UUID uuid) {
         return concatenate(encodeLong(uuid.getMostSignificantBits()), encodeLong(uuid.getLeastSignificantBits()));
     }

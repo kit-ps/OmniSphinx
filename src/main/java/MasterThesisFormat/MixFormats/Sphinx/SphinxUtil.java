@@ -71,15 +71,15 @@ public final class SphinxUtil {
 
         byte[] body = concatenate(mac, payload);
 
-        byte[] delta = params.pi(params.hpi(secrets[hops - 1]), body);
+        byte[] delta = params.encrypt(params.hpi(secrets[hops - 1]), body);
         for (int i = hops - 2; i >= 0; i--) {
-            delta = params.pi(params.hpi(secrets[i]), delta);
+            delta = params.encrypt(params.hpi(secrets[i]), delta);
         }
 
         //create instruction header
         byte[][] instructions = new byte[hops][];
         for (int i = 0; i < hops; i++) {
-            byte salt = 0x00;
+            byte salt = params.HPI_SALT;
             instructions[i] = SphinxInstructionPresets.createInstructions(nodelist[i], salt);
         }
 

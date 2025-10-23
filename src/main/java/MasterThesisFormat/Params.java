@@ -22,6 +22,12 @@ import static MasterThesisFormat.SerializationUtils.concatenate;
 import static MasterThesisFormat.SerializationUtils.slice;
 
 public class Params {
+    public static final byte HB_SALT = 0x00;
+    public static final byte HRHO_SALT = 0x01;
+    public static final byte HMU_SALT = 0x02;
+    public static final byte HPI_SALT = 0x03;
+    public static final byte HTAU_SALT = 0x04;
+
     private final int keyLength;
     private final int bodyLength;
     private final int headerLength;
@@ -90,73 +96,6 @@ public class Params {
         return aesCtr(key, message, iv);
     }
 
-    public void lionessCheckLengths(byte[] key, byte[] message) throws OmniSphinxException {
-        if (key.length != keyLength) {
-            throw new OmniSphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
-        }
-
-        if (message.length < keyLength * 2) {
-            throw new OmniSphinxException("Length of provided message (" + message.length + ") needs to be at least double the length of the key (" + keyLength + ")");
-        }
-    }
-
-    public byte[] lionessEnc(byte[] key, byte[] message) throws OmniSphinxException {
-        lionessCheckLengths(key, message);
-
-        // Round 1
-        byte[] messageShort = slice(message, keyLength);
-        byte[] messageLong = slice(message, keyLength, message.length);
-        byte[] one = "1".getBytes();
-        byte[] k1 = slice(hash(concatenate(messageLong, key, one)), keyLength);
-        byte[] c = aesCtr(key, messageShort, k1);
-        byte[] r1 = concatenate(c, messageLong);
-
-        // Round 2
-        byte[] r1Short = slice(r1, keyLength);
-        byte[] r1Long = slice(r1, keyLength, message.length);
-        c = aesCtr(key, r1Long, r1Short);
-        byte[] r2 = concatenate(r1Short, c);
-
-        // Round 3
-        byte[] r2Short = slice(r2, keyLength);
-        byte[] r2Long = slice(r2, keyLength, message.length);
-        byte[] three = "3".getBytes();
-        byte[] k3 = slice(hash(concatenate(r2Long, key, three)), keyLength);
-        c = aesCtr(key, r2Short, k3);
-        byte[] r3 = concatenate(c, r2Long);
-
-        // Round 4
-        byte[] r3Short = slice(r3, keyLength);
-        byte[] r3Long = slice(r3, keyLength, message.length);
-        c = aesCtr(key, r3Long, r3Short);
-
-        return concatenate(r3Short, c);
-    }
-
-    public byte[] lionessDec(byte[] key, byte[] message) throws OmniSphinxException {
-        lionessCheckLengths(key, message);
-
-        byte[] r4Short = slice(message, keyLength);
-        byte[] r4Long = slice(message, keyLength, message.length);
-
-        // Round 4
-        byte[] r3Long = aesCtr(key, r4Long, r4Short);
-
-        // Round 3
-        byte[] three = "3".getBytes();
-        byte[] k2 = slice(hash(concatenate(r3Long, key, three)), keyLength);
-        byte[] r2Short = aesCtr(key, r4Short, k2);
-
-        // Round 2
-        byte[] r1Long = aesCtr(key, r3Long, r2Short);
-
-        // Round 1
-        byte[] one = "1".getBytes();
-        byte[] k0 = slice(hash(concatenate(r1Long, key, one)), keyLength);
-        byte[] c = aesCtr(key, r2Short, k0);
-
-        return concatenate(c, r1Long);
-    }
 
     public byte[] xorRho(byte[] key, byte[] plain) throws OmniSphinxException {
         if (key.length != keyLength) {
@@ -166,41 +105,6 @@ public class Params {
         return aesCtr(key, plain);
     }
 
-    public byte[] mu(byte[] key, byte[] data) {
-        Mac mac = new HMac(new SHA256Digest());
-        CipherParameters cipherParameters = new KeyParameter(key);
-        mac.init(cipherParameters);
-        byte[] output = new byte[mac.getMacSize()];
-
-        mac.update(data, 0, data.length);
-        mac.doFinal(output, 0);
-
-        return slice(output, keyLength);
-    }
-
-    public byte[] pi(byte[] key, byte[] data) throws OmniSphinxException {
-        if (key.length != keyLength) {
-            throw new OmniSphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
-        }
-
-        if (data.length != bodyLength) {
-            throw new OmniSphinxException("Length of provided message (" + data.length + ") did not match the required message body length (" + bodyLength + ")");
-        }
-
-        return lionessEnc(key, data);
-    }
-
-    public byte[] pii(byte[] key, byte[] data) throws OmniSphinxException {
-
-        if (key.length != keyLength) {
-            throw new OmniSphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
-        }
-
-        if (data.length != bodyLength) {
-            throw new OmniSphinxException("Length of provided message (" + data.length + ") did not match the required message body length (" + bodyLength + ")");
-        }
-        return lionessDec(key, data);
-    }
 
     public byte[] encrypt(byte[] key, byte[] plaintext) {
         byte[] iv = new byte[16]; // 16 null bytes as IV (CTR mode requirement)
@@ -238,14 +142,28 @@ public class Params {
         return result.getEncoded(false);
     }
 
-    public byte[] mac(byte[] key, byte[] data) {
-        Mac hmac = new HMac(new SHA256Digest());
-        hmac.init(new KeyParameter(key));
-        hmac.update(data, 0, data.length);
+    public byte[] mu(byte[] key, byte[] data) {
+        Mac mac = new HMac(new SHA256Digest());
+        CipherParameters cipherParameters = new KeyParameter(key);
+        mac.init(cipherParameters);
+        byte[] output = new byte[mac.getMacSize()];
 
-        byte[] out = new byte[hmac.getMacSize()];
-        hmac.doFinal(out, 0);
-        return out;
+        mac.update(data, 0, data.length);
+        mac.doFinal(output, 0);
+
+        return slice(output, keyLength);
+    }
+
+    public byte[] mac(byte[] key, byte[] data) {
+        Mac mac = new HMac(new SHA256Digest());
+        CipherParameters cipherParameters = new KeyParameter(key);
+        mac.init(cipherParameters);
+        byte[] output = new byte[mac.getMacSize()];
+
+        mac.update(data, 0, data.length);
+        mac.doFinal(output, 0);
+
+        return slice(output, keyLength);
     }
 
     public byte[] hash(byte[] data) {
@@ -268,39 +186,37 @@ public class Params {
         return slice(hash, keyLength);
     }
 
-    public byte[] deriveKey(byte[] k, byte[] flavor) {
-        byte[] m = new byte[keyLength];
-
-        return aesCtr(k, m, flavor);
+    public byte[] deriveKey(byte[] k, byte flavor) {
+        byte[] data = concatenate(k, flavor);
+        return slice(hash(data), keyLength);
     }
 
     public BigInteger hb(ECPoint alpha, byte[] k) {
-        byte[] flavor = "hbhbhbhbhbhbhbhb".getBytes();
-        byte[] K = deriveKey(k, flavor);
+        byte[] K = deriveKey(k, HB_SALT);
 
         return group.makeexp(K);
     }
 
     public byte[] hrho(byte[] k) {
-        byte[] flavor = "hrhohrhohrhohrho".getBytes();
+        byte flavor = HRHO_SALT;
 
         return deriveKey(k, flavor);
     }
 
     public byte[] hmu(byte[] k) {
-        byte[] flavor = "hmu:hmu:hmu:hmu:".getBytes();
+        byte flavor = HMU_SALT;
 
         return deriveKey(k, flavor);
     }
 
     public byte[] hpi(byte[] k) {
-        byte[] flavor = "hpi:hpi:hpi:hpi:".getBytes();
+        byte flavor = HPI_SALT;
 
         return deriveKey(k, flavor);
     }
 
     public byte[] htau(byte[] k) {
-        byte[] flavor = "htauhtauhtauhtau".getBytes();
+        byte flavor = HTAU_SALT;
 
         return deriveKey(k, flavor);
     }
