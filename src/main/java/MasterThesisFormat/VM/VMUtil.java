@@ -57,6 +57,112 @@ public final class VMUtil {
         return result;
     }
 
+    public static int findInstructionsEnd(byte[] plain) {
+        int pc = 0;
+        while (pc < plain.length) {
+            int nextPc = advanceInstruction(plain, pc);
+            OpCode opcode = OpCode.fromByte(plain[pc]);
+            if (opcode == OpCode.STOP) {
+                return nextPc;
+            }
+            pc = nextPc;
+        }
+        throw new RuntimeException("STOP instruction not found in instruction layer");
+    }
+
+    private static int advanceInstruction(byte[] buffer, int pc) {
+        if (pc >= buffer.length) {
+            throw new RuntimeException("Instruction parsing out of bounds");
+        }
+
+        OpCode opcode = OpCode.fromByte(buffer[pc]);
+        int index = pc + 1;
+        switch (opcode) {
+            case STOP -> {
+                return index;
+            }
+            case STORE_BYTES, STORE_MULTIPLE_BYTES -> {
+                index = ensureAvailable(buffer, index, 3);
+                return index;
+            }
+            case COMPUTE_SHARED_SECRET, HASH, VERIFY, FIND_NEXT -> {
+                index = ensureAvailable(buffer, index, 2);
+                return index;
+            }
+            case MAC, XOR, DECRYPT, CONCATE, CONCATE_WITH_BYTE_VALUE, ENCRYPT -> {
+                index = ensureAvailable(buffer, index, 3);
+                return index;
+            }
+            case EXPONENT -> {
+                index = ensureAvailable(buffer, index, 4);
+                return index;
+            }
+            case PAD, PRG_GENERATE -> {
+                index = ensureAvailable(buffer, index, 3);
+                return index;
+            }
+            case FORWARD -> {
+                index = ensureAvailable(buffer, index, 1);
+                return index;
+            }
+            case MIX_NONE -> {
+                return index;
+            }
+            case MIX_TIMED, MIX_THRESHOLD, MIX_POISSON -> {
+                index = ensureAvailable(buffer, index, 1);
+                return index;
+            }
+            case MIX_POOL -> {
+                index = ensureAvailable(buffer, index, 2);
+                return index;
+            }
+            case FOR -> {
+                index = ensureAvailable(buffer, index, 2);
+                int instrCount = Byte.toUnsignedInt(buffer[index - 1]);
+                int blockPc = index;
+                for (int i = 0; i < instrCount; i++) {
+                    blockPc = advanceInstruction(buffer, blockPc);
+                }
+                return blockPc;
+            }
+            case LOAD1 -> {
+                return advanceLoadInstruction(buffer, index, 1);
+            }
+            case LOAD2 -> {
+                return advanceLoadInstruction(buffer, index, 2);
+            }
+            case LOAD3 -> {
+                return advanceLoadInstruction(buffer, index, 3);
+            }
+            default -> throw new RuntimeException("Unsupported opcode in instruction layer: " + opcode);
+        }
+    }
+
+    private static int ensureAvailable(byte[] buffer, int index, int required) {
+        if (index + required > buffer.length) {
+            throw new RuntimeException("Instruction parsing exceeded buffer bounds");
+        }
+        return index + required;
+    }
+
+    private static int advanceLoadInstruction(byte[] buffer, int index, int lengthBytes) {
+        if (index + lengthBytes > buffer.length) {
+            throw new RuntimeException("LOAD instruction length prefix out of bounds");
+        }
+
+        int len = 0;
+        for (int i = 0; i < lengthBytes; i++) {
+            len = (len << 8) | Byte.toUnsignedInt(buffer[index++]);
+        }
+
+        if (index + len >= buffer.length) {
+            throw new RuntimeException("LOAD instruction length exceeds buffer bounds");
+        }
+
+        index += len; // skip data bytes
+        return index + 1; // skip destination register
+    }
+
     public static int calculateBlockEnd(byte[] instructions, int programCounter, int instrCount) throws VMException {
         int pc = programCounter;
         for (int i = 0; i < instrCount; i++) {

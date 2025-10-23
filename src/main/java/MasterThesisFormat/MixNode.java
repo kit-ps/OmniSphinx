@@ -2,10 +2,7 @@ package MasterThesisFormat;
 
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.InstructionPacket.InstructionPacketAndNextHop;
-import MasterThesisFormat.VM.VM;
-import MasterThesisFormat.VM.VMContext;
-import MasterThesisFormat.VM.VMException;
-import MasterThesisFormat.VM.VMOutput;
+import MasterThesisFormat.VM.*;
 import MasterThesisFormat.header.InstructionHeader;
 import MasterThesisFormat.instruction.InstructionRegister;
 import com.sun.net.httpserver.HttpExchange;
@@ -266,20 +263,15 @@ public class MixNode {
             throw new RuntimeException("Instruction MAC mismatch");
         }
 
-        if (plain.length < 1) {
-            throw new RuntimeException("Instruction block too short");
-        }
+        int instructionsEnd = VMUtil.findInstructionsEnd(plain);
 
-        int instrLen = Byte.toUnsignedInt(plain[0]);
         int macLen = params.keyLength();
-        if (plain.length < 1 + instrLen + macLen) {
-            throw new RuntimeException("Instruction length out of bounds");
-        }
 
-        byte[] instructions = Arrays.copyOfRange(plain, 1, 1 + instrLen);
-        byte[] nextMac = Arrays.copyOfRange(plain, 1 + instrLen, 1 + instrLen + macLen);
 
-        int offset = 1 + instrLen + macLen;
+        byte[] instructions = Arrays.copyOfRange(plain, 0, instructionsEnd);
+        byte[] nextMac = Arrays.copyOfRange(plain, instructionsEnd, instructionsEnd + macLen);
+
+        int offset = instructionsEnd + macLen;
         byte[] zeros = new byte[offset];
         byte[] paddedBeta = SerializationUtils.concatenate(encInstr, zeros);
         byte[] prg;
