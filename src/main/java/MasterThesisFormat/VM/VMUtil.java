@@ -14,19 +14,6 @@ import java.security.NoSuchAlgorithmException;
 
 public final class VMUtil {
 
-    public static byte[] aesCtrKeystream(byte[] key, byte[] iv) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        byte[] zeroInput = new byte[1024]; // enthält nur 0x00
-        return aesCtr(key, zeroInput, iv);   // nutzt deine bestehende aesCtr
-    }
-
-    public static byte[] aesCtr(byte[] key, byte[] message, byte[] iv) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
-        Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
-        IvParameterSpec ivSpec = new IvParameterSpec(iv);
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
-        return cipher.doFinal(message);
-    }
-
     public static byte[] slice(byte[] source, int start, int end) {
         int resultLength = end - start;
         byte[] result = new byte[resultLength];

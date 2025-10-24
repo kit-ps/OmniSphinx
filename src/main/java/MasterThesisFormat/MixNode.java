@@ -85,7 +85,7 @@ public class MixNode {
     /**
      * layout: [alpha | encrypted instructions | MAC | packet]
      * Encrypted instructions layout:
-     * [len(instructions) | instructions for this hop | MAC | remaining instructions]
+     * [instructions for this hop (terminated with STOP) | MAC | remaining instructions]
      */
     public List<InstructionPacket> process(byte[] rawPacket) throws VMException {
         MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(rawPacket);

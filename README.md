@@ -18,5 +18,5 @@ emulated
 Encrypted instructions follow the structure:
 
 ```
-[len(instructions) | instructions for this hop | MAC | remaining instructions]
+[instructions for this hop (terminated with STOP) | MAC | remaining instructions]
 ```

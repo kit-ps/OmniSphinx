@@ -34,14 +34,8 @@ public class PolySphinxInstructionPresets {
         instr.write(Instruction.load(nextHop, REG_NEXT_HOP));
         instr.write(Instruction.forward(REG_NEXT_HOP));
 
-        byte[] raw = instr.toByteArray();
-        if (raw.length > 255) {
-            throw new IOException("Instruction block too large");
-        }
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write((byte) raw.length);
-        out.write(raw);
-        return out.toByteArray();
+        instr.write(Instruction.stop());
+        return instr.toByteArray();
     }
 
     public static byte[] createExitInstructions(byte[] seed, byte[] path, byte[] recipient, byte r, byte log2p, byte kappaLen) throws IOException {
@@ -74,14 +68,8 @@ public class PolySphinxInstructionPresets {
 
         instr.write(Instruction.forward(REG_RECIPIENT));
 
-        byte[] raw = instr.toByteArray();
-        if (raw.length > 255) {
-            throw new IOException("Instruction block too large");
-        }
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write((byte) raw.length);
-        out.write(raw);
-        return out.toByteArray();
+        instr.write(Instruction.stop());
+        return instr.toByteArray();
     }
 
     public static byte[] createReplicationInstructions(byte kappaLen, byte twoTimesKappaLen, byte p, byte tauPost, byte[] B) throws IOException {
@@ -102,13 +90,7 @@ public class PolySphinxInstructionPresets {
         instr.write(Instruction.encrypt(REG_KEY, REG_PAYLOAD, REG_PAYLOAD));    // 6
         instr.write(Instruction.forward(REG_NEXT_HOP));                  //7
 
-        byte[] raw = instr.toByteArray();
-        if (raw.length > 255) {
-            throw new IOException("Instruction block too large");
-        }
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write((byte) raw.length);
-        out.write(raw);
-        return out.toByteArray();
+        instr.write(Instruction.stop());
+        return instr.toByteArray();
     }
 }
