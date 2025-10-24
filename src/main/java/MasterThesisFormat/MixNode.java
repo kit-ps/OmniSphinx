@@ -273,6 +273,7 @@ public class MixNode {
 
         int offset = instructionsEnd + macLen;
         byte[] zeros = new byte[offset];
+        Arrays.fill(zeros, (byte) 0x00);
         byte[] paddedBeta = SerializationUtils.concatenate(encInstr, zeros);
         byte[] prg;
         try {

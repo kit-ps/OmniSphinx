@@ -36,7 +36,7 @@ public class InstructionDecryptor {
 
     /**
      * Decrypt one instruction layer.
-     * Layout for the encryptedInstructions = [Byte signaling length of Instructions | Instructions | MAC| Next Block]
+     * Layout for the encryptedInstructions = [ Instructions | MAC| Next Block]
      */
     public DecryptResult decrypt(Params params, byte[] encryptedInstructions, byte[] secret) throws Exception {
         if (encryptedInstructions.length != params.getInstructionTotalSize()) {
