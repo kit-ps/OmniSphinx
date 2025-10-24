@@ -530,7 +530,7 @@ public class VM {
     private void forward(byte idReg) throws VMException {
         byte[] nextHop = registers.get(idReg);
         byte[] nextAlpha = registers.get(InstructionRegister.NEXT_ALPHA.getCode());
-        byte[] instructions = registers.get(InstructionRegister.INSTRUCTIONS.getCode());
+        byte[] instructions = registers.get(InstructionRegister.NEXT_INSTRUCTIONS.getCode());
         byte[] mac = registers.get(InstructionRegister.MAC.getCode());
         byte[] payload = registers.get(InstructionRegister.PAYLOAD.getCode());
 
