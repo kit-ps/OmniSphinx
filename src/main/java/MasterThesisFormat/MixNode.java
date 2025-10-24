@@ -88,6 +88,8 @@ public class MixNode {
      * [instructions for this hop (terminated with STOP) | MAC | remaining instructions]
      */
     public List<InstructionPacket> process(byte[] rawPacket) throws VMException {
+        System.out.println("[MixNode] Processing raw packet, length=" + rawPacket.length);
+        System.out.println("[MixNode] Raw packet bytes: " + toHex(rawPacket));
         MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(rawPacket);
         byte[] encodedAlpha, encInstr, mac, packetRaw;
         try {
@@ -104,20 +106,30 @@ public class MixNode {
             throw new RuntimeException("Failed to unpack instruction packet", e);
         }
 
+        System.out.println("[MixNode] Encoded alpha length=" + encodedAlpha.length + ", bytes=" + toHex(encodedAlpha));
+        System.out.println("[MixNode] Encrypted instructions length=" + encInstr.length + ", bytes=" + toHex(encInstr));
+        System.out.println("[MixNode] MAC length=" + mac.length + ", bytes=" + toHex(mac));
+        System.out.println("[MixNode] Payload length=" + packetRaw.length + ", bytes=" + toHex(packetRaw));
+
         //Preprocessing
         ECPoint alpha = SerializationUtils.decodeECPoint(encodedAlpha);
+        System.out.println("[MixNode] Decoded alpha (compressed): " + toHex(alpha.getEncoded(true)));
 
         ECPoint sharedSecret  = params.getGroup().expon(alpha, secret);
+        System.out.println("[MixNode] Shared secret (compressed): " + toHex(sharedSecret.getEncoded(true)));
 
         byte[] aesKey = params.getAesKey(sharedSecret);
+        System.out.println("[MixNode] Derived AES key: " + toHex(aesKey));
 
         InstructionLayer layer = decryptInstructionLayer(encInstr, aesKey, mac);
 
         //compute blinding factors
         BigInteger b = params.hb(alpha, aesKey);
+        System.out.println("[MixNode] Blinding factor b: " + toHex(b.toByteArray()));
 
         //Blinding
         alpha = params.getGroup().expon(alpha, b);
+        System.out.println("[MixNode] Blinded alpha (compressed): " + toHex(alpha.getEncoded(true)));
 
 
         HashMap<Byte, byte[]> register = new HashMap<>();
@@ -135,6 +147,11 @@ public class MixNode {
             ECPoint nextAlpha = SerializationUtils.decodeECPoint(out.getNextAlpha());
             InstructionHeader header = new InstructionHeader(nextAlpha, out.getInstructions(), out.getMAC());
             InstructionPacket packet = new InstructionPacket(header, out.getOutgoingPayload());
+            System.out.println("[MixNode] VM output next hop=" + new String(out.getNextHop(), StandardCharsets.UTF_8));
+            System.out.println("[MixNode] VM output alpha (compressed): " + toHex(nextAlpha.getEncoded(true)));
+            System.out.println("[MixNode] VM output instructions: " + toHex(out.getInstructions()));
+            System.out.println("[MixNode] VM output MAC: " + toHex(out.getMAC()));
+            System.out.println("[MixNode] VM output payload length=" + out.getOutgoingPayload().length + ", bytes=" + toHex(out.getOutgoingPayload()));
             packets.add(packet);
             sendToNextNode(out.getNextHop(), packet);
         }
@@ -169,6 +186,12 @@ public class MixNode {
         byte[] instructions = header.getInstructions();
         byte[] mac = header.getMAC();
         byte[] payload = packet.getPayload();
+
+        System.out.println("[MixNode] Packing instruction packet");
+        System.out.println("[MixNode] Alpha (compressed) length=" + encodedAlpha.length + ", bytes=" + toHex(encodedAlpha));
+        System.out.println("[MixNode] Instructions length=" + instructions.length + ", bytes=" + toHex(instructions));
+        System.out.println("[MixNode] MAC length=" + mac.length + ", bytes=" + toHex(mac));
+        System.out.println("[MixNode] Payload length=" + payload.length + ", bytes=" + toHex(payload));
 
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
         try {
@@ -251,6 +274,11 @@ public class MixNode {
             throw new RuntimeException("Failed to derive hrho key", e);
         }
 
+        System.out.println("[MixNode] Decrypting instruction layer");
+        System.out.println("[MixNode] Encrypted instructions: " + toHex(encInstr));
+        System.out.println("[MixNode] AES key: " + toHex(aesKey));
+        System.out.println("[MixNode] hrho key: " + toHex(hrhoKey));
+
         byte[] plain;
         try {
             plain = params.xorRho(hrhoKey, encInstr);
@@ -258,7 +286,11 @@ public class MixNode {
             throw new RuntimeException("Failed to decrypt instructions", e);
         }
 
-        byte[] expectedMac = params.mac(params.hmu(aesKey), encInstr);
+        byte[] hmuKey = params.hmu(aesKey);
+        byte[] expectedMac = params.mac(hmuKey, encInstr);
+        System.out.println("[MixNode] hmu key: " + toHex(hmuKey));
+        System.out.println("[MixNode] Provided MAC: " + toHex(mac));
+        System.out.println("[MixNode] Expected MAC: " + toHex(expectedMac));
         if (!Arrays.equals(expectedMac, mac)) {
             throw new RuntimeException("Instruction MAC mismatch");
         }
@@ -283,7 +315,22 @@ public class MixNode {
         }
 
         byte[] nextInstructions = Arrays.copyOfRange(prg, offset, prg.length);
+        System.out.println("[MixNode] Plain instructions length=" + instructions.length + ", bytes=" + toHex(instructions));
+        System.out.println("[MixNode] Next MAC length=" + nextMac.length + ", bytes=" + toHex(nextMac));
+        System.out.println("[MixNode] Next instructions length=" + nextInstructions.length + ", bytes=" + toHex(nextInstructions));
         return new InstructionLayer(instructions, nextMac, nextInstructions);
+    }
+
+    private static String toHex(byte[] data) {
+        if (data == null) {
+            return "null";
+        }
+        StringBuilder sb = new StringBuilder(data.length * 2);
+        for (byte b : data) {
+            sb.append(Character.forDigit((b >>> 4) & 0xF, 16));
+            sb.append(Character.forDigit(b & 0xF, 16));
+        }
+        return sb.toString();
     }
 
     private static final class InstructionLayer {
