@@ -2,6 +2,7 @@ package MasterThesisFormat.MixFormats.Sphinx;
 
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.Params;
+import MasterThesisFormat.SerializationUtils;
 import MasterThesisFormat.crypto.ECCGroup;
 import MasterThesisFormat.header.InstructionEncryptor;
 import MasterThesisFormat.header.InstructionHeader;
@@ -10,6 +11,7 @@ import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.Arrays;
 
 import static MasterThesisFormat.SerializationUtils.concatenate;
@@ -61,8 +63,8 @@ public final class SphinxUtil {
 
         byte[] encodedDestAndMsg = packer.toByteArray();
         System.out.println("[SphinxUtil] Destination bytes (len=" + destination.length + "): " + toHex(destination));
-        System.out.println("[SphinxUtil] Message bytes (len=" + message.length + "): " + toHex(message));
-        System.out.println("[SphinxUtil] Encoded destination+message length=" + encodedDestAndMsg.length + ", bytes=" + toHex(encodedDestAndMsg));
+        //System.out.println("[SphinxUtil] Message bytes (len=" + message.length + "): " + toHex(message));
+        //System.out.println("[SphinxUtil] Encoded destination+message length=" + encodedDestAndMsg.length + ", bytes=" + toHex(encodedDestAndMsg));
 
         int msgTotalSize = params.bodyLength() - params.keyLength();
         byte[] initialPad = {(byte) 0x7f};
@@ -77,19 +79,19 @@ public final class SphinxUtil {
         System.out.println("[SphinxUtil] Payload pad length=" + padLen);
 
         byte[] payload = concatenate(encodedDestAndMsg, initialPad, padBytes);
-        System.out.println("[SphinxUtil] Payload length=" + payload.length + ", bytes=" + toHex(payload));
+        //System.out.println("[SphinxUtil] Payload length=" + payload.length + ", bytes=" + toHex(payload));
 
         byte[] mac = params.mac(params.hpi(secrets[hops - 1]), payload);
         System.out.println("[SphinxUtil] Payload MAC: " + toHex(mac));
 
         byte[] body = concatenate(mac, payload);
-        System.out.println("[SphinxUtil] Body length=" + body.length + ", bytes=" + toHex(body));
+        //System.out.println("[SphinxUtil] Body length=" + body.length + ", bytes=" + toHex(body));
 
         byte[] delta = params.encrypt(params.hpi(secrets[hops - 1]), body);
-        System.out.println("[SphinxUtil] Initial encrypted body (delta) length=" + delta.length + ", bytes=" + toHex(delta));
+        //System.out.println("[SphinxUtil] Initial encrypted body (delta) length=" + delta.length + ", bytes=" + toHex(delta));
         for (int i = hops - 2; i >= 0; i--) {
             delta = params.encrypt(params.hpi(secrets[i]), delta);
-            System.out.println("[SphinxUtil] Delta after hop " + i + " encryption length=" + delta.length + ", bytes=" + toHex(delta));
+            //System.out.println("[SphinxUtil] Delta after hop " + i + " encryption length=" + delta.length + ", bytes=" + toHex(delta));
         }
 
         //create instruction header
@@ -97,7 +99,6 @@ public final class SphinxUtil {
         for (int i = 0; i < hops; i++) {
             byte salt = params.HPI_SALT;
             instructions[i] = SphinxInstructionPresets.createInstructions(nodelist[i], salt);
-            System.out.println("[SphinxUtil] Hop " + i + " instruction bytes (len=" + instructions[i].length + "): " + toHex(instructions[i]));
         }
 
         int instructionLen = 0;
@@ -107,11 +108,14 @@ public final class SphinxUtil {
         System.out.println("[SphinxUtil] Total instruction length=" + instructionLen);
 
         int instPadLen = params.getInstructionTotalSize() - instructionLen;
-        byte[] padding = InstructionEncryptor.padInstructions(params, instPadLen, instructionLen, secrets[0], 0);
-        System.out.println("[SphinxUtil] Instruction padding length=" + padding.length + ", bytes=" + toHex(padding));
 
-        byte[] onion = InstructionEncryptor.encryptWithPadding(params, instructions, secrets, params.getInstructionTotalSize(), padding);
-        System.out.println("[SphinxUtil] Encrypted instruction onion length=" + onion.length + ", bytes=" + toHex(onion));
+        SecureRandom secureRandom = new SecureRandom();
+        byte[] randomPad = new byte[instPadLen];
+        secureRandom.nextBytes(randomPad);
+
+        instructions[hops - 1] = concatenate(instructions[hops - 1], randomPad);
+        byte[] onion = InstructionEncryptor.encryptFixedSize(params, instructions, secrets, params.getInstructionTotalSize());
+        //System.out.println("[SphinxUtil] Encrypted instruction onion length=" + onion.length + ", bytes=" + toHex(onion));
 
         byte[] finalMac = params.mac(params.hmu(secrets[0]), onion);
         System.out.println("[SphinxUtil] Final instruction MAC: " + toHex(finalMac));

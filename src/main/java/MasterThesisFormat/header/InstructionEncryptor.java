@@ -25,7 +25,7 @@ public final class InstructionEncryptor {
 
 
         byte[] phi = {};
-        int minLen = totalSize;
+        int minLen = totalSize - instructions[0].length - params.keyLength();
         for (int i = 1; i < hops; i++) {
             byte[] zeroes1 = new byte[params.keyLength() + instructions[i].length];
             Arrays.fill(zeroes1, (byte) 0x00);
@@ -35,25 +35,32 @@ public final class InstructionEncryptor {
             Arrays.fill(zeroes2, (byte) 0x00);
             byte[] zeroes2plain = SerializationUtils.concatenate(zeroes2, plain);
 
-            byte[] prg = params.xorRho(params.hrho(secrets[i - 1]), zeroes2plain);
-            phi = Arrays.copyOfRange(prg, minLen, prg.length);
+            phi = params.xorRho(params.hrho(secrets[i - 1]), zeroes2plain);
+            phi = slice(phi, minLen, phi.length);
 
-            minLen -= instructions[i].length + params.keyLength();
             if (minLen < 0) {
                 throw new IllegalArgumentException("Header too small for given instructions");
             }
+
+            minLen -= instructions[i].length + params.keyLength();
+
+
         }
 
-        byte[] Instr = params.xorRho(params.hrho(secrets[secrets.length - 1]), instructions[instructions.length - 1]); // letzte Node verschlüsseln
+        byte[] beta = instructions[instructions.length - 1];
+        byte[] Instr = params.xorRho(params.hrho(secrets[secrets.length - 1]), beta); // letzte Node verschlüsseln
         Instr = concatenate(Instr, phi);
+        System.out.println("WICHTIG LÄNGE VON PHI = " + phi.length);
+        System.out.println("WICHTIG: LÄNGE VON INSTR: " + Instr.length);
         byte[] gamma = params.mac(params.hmu(secrets[secrets.length - 1]), Instr);
-
+        System.out.println("[InstructionEncryptor] gamma = " + toHex(gamma) + " of Step " + (secrets.length - 1));
         for (int i = hops - 2; i >= 0; i--) {
             byte[] currentInstr = instructions[i];
             int InstrLen = Instr.length - currentInstr.length - params.keyLength();
             byte[] plainInstr = slice(Instr, InstrLen);
             byte[] plain = concatenate(currentInstr, gamma, plainInstr);
             Instr = params.xorRho(params.hrho(secrets[i]), plain);
+            System.out.println("[InstructionEncryptor] Instr = " + toHex(Instr) + " of Step " + (i));
             gamma = params.mac(params.hmu(secrets[i]), Instr);
         }
 
@@ -90,7 +97,7 @@ public final class InstructionEncryptor {
         byte[] prg = params.xorRho(params.hrho(secrets[0]), zeroes2plain);
         phi = Arrays.copyOfRange(prg, minLen, prg.length);
 
-        minLen -= instructions[0].length + params.keyLength();
+        minLen -= instructions[1].length + params.keyLength();
         if (minLen < 0) {
             throw new IllegalArgumentException("Header too small for given instructions");
         }
@@ -118,13 +125,16 @@ public final class InstructionEncryptor {
         Instr = concatenate(Instr, phi);
         byte[] gamma = params.mac(params.hmu(secrets[secrets.length - 1]), Instr);
 
+        System.out.println("[InstructionEncryptor] gamma = " + toHex(gamma) + " of Step " + (secrets.length - 1));
         for (int i = hops - 2; i >= 0; i--) {
             byte[] currentInstr = instructions[i];
             int InstrLen = Instr.length - currentInstr.length - params.keyLength();
             byte[] plainInstr = slice(Instr, InstrLen);
             plain = concatenate(currentInstr, gamma, plainInstr);
             Instr = params.xorRho(params.hrho(secrets[i]), plain);
+            System.out.println("[InstructionEncryptor] Instr = " + toHex(Instr) + " of Step " + (i));
             gamma = params.mac(params.hmu(secrets[i]), Instr);
+            System.out.println("[InstructionEncryptor] gamma = " + toHex(gamma) + " of Step " + (i));
         }
 
         return Instr;
@@ -148,4 +158,15 @@ public final class InstructionEncryptor {
     }
 
 
+    private static String toHex(byte[] data) {
+        if (data == null) {
+            return "null";
+        }
+        StringBuilder sb = new StringBuilder(data.length * 2);
+        for (byte b : data) {
+            sb.append(Character.forDigit((b >>> 4) & 0xF, 16));
+            sb.append(Character.forDigit(b & 0xF, 16));
+        }
+        return sb.toString();
+    }
 }

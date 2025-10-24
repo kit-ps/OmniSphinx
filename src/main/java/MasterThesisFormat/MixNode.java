@@ -89,7 +89,7 @@ public class MixNode {
      */
     public List<InstructionPacket> process(byte[] rawPacket) throws VMException {
         System.out.println("[MixNode] Processing raw packet, length=" + rawPacket.length);
-        System.out.println("[MixNode] Raw packet bytes: " + toHex(rawPacket));
+        //System.out.println("[MixNode] Raw packet bytes: " + toHex(rawPacket));
         MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(rawPacket);
         byte[] encodedAlpha, encInstr, mac, packetRaw;
         try {
@@ -107,7 +107,7 @@ public class MixNode {
         }
 
         System.out.println("[MixNode] Encoded alpha length=" + encodedAlpha.length + ", bytes=" + toHex(encodedAlpha));
-        System.out.println("[MixNode] Encrypted instructions length=" + encInstr.length + ", bytes=" + toHex(encInstr));
+        //System.out.println("[MixNode] Encrypted instructions length=" + encInstr.length + ", bytes=" + toHex(encInstr));
         System.out.println("[MixNode] MAC length=" + mac.length + ", bytes=" + toHex(mac));
         System.out.println("[MixNode] Payload length=" + packetRaw.length + ", bytes=" + toHex(packetRaw));
 
@@ -149,9 +149,9 @@ public class MixNode {
             InstructionPacket packet = new InstructionPacket(header, out.getOutgoingPayload());
             System.out.println("[MixNode] VM output next hop=" + new String(out.getNextHop(), StandardCharsets.UTF_8));
             System.out.println("[MixNode] VM output alpha (compressed): " + toHex(nextAlpha.getEncoded(true)));
-            System.out.println("[MixNode] VM output instructions: " + toHex(out.getInstructions()));
+            //System.out.println("[MixNode] VM output instructions: " + toHex(out.getInstructions()));
             System.out.println("[MixNode] VM output MAC: " + toHex(out.getMAC()));
-            System.out.println("[MixNode] VM output payload length=" + out.getOutgoingPayload().length + ", bytes=" + toHex(out.getOutgoingPayload()));
+            //System.out.println("[MixNode] VM output payload length=" + out.getOutgoingPayload().length + ", bytes=" + toHex(out.getOutgoingPayload()));
             packets.add(packet);
             sendToNextNode(out.getNextHop(), packet);
         }
@@ -315,9 +315,9 @@ public class MixNode {
         }
 
         byte[] nextInstructions = Arrays.copyOfRange(prg, offset, prg.length);
-        System.out.println("[MixNode] Plain instructions length=" + instructions.length + ", bytes=" + toHex(instructions));
-        System.out.println("[MixNode] Next MAC length=" + nextMac.length + ", bytes=" + toHex(nextMac));
-        System.out.println("[MixNode] Next instructions length=" + nextInstructions.length + ", bytes=" + toHex(nextInstructions));
+        //System.out.println("[MixNode] Plain instructions length=" + instructions.length + ", bytes=" + toHex(instructions));
+        //System.out.println("[MixNode] Next MAC length=" + nextMac.length + ", bytes=" + toHex(nextMac));
+        //System.out.println("[MixNode] Next instructions length=" + nextInstructions.length + ", bytes=" + toHex(nextInstructions));
         return new InstructionLayer(instructions, nextMac, nextInstructions);
     }
 
