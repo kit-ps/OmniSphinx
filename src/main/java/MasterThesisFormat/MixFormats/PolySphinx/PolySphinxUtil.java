@@ -49,10 +49,11 @@ public class PolySphinxUtil {
         }
         byte[] B = shOut.toByteArray();
 
-        byte kappaLen = (byte) params.keyLength();
-        byte p = (byte) subheaders.size();
-        byte tauPost = subheaders.isEmpty() ? 0 : (byte) subheaders.get(0).instructions.length;
-        byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, (byte) (2*kappaLen), p, tauPost, B);
+        int kappaLen = params.keyLength();
+        int alphaLen = subheaders.isEmpty() ? 0 : subheaders.get(0).alpha.length;
+        int p = subheaders.size();
+        int tauPost = subheaders.isEmpty() ? 0 : subheaders.get(0).instructions.length;
+        byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, alphaLen, p, tauPost, B);
 
         if (instructions.length > params.getInstructionTotalSize()) {
             throw new IllegalArgumentException("Replication instructions exceed allowed size");
@@ -194,10 +195,11 @@ public class PolySphinxUtil {
         }
         byte[] B = shOut.toByteArray();
 
-        byte kappaLen = (byte) params.keyLength();
-        byte p = (byte) subheaders.size();
-        byte tauPost = subheaders.isEmpty() ? 0 : (byte) subheaders.get(0).instructions.length;
-        byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, (byte) (2*kappaLen), p, tauPost, B);
+        int kappaLen = params.keyLength();
+        int alphaLen = subheaders.isEmpty() ? 0 : subheaders.get(0).alpha.length;
+        int p = subheaders.size();
+        int tauPost = subheaders.isEmpty() ? 0 : subheaders.get(0).instructions.length;
+        byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, alphaLen, p, tauPost, B);
 
         if (instructions.length > params.getInstructionTotalSize()) {
             throw new IllegalArgumentException("Replication instructions exceed allowed size");

@@ -1,5 +1,6 @@
 package MasterThesisFormat.MixFormats.PolySphinx;
 
+import MasterThesisFormat.OmniSphinxException;
 import MasterThesisFormat.instruction.Instruction;
 import MasterThesisFormat.instruction.InstructionRegister;
 
@@ -72,19 +73,26 @@ public class PolySphinxInstructionPresets {
         return instr.toByteArray();
     }
 
-    public static byte[] createReplicationInstructions(byte kappaLen, byte twoTimesKappaLen, byte p, byte tauPost, byte[] B) throws IOException {
+    public static byte[] createReplicationInstructions(int kappaLen, int alphaLen, int p, int tauPost, byte[] B) throws IOException, OmniSphinxException {
+        if (p < 0 || p > 0xFF) {
+            throw new OmniSphinxException("Replication count must fit into a single byte");
+        }
+        if (kappaLen < 0 || alphaLen < 0 || tauPost < 0) {
+            throw new OmniSphinxException("Instruction lengths must be non-negative");
+        }
+
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
 
         instr.write(Instruction.load(B, REG_SUBHEADER));
         byte instrCount = 7; // so viele Instruktionen sind in der Schleife!
 
         //Schleife definieren
-        instr.write(Instruction.forLoop(p, instrCount));
+        instr.write(Instruction.forLoop((byte) p, instrCount));
 
         //Schleifen-Block:
         instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_NEXT_HOP));    // 1
         instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_KEY));   // 2
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, twoTimesKappaLen, REG_ALPHA));  // 3
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, alphaLen, REG_ALPHA));  // 3
         instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_GAMMA));   // 4
         instr.write(Instruction.storeBytes(REG_SUBHEADER, tauPost, REG_BETA));     // 5
         instr.write(Instruction.encrypt(REG_KEY, REG_PAYLOAD, REG_PAYLOAD));    // 6
