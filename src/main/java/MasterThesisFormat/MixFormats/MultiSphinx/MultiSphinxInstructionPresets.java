@@ -1,29 +1,30 @@
 package MasterThesisFormat.MixFormats.MultiSphinx;
 
 import MasterThesisFormat.instruction.Instruction;
+import MasterThesisFormat.instruction.InstructionRegister;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class MultiSphinxInstructionPresets {
     // Register-Definitionen
-    private static final byte REG_PAYLOAD     = 0x00;
-    private static final byte REG_SHARED_SECRET     = 0x01;
-    private static final byte REG_HASH_PAYLOAD     = 0x03;
-    private static final byte REG_NEXT_HOP     = 0x03;
-    private static final byte REG_PAYLOAD_MAC     = 0x04;
-    private static final byte REG_SHARED_SECRET_MAC     = 0x05;
-    private static final byte REG_EXP_MAC_PAYLOAD     = 0x06;
-    private static final byte REG_PACKETLENGTH     = 0x07;
-    private static final byte REG_PRG_SEEDS     = 0x08;
-    private static final byte REG_SHARED_SECRET_PRG     = 0x09;
-    private static final byte REG_NEW_PAYLOAD     = 0x0A;
-    private static final byte REG_HEADERLENGTH     = 0x0B;
-    private static final byte REG_PAYLOADLENGTH     = 0x0C;
-    private static final byte REG_HEADER     = 0x0D;
-    private static final byte REG_TEMP_PAYLOAD     = 0x0E;
-    private static final byte REG_NEXT_HOPS     = 0x0F;
-    private static final byte REG_PRG_SEED     = 0x10;
+    private static final byte REG_PAYLOAD     = InstructionRegister.PAYLOAD.getCode();
+    private static final byte REG_SHARED_SECRET     = InstructionRegister.SHARED_SECRET.getCode();
+    private static final byte REG_HASH_PAYLOAD     = 0x20;
+    private static final byte REG_NEXT_HOP     = InstructionRegister.NEXT_HOP.getCode();
+    private static final byte REG_PAYLOAD_MAC     = 0x21;
+    private static final byte REG_SHARED_SECRET_MAC     = 0x22;
+    private static final byte REG_EXP_MAC_PAYLOAD     = 0x23;
+    private static final byte REG_PACKETLENGTH     = 0x24;
+    private static final byte REG_PRG_SEEDS     = 0x25;
+    private static final byte REG_SHARED_SECRET_PRG     = 0x26;
+    private static final byte REG_NEW_PAYLOAD     = 0x27;
+    private static final byte REG_HEADERLENGTH     = 0x28;
+    private static final byte REG_PAYLOADLENGTH     = 0x29;
+    private static final byte REG_HEADER     = 0x2A;
+    private static final byte REG_TEMP_PAYLOAD     = 0x2B;
+    private static final byte REG_NEXT_HOPS     = 0x2C;
+    private static final byte REG_PRG_SEED     = 0x2D;
 
     public static byte[] createInstructionsSolo(byte[] nextHop, byte saltDec, byte[] payloadMAC, byte saltMAC) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();

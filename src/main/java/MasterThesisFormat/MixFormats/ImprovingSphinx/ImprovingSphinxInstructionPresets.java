@@ -1,20 +1,21 @@
 package MasterThesisFormat.MixFormats.ImprovingSphinx;
 
 import MasterThesisFormat.instruction.Instruction;
+import MasterThesisFormat.instruction.InstructionRegister;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class ImprovingSphinxInstructionPresets {
-    private static final byte REG_PAYLOAD = 0x00;
-    private static final byte REG_SHARED_SECRET = 0x01;
-    private static final byte REG_HASH_PAYLOAD = 0x03;
-    private static final byte REG_SHARED_SECRET_PAYLOAD = 0x05;
-    private static final byte REG_SHARED_SECRET_MAC = 0x06;
-    private static final byte REG_PAYLOAD_MAC = 0x07;
-    private static final byte REG_MAC = 0x08;
-    private static final byte REG_MAC_MATERIAL = 0x15;
-    private static final byte REG_NEXT_HOP = 0x1C;
+    private static final byte REG_PAYLOAD = InstructionRegister.PAYLOAD.getCode();
+    private static final byte REG_SHARED_SECRET = InstructionRegister.SHARED_SECRET.getCode();
+    private static final byte REG_HASH_PAYLOAD = 0x20;
+    private static final byte REG_SHARED_SECRET_PAYLOAD = 0x21;
+    private static final byte REG_SHARED_SECRET_MAC = 0x22;
+    private static final byte REG_PAYLOAD_MAC = 0x23;
+    private static final byte REG_MAC = InstructionRegister.MAC.getCode();
+    private static final byte REG_MAC_MATERIAL = 0x24;
+    private static final byte REG_NEXT_HOP = InstructionRegister.NEXT_HOP.getCode();
 
     public static byte[] createInstructions(byte[] nextHop, byte salt, byte[] MAC, byte saltMAC) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();

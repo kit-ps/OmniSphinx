@@ -1,6 +1,7 @@
 package MasterThesisFormat.MixFormats.PolySphinx;
 
 import MasterThesisFormat.instruction.Instruction;
+import MasterThesisFormat.instruction.InstructionRegister;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -8,23 +9,22 @@ import java.io.IOException;
 public class PolySphinxInstructionPresets {
 
     // === Register-Definitionen ===
-    public static final byte REG_NEXT_HOP      = 0x01;
-    public static final byte REG_SIGMA       = 0x02;
-    public static final byte REG_PAYLOAD    = 0x03;
-    public static final byte REG_SEED    = 0x04;
-    public static final byte REG_PATH    = 0x05;
-    public static final byte REG_RECIPIENT    = 0x06;
-    public static final byte REG_ROOT    = 0x07;
-    public static final byte REG_P_I_J    = 0x08;
-    public static final byte REG_KEYS    = 0x09;
-    public static final byte REG_SUBHEADER    = 0x0A;
-    public static final byte REG_KEY = 0x0B;
-    public static final byte REG_ALPHA1 = 0x0C;
-    public static final byte REG_ALPHA2 = 0x0D;
-    public static final byte REG_ALPHA = 0x0F;
-    public static final byte REG_GAMMA = 0x10;
-    public static final byte REG_BETA = 0x11;
-
+    public static final byte REG_NEXT_HOP      = InstructionRegister.NEXT_HOP.getCode();
+    public static final byte REG_SIGMA       = 0x20;
+    public static final byte REG_PAYLOAD    = InstructionRegister.PAYLOAD.getCode();
+    public static final byte REG_SEED    = 0x21;
+    public static final byte REG_PATH    = 0x22;
+    public static final byte REG_RECIPIENT    = 0x23;
+    public static final byte REG_ROOT    = 0x24;
+    public static final byte REG_P_I_J    = 0x25;
+    public static final byte REG_KEYS    = 0x26;
+    public static final byte REG_SUBHEADER    = 0x27;
+    public static final byte REG_KEY = 0x28;
+    public static final byte REG_ALPHA1 = 0x29;
+    public static final byte REG_ALPHA2 = 0x2A;
+    public static final byte REG_ALPHA = 0x2B;
+    public static final byte REG_GAMMA = 0x2C;
+    public static final byte REG_BETA = 0x2D;
 
     public static byte[] createRelayInstructions( byte[] nextHop, byte[] sigma) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();

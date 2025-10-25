@@ -7,21 +7,21 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class ERORInstructionPresets {
-    private static final byte REG_PAYLOAD = 0x00;
-    private static final byte REG_SHARED_SECRET = 0x01;
-    private static final byte REG_FORWARD_PAYLOAD = 0x10;
-    private static final byte REG_BACKWARD_PAYLOAD = 0x11;
-    private static final byte REG_BACKWARD_CIPHER = 0x12;
-    private static final byte REG_BACKWARD_MAC = 0x13;
-    private static final byte REG_SALT_SKE = 0x14;
-    private static final byte REG_SKE_MATERIAL = 0x15;
-    private static final byte REG_K_SKE = 0x16;
-    private static final byte REG_FORWARD_MAC_COMPUTED = 0x17;
-    private static final byte REG_FORWARD_MAC = 0x18;
-    private static final byte REG_PRF_MATERIAL = 0x19;
-    private static final byte REG_K_PRF = 0x1A;
-    private static final byte REG_PRF_OUTPUT = 0x1B;
-    private static final byte REG_NEXT_HOP = 0x1C;
+    private static final byte REG_PAYLOAD = InstructionRegister.PAYLOAD.getCode();
+    private static final byte REG_SHARED_SECRET = InstructionRegister.SHARED_SECRET.getCode();
+    private static final byte REG_FORWARD_PAYLOAD = 0x20;
+    private static final byte REG_BACKWARD_PAYLOAD = 0x21;
+    private static final byte REG_BACKWARD_CIPHER = 0x22;
+    private static final byte REG_BACKWARD_MAC = 0x23;
+    private static final byte REG_SALT_SKE = 0x24;
+    private static final byte REG_SKE_MATERIAL = 0x25;
+    private static final byte REG_K_SKE = 0x26;
+    private static final byte REG_FORWARD_MAC_COMPUTED = 0x27;
+    private static final byte REG_FORWARD_MAC = 0x28;
+    private static final byte REG_PRF_MATERIAL = 0x29;
+    private static final byte REG_K_PRF = 0x2A;
+    private static final byte REG_PRF_OUTPUT = 0x2B;
+    private static final byte REG_NEXT_HOP = InstructionRegister.NEXT_HOP.getCode();
 
     public static byte[] createInstructions(byte[] nextHop,byte[] forwardMAC,  byte forwardPayloadLength, byte backwardCipherLength, byte backwardMacLength, byte skeSalt, byte prfSalt) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
