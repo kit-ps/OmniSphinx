@@ -30,4 +30,18 @@ public class SphinxInstructionPresets {
         instr.write(Instruction.stop());
         return instr.toByteArray();
     }
+
+    public static byte[] createExitInstructions(byte[] destination, byte salt) throws IOException {
+        ByteArrayOutputStream instr = new ByteArrayOutputStream();
+
+        instr.write(Instruction.concateWithByteValue(REG_SHARED_SECRET, salt, REG_SHARED_SECRET));
+        instr.write(Instruction.hash(REG_SHARED_SECRET, REG_HASH_PAYLOAD));
+        instr.write(Instruction.decrypt(REG_HASH_PAYLOAD, REG_PAYLOAD, REG_PAYLOAD));
+
+        instr.write(Instruction.load(destination, REG_NEXT_HOP));
+        instr.write(Instruction.forward(REG_NEXT_HOP));
+
+        instr.write(Instruction.stop());
+        return instr.toByteArray();
+    }
 }
