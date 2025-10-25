@@ -61,7 +61,8 @@ public class OmniSphinxNetworkTest {
             mixNodeIds[i] = ClientUtil.encodeNode(i + 1, 0);
             String url = "http://localhost:" + (9000 + i);
             mixNodes[i] = new TestNode(url.getBytes(StandardCharsets.UTF_8), mixNodePrivs[i], params);
-            mixIdMap.put(Base64.getEncoder().encodeToString(mixNodeIds[i]), i);
+            byte[] truncatedId = Arrays.copyOf(mixNodeIds[i], params.keyLength());
+            mixIdMap.put(Base64.getEncoder().encodeToString(truncatedId), i);
         }
 
         clients = new Client[CLIENT_COUNT];
@@ -174,7 +175,8 @@ public class OmniSphinxNetworkTest {
 
             for (InstructionPacketAndNextHop out : replicationOutputs) {
                 String key = Base64.getEncoder().encodeToString(out.getNextHop());
-                int exitIndex = mixIdMap.get(key);
+                Integer exitIndex = mixIdMap.get(key);
+                assertNotNull("Unknown exit mix node for key " + key, exitIndex);
                 TestNode exitNode = mixNodes[exitIndex];
 
                 List<InstructionPacketAndNextHop> exitOutputs =

@@ -49,11 +49,13 @@ public class PolySphinxUtil {
         }
         byte[] B = shOut.toByteArray();
 
-        int kappaLen = params.keyLength();
+        int nextHopLen = subheaders.isEmpty() ? 0 : subheaders.get(0).nextHop.length;
+        int keyLen = subheaders.isEmpty() ? 0 : subheaders.get(0).omega.length;
         int alphaLen = subheaders.isEmpty() ? 0 : subheaders.get(0).alpha.length;
+        int gammaLen = subheaders.isEmpty() ? 0 : subheaders.get(0).MAC.length;
         int p = subheaders.size();
         int tauPost = subheaders.isEmpty() ? 0 : subheaders.get(0).instructions.length;
-        byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, alphaLen, p, tauPost, B);
+        byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(nextHopLen, keyLen, alphaLen, gammaLen, p, tauPost, B);
 
         if (instructions.length > params.getInstructionTotalSize()) {
             throw new IllegalArgumentException("Replication instructions exceed allowed size");
@@ -195,11 +197,13 @@ public class PolySphinxUtil {
         }
         byte[] B = shOut.toByteArray();
 
-        int kappaLen = params.keyLength();
+        int nextHopLen = subheaders.isEmpty() ? 0 : subheaders.get(0).nextHop.length;
+        int keyLen = subheaders.isEmpty() ? 0 : subheaders.get(0).omega.length;
         int alphaLen = subheaders.isEmpty() ? 0 : subheaders.get(0).alpha.length;
+        int gammaLen = subheaders.isEmpty() ? 0 : subheaders.get(0).MAC.length;
         int p = subheaders.size();
         int tauPost = subheaders.isEmpty() ? 0 : subheaders.get(0).instructions.length;
-        byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(kappaLen, alphaLen, p, tauPost, B);
+        byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(nextHopLen, keyLen, alphaLen, gammaLen, p, tauPost, B);
 
         if (instructions.length > params.getInstructionTotalSize()) {
             throw new IllegalArgumentException("Replication instructions exceed allowed size");

@@ -73,11 +73,11 @@ public class PolySphinxInstructionPresets {
         return instr.toByteArray();
     }
 
-    public static byte[] createReplicationInstructions(int kappaLen, int alphaLen, int p, int tauPost, byte[] B) throws IOException, OmniSphinxException {
+    public static byte[] createReplicationInstructions(int nextHopLen, int keyLen, int alphaLen, int gammaLen, int p, int tauPost, byte[] B) throws IOException, OmniSphinxException {
         if (p < 0 || p > 0xFF) {
             throw new OmniSphinxException("Replication count must fit into a single byte");
         }
-        if (kappaLen < 0 || alphaLen < 0 || tauPost < 0) {
+        if (nextHopLen < 0 || keyLen < 0 || alphaLen < 0 || gammaLen < 0 || tauPost < 0) {
             throw new OmniSphinxException("Instruction lengths must be non-negative");
         }
 
@@ -90,10 +90,10 @@ public class PolySphinxInstructionPresets {
         instr.write(Instruction.forLoop((byte) p, instrCount));
 
         //Schleifen-Block:
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_NEXT_HOP));    // 1
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_KEY));   // 2
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, nextHopLen, REG_NEXT_HOP));    // 1
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, keyLen, REG_KEY));   // 2
         instr.write(Instruction.storeBytes(REG_SUBHEADER, alphaLen, REG_ALPHA));  // 3
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, kappaLen, REG_GAMMA));   // 4
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, gammaLen, REG_GAMMA));   // 4
         instr.write(Instruction.storeBytes(REG_SUBHEADER, tauPost, REG_BETA));     // 5
         instr.write(Instruction.encrypt(REG_KEY, REG_PAYLOAD, REG_PAYLOAD));    // 6
         instr.write(Instruction.forward(REG_NEXT_HOP));                  //7
