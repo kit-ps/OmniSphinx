@@ -6,6 +6,7 @@ import MasterThesisFormat.OmniSphinxException;
 
 import java.util.Arrays;
 
+import static MasterThesisFormat.MixFormats.Sphinx.SphinxUtil.toHex;
 import static MasterThesisFormat.SerializationUtils.*;
 
 public final class InstructionEncryptor {
@@ -25,7 +26,7 @@ public final class InstructionEncryptor {
 
 
         byte[] phi = {};
-        int minLen = totalSize - instructions[0].length - params.keyLength();
+        int minLen = totalSize;
         for (int i = 1; i < hops; i++) {
             byte[] zeroes1 = new byte[params.keyLength() + instructions[i].length];
             Arrays.fill(zeroes1, (byte) 0x00);
@@ -36,35 +37,38 @@ public final class InstructionEncryptor {
             byte[] zeroes2plain = SerializationUtils.concatenate(zeroes2, plain);
 
             phi = params.xorRho(params.hrho(secrets[i - 1]), zeroes2plain);
+
             phi = slice(phi, minLen, phi.length);
+            System.out.println("[InstructionEncryptor] phi länge= " + phi.length + " of Step " + (i - 1));
+            System.out.println("[InstructionEncryptor] phi = " + toHex(phi) + " of Step " + (i - 1));
 
             if (minLen < 0) {
                 throw new IllegalArgumentException("Header too small for given instructions");
             }
 
-            minLen -= instructions[i].length + params.keyLength();
+            minLen = minLen - instructions[i].length - params.keyLength();
 
 
         }
 
         byte[] beta = instructions[instructions.length - 1];
-        byte[] Instr = params.xorRho(params.hrho(secrets[secrets.length - 1]), beta); // letzte Node verschlüsseln
-        Instr = concatenate(Instr, phi);
+        beta = params.xorRho(params.hrho(secrets[secrets.length - 1]), beta); // letzte Node verschlüsseln
+        beta = concatenate(beta, phi);
+        beta = slice(beta, totalSize);
         System.out.println("WICHTIG LÄNGE VON PHI = " + phi.length);
-        System.out.println("WICHTIG: LÄNGE VON INSTR: " + Instr.length);
-        byte[] gamma = params.mac(params.hmu(secrets[secrets.length - 1]), Instr);
+        System.out.println("WICHTIG: LÄNGE VON INSTR: " + beta.length);
+        byte[] gamma = params.mac(params.hmu(secrets[secrets.length - 1]), beta);
         System.out.println("[InstructionEncryptor] gamma = " + toHex(gamma) + " of Step " + (secrets.length - 1));
         for (int i = hops - 2; i >= 0; i--) {
             byte[] currentInstr = instructions[i];
-            int InstrLen = Instr.length - currentInstr.length - params.keyLength();
-            byte[] plainInstr = slice(Instr, InstrLen);
-            byte[] plain = concatenate(currentInstr, gamma, plainInstr);
-            Instr = params.xorRho(params.hrho(secrets[i]), plain);
-            System.out.println("[InstructionEncryptor] Instr = " + toHex(Instr) + " of Step " + (i));
-            gamma = params.mac(params.hmu(secrets[i]), Instr);
+            byte[] plain = concatenate(currentInstr, gamma, beta);
+            plain = slice(plain, totalSize);
+            beta = params.xorRho(params.hrho(secrets[i]), plain);
+            System.out.println("[InstructionEncryptor] Instr = " + toHex(beta) + " of Step " + (i));
+            gamma = params.mac(params.hmu(secrets[i]), beta);
         }
 
-        return Instr;
+        return beta;
     }
 
     /**
@@ -155,18 +159,5 @@ public final class InstructionEncryptor {
         byte[] prg = params.xorRho(params.hrho(secret), zeroes2plain);
         phi = Arrays.copyOfRange(prg, currentLen, prg.length);
         return phi;
-    }
-
-
-    private static String toHex(byte[] data) {
-        if (data == null) {
-            return "null";
-        }
-        StringBuilder sb = new StringBuilder(data.length * 2);
-        for (byte b : data) {
-            sb.append(Character.forDigit((b >>> 4) & 0xF, 16));
-            sb.append(Character.forDigit(b & 0xF, 16));
-        }
-        return sb.toString();
     }
 }

@@ -2,6 +2,7 @@ package MasterThesisFormat;
 
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.InstructionPacket.InstructionPacketAndNextHop;
+import MasterThesisFormat.MixFormats.Sphinx.SphinxInstructionPresets;
 import MasterThesisFormat.VM.*;
 import MasterThesisFormat.header.InstructionHeader;
 import MasterThesisFormat.instruction.InstructionRegister;
@@ -23,6 +24,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+
+import static MasterThesisFormat.MixFormats.Sphinx.SphinxUtil.toHex;
 
 public class MixNode {
     private final BigInteger secret;
@@ -296,7 +299,6 @@ public class MixNode {
         }
 
         int instructionsEnd = VMUtil.findInstructionsEnd(plain);
-
         int macLen = params.keyLength();
 
 
@@ -304,6 +306,8 @@ public class MixNode {
         byte[] nextMac = Arrays.copyOfRange(plain, instructionsEnd, instructionsEnd + macLen);
 
         int offset = instructionsEnd + macLen;
+        System.out.println("WICHTIG INSTRUCTIONS ENDS AT: " + offset);
+
         byte[] zeros = new byte[offset];
         Arrays.fill(zeros, (byte) 0x00);
         byte[] paddedBeta = SerializationUtils.concatenate(encInstr, zeros);
@@ -315,22 +319,12 @@ public class MixNode {
         }
 
         byte[] nextInstructions = Arrays.copyOfRange(prg, offset, prg.length);
+        byte[] encryptedZeros = Arrays.copyOfRange(prg, encInstr.length, paddedBeta.length);
+        System.out.println("WICHTIG MIXNODE ENCRYPTED ZEROS: " + toHex(encryptedZeros));
         //System.out.println("[MixNode] Plain instructions length=" + instructions.length + ", bytes=" + toHex(instructions));
         //System.out.println("[MixNode] Next MAC length=" + nextMac.length + ", bytes=" + toHex(nextMac));
         //System.out.println("[MixNode] Next instructions length=" + nextInstructions.length + ", bytes=" + toHex(nextInstructions));
         return new InstructionLayer(instructions, nextMac, nextInstructions);
-    }
-
-    private static String toHex(byte[] data) {
-        if (data == null) {
-            return "null";
-        }
-        StringBuilder sb = new StringBuilder(data.length * 2);
-        for (byte b : data) {
-            sb.append(Character.forDigit((b >>> 4) & 0xF, 16));
-            sb.append(Character.forDigit(b & 0xF, 16));
-        }
-        return sb.toString();
     }
 
     private static final class InstructionLayer {

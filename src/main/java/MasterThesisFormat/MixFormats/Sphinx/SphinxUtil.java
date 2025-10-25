@@ -97,22 +97,23 @@ public final class SphinxUtil {
         //create instruction header
         byte[][] instructions = new byte[hops][];
         for (int i = 0; i < hops; i++) {
-            byte salt = params.HPI_SALT;
+            byte salt = Params.HPI_SALT;
             instructions[i] = SphinxInstructionPresets.createInstructions(nodelist[i], salt);
         }
 
-        int instructionLen = 0;
+        int headerLen = 0;
         for(byte[] instruction: instructions) {
-            instructionLen += instruction.length;
+            headerLen += instruction.length + params.keyLength();
         }
-        System.out.println("[SphinxUtil] Total instruction length=" + instructionLen);
+        System.out.println("[SphinxUtil] Total beta length=" + headerLen);
 
-        int instPadLen = params.getInstructionTotalSize() - instructionLen;
+        int instPadLen = params.getInstructionTotalSize() - headerLen;
 
         SecureRandom secureRandom = new SecureRandom();
         byte[] randomPad = new byte[instPadLen];
         secureRandom.nextBytes(randomPad);
 
+        System.out.println("[SphinxUtil] Instruction pad length=" + instPadLen);
         instructions[hops - 1] = concatenate(instructions[hops - 1], randomPad);
         byte[] onion = InstructionEncryptor.encryptFixedSize(params, instructions, secrets, params.getInstructionTotalSize());
         //System.out.println("[SphinxUtil] Encrypted instruction onion length=" + onion.length + ", bytes=" + toHex(onion));
@@ -129,15 +130,7 @@ public final class SphinxUtil {
         return new InstructionPacket(header, delta);
     }
 
-    private static String toHex(byte[] data) {
-        if (data == null) {
-            return "null";
-        }
-        StringBuilder sb = new StringBuilder(data.length * 2);
-        for (byte b : data) {
-            sb.append(Character.forDigit((b >>> 4) & 0xF, 16));
-            sb.append(Character.forDigit(b & 0xF, 16));
-        }
-        return sb.toString();
+    public static String toHex(byte[] data) {
+        return Arrays.toString(data);
     }
 }
