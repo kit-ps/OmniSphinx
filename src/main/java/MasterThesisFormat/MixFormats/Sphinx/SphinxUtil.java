@@ -1,6 +1,7 @@
 package MasterThesisFormat.MixFormats.Sphinx;
 
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
+import MasterThesisFormat.OmniSphinxException;
 import MasterThesisFormat.Params;
 import MasterThesisFormat.SerializationUtils;
 import MasterThesisFormat.crypto.ECCGroup;
@@ -107,16 +108,17 @@ public final class SphinxUtil {
         }
         System.out.println("[SphinxUtil] Total beta length=" + headerLen);
 
-        int instPadLen = params.getInstructionTotalSize() - headerLen;
+        int instPadLen = params.getInstructionTotalSize() - headerLen + params.keyLength(); //nochmal params.keyLength abziehen, weil die letzte Instruktion kein Gamma hat!
 
+        if(instPadLen < 0) {
+            throw new OmniSphinxException("Header to small!");
+        }
         SecureRandom secureRandom = new SecureRandom();
         byte[] randomPad = new byte[instPadLen];
         secureRandom.nextBytes(randomPad);
 
-        System.out.println("[SphinxUtil] Instruction pad length=" + instPadLen);
         instructions[hops - 1] = concatenate(instructions[hops - 1], randomPad);
         byte[] onion = InstructionEncryptor.encryptFixedSize(params, instructions, secrets, params.getInstructionTotalSize());
-        //System.out.println("[SphinxUtil] Encrypted instruction onion length=" + onion.length + ", bytes=" + toHex(onion));
 
         byte[] finalMac = params.mac(params.hmu(secrets[0]), onion);
         System.out.println("[SphinxUtil] Final instruction MAC: " + toHex(finalMac));

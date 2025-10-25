@@ -51,14 +51,16 @@ public final class InstructionEncryptor {
 
         }
 
-        byte[] beta = instructions[instructions.length - 1];
+        //instructions.length - 1 = 3
+        byte[] beta = instructions[instructions.length - 1]; //Dreieck und so n3
         beta = params.xorRho(params.hrho(secrets[secrets.length - 1]), beta); // letzte Node verschlüsseln
         beta = concatenate(beta, phi);
-        beta = slice(beta, totalSize);
+        beta = slice(beta, totalSize); //Beta3
         System.out.println("WICHTIG LÄNGE VON PHI = " + phi.length);
         System.out.println("WICHTIG: LÄNGE VON INSTR: " + beta.length);
-        byte[] gamma = params.mac(params.hmu(secrets[secrets.length - 1]), beta);
+        byte[] gamma = params.mac(params.hmu(secrets[secrets.length - 1]), beta); //Gamma3
         System.out.println("[InstructionEncryptor] gamma = " + toHex(gamma) + " of Step " + (secrets.length - 1));
+        //hops - 2 = 2
         for (int i = hops - 2; i >= 0; i--) {
             byte[] currentInstr = instructions[i];
             byte[] plain = concatenate(currentInstr, gamma, beta);
