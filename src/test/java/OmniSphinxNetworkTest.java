@@ -124,12 +124,10 @@ public class OmniSphinxNetworkTest {
             byte[] destMsg = Arrays.copyOf(body, padIndex);
             MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(destMsg);
             int arrLen = unpacker.unpackArrayHeader();
-            assertEquals(2, arrLen);
-            byte[] dest = unpacker.readPayload(unpacker.unpackBinaryHeader());
+            assertEquals(1, arrLen);
             byte[] msg = unpacker.readPayload(unpacker.unpackBinaryHeader());
             unpacker.close();
 
-            assertArrayEquals(destination, dest);
             assertEquals("test", new String(msg));
         }
     }

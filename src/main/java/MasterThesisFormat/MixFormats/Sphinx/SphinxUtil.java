@@ -44,7 +44,15 @@ public final class SphinxUtil {
             x = x.multiply(b).mod(group.getOrder());
         }
 
-        byte[] encodedMessage = Arrays.copyOf(message, message.length);
+        byte[] encodedMessage;
+        try (MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+            packer.packArrayHeader(1);
+            packer.packBinaryHeader(message.length);
+            packer.writePayload(message);
+            encodedMessage = packer.toByteArray();
+        } catch (IOException e) {
+            throw new Exception("Failed to encode destination payload", e);
+        }
 
         int msgTotalSize = params.bodyLength() - params.keyLength();
         byte[] initialPad = {(byte) 0x7f};
@@ -56,7 +64,6 @@ public final class SphinxUtil {
 
         byte[] padBytes = new byte[padLen];
         Arrays.fill(padBytes, (byte) 0xff);
-        System.out.println("[SphinxUtil] Payload pad length=" + padLen);
 
         byte[] payload = concatenate(encodedMessage, initialPad, padBytes);
 
