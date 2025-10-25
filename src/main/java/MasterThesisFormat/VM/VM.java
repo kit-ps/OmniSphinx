@@ -47,11 +47,15 @@ public class VM {
                         int programCounter = pc;
                         pc = executeFor(instructions, times, instrCount, programCounter);
                     }
-                    case STORE_BYTES -> {
+                    case STORE_BYTES1 -> pc = handleStore(instructions, pc, 1);
+                    case STORE_BYTES2 -> pc = handleStore(instructions, pc, 2);
+                    case STORE_BYTES3 -> pc = handleStore(instructions, pc, 3);
+                    case STORE_BYTES4 -> pc = handleStore(instructions, pc, 4);
+                    case STORE_MULTIPLE_BYTES -> {
                         byte source = instructions[pc++];
-                        byte length = instructions[pc++];
+                        byte lengthReg = instructions[pc++];
                         byte destReg = instructions[pc++];
-                        storeBytes(source, length, destReg);
+                        storeMultipleBytes(source, lengthReg, destReg);
                     }
                     case COMPUTE_SHARED_SECRET -> {
                         byte pubKeyReg = instructions[pc++];
@@ -182,11 +186,15 @@ public class VM {
 
                 switch (innerOpcode) {
                     case STOP -> stopRequested = true;
-                    case STORE_BYTES -> {
+                    case STORE_BYTES1 -> innerPc = handleStore(instructions, innerPc, 1);
+                    case STORE_BYTES2 -> innerPc = handleStore(instructions, innerPc, 2);
+                    case STORE_BYTES3 -> innerPc = handleStore(instructions, innerPc, 3);
+                    case STORE_BYTES4 -> innerPc = handleStore(instructions, innerPc, 4);
+                    case STORE_MULTIPLE_BYTES -> {
                         byte source = instructions[innerPc++];
-                        byte length = instructions[innerPc++];
+                        byte lengthReg = instructions[innerPc++];
                         byte destReg = instructions[innerPc++];
-                        storeBytes(source, length, destReg);
+                        storeMultipleBytes(source, lengthReg, destReg);
                     }
                     case COMPUTE_SHARED_SECRET -> {
                         byte pubKeyReg = instructions[innerPc++];
@@ -333,25 +341,65 @@ public class VM {
         return pc;
     }
 
-    private void storeBytes(byte source, byte length, byte destReg) throws VMException {
-        int startByte = 0;
-        int lengthBytes = Byte.toUnsignedInt(length);
+    private int handleStore(byte[] instructions, int pc, int lengthBytes) throws VMException {
+        if (pc >= instructions.length) {
+            throw new VMException("STORE missing source register");
+        }
+
+        byte source = instructions[pc++];
+        int length = readImmediateLength(instructions, pc, lengthBytes);
+        pc += lengthBytes;
+
+        if (pc >= instructions.length) {
+            throw new VMException("STORE missing destination register");
+        }
+
+        byte destReg = instructions[pc++];
+        storeBytes(source, length, destReg);
+        return pc;
+    }
+
+    private int readImmediateLength(byte[] instructions, int pc, int lengthBytes) throws VMException {
+        if (pc + lengthBytes > instructions.length) {
+            throw new VMException("STORE length out of bounds");
+        }
+
+        int length = 0;
+        for (int i = 0; i < lengthBytes; i++) {
+            length = (length << 8) | Byte.toUnsignedInt(instructions[pc++]);
+        }
+        return length;
+    }
+
+    private void storeBytes(byte source, int length, byte destReg) throws VMException {
+        if (length < 0) {
+            throw new VMException("STORE length must be non-negative");
+        }
 
         byte[] src = registers.get(source);
+        if (src == null) {
+            throw new VMException("STORE source register not initialized");
+        }
 
-
-        if (startByte + lengthBytes > src.length) {
+        if (length > src.length) {
             throw new VMException("storeByte out of bounds");
         }
 
-        byte[] extracted = Arrays.copyOfRange(src, startByte, startByte + lengthBytes);
+        byte[] extracted = Arrays.copyOfRange(src, 0, length);
         registers.put(destReg, extracted);
 
-        // Entferne aus source
-        byte[] newSrc = new byte[src.length - lengthBytes];
-        System.arraycopy(src, 0, newSrc, 0, startByte);
-        System.arraycopy(src, startByte + lengthBytes, newSrc, startByte, src.length - (startByte + lengthBytes));
+        byte[] newSrc = Arrays.copyOfRange(src, length, src.length);
         registers.put(source, newSrc);
+    }
+
+    private void storeMultipleBytes(byte source, byte lengthReg, byte destReg) throws VMException {
+        byte[] lengthBytes = registers.get(lengthReg);
+        if (lengthBytes == null || lengthBytes.length == 0) {
+            throw new VMException("STORE_MULTIPLE length register not initialized");
+        }
+
+        int length = lengthBytes.length <= Integer.BYTES ? toUnsignedInt(lengthBytes) : lengthBytes.length;
+        storeBytes(source, length, destReg);
     }
 
     private void computeSharedSecret(byte pubKeyReg, byte destReg) throws VMException {

@@ -14,8 +14,32 @@ public class Instruction {
      * @param destReg Zielregister für die extrahierten Bits
      * @return Instruction für die Bit-Extraktion
      */
-    public static byte[] storeBytes(byte source,  byte length, byte destReg) {
-        return new byte[]{OpCode.STORE_BYTES.getCode(), source,  length, destReg};
+    public static byte[] storeBytes(byte source, int length, byte destReg) {
+        if (length < 0) {
+            throw new IllegalArgumentException("Length must be non-negative");
+        }
+
+        if (length <= 0xFF) {
+            return new byte[]{OpCode.STORE_BYTES1.getCode(), source, (byte) length, destReg};
+        } else if (length <= 0xFFFF) {
+            return new byte[]{OpCode.STORE_BYTES2.getCode(), source,
+                    (byte) ((length >> 8) & 0xFF),
+                    (byte) (length & 0xFF),
+                    destReg};
+        } else if (length <= 0xFFFFFF) {
+            return new byte[]{OpCode.STORE_BYTES3.getCode(), source,
+                    (byte) ((length >> 16) & 0xFF),
+                    (byte) ((length >> 8) & 0xFF),
+                    (byte) (length & 0xFF),
+                    destReg};
+        } else {
+            return new byte[]{OpCode.STORE_BYTES4.getCode(), source,
+                    (byte) ((length >> 24) & 0xFF),
+                    (byte) ((length >> 16) & 0xFF),
+                    (byte) ((length >> 8) & 0xFF),
+                    (byte) (length & 0xFF),
+                    destReg};
+        }
     }
 
     public static byte[] storeMultipleBytes(byte source,  byte lengthReg, byte destReg) {

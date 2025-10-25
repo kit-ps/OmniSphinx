@@ -68,7 +68,23 @@ public final class VMUtil {
             case STOP -> {
                 return index;
             }
-            case STORE_BYTES, STORE_MULTIPLE_BYTES -> {
+            case STORE_BYTES1 -> {
+                index = ensureAvailable(buffer, index, 3);
+                return index;
+            }
+            case STORE_BYTES2 -> {
+                index = ensureAvailable(buffer, index, 4);
+                return index;
+            }
+            case STORE_BYTES3 -> {
+                index = ensureAvailable(buffer, index, 5);
+                return index;
+            }
+            case STORE_BYTES4 -> {
+                index = ensureAvailable(buffer, index, 6);
+                return index;
+            }
+            case STORE_MULTIPLE_BYTES -> {
                 index = ensureAvailable(buffer, index, 3);
                 return index;
             }
@@ -156,7 +172,11 @@ public final class VMUtil {
             OpCode op = OpCode.fromByte(instructions[pc++]); // opcode selbst
 
             switch (op) {
-                case STORE_BYTES -> pc += 3; // 3 args: source, length, destReg
+                case STORE_BYTES1 -> pc += 3; // 3 args: source, 1-byte length, destReg
+                case STORE_BYTES2 -> pc += 4; // source, 2-byte length, destReg
+                case STORE_BYTES3 -> pc += 5; // source, 3-byte length, destReg
+                case STORE_BYTES4 -> pc += 6; // source, 4-byte length, destReg
+                case STORE_MULTIPLE_BYTES -> pc += 3;
                 case COMPUTE_SHARED_SECRET -> pc += 2;
                 case HASH -> pc += 2;
                 case MAC -> pc += 3;

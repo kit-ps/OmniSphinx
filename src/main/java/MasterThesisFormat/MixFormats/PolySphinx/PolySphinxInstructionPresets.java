@@ -76,7 +76,7 @@ public class PolySphinxInstructionPresets {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
 
         instr.write(Instruction.load(B, REG_SUBHEADER));
-        byte instrCount = 8; // so viele Instruktionen sind in der Schleife!
+        byte instrCount = 7; // so viele Instruktionen sind in der Schleife!
 
         //Schleife definieren
         instr.write(Instruction.forLoop(p, instrCount));

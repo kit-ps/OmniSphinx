@@ -141,7 +141,7 @@ public class OmniSphinxNetworkTest {
             int receiverCount = 2;
             int[] receivers = randomDistinctIndices(CLIENT_COUNT, receiverCount, senderIndex);
 
-            int replicationIndex = random.nextInt(MIX_NODE_COUNT);
+            int replicationIndex = 0; // Erste Mix-Node ist die Replication-Node
             byte[] replicationNode = mixNodeIds[replicationIndex];
             ECPoint replicationPub = mixNodePubs[replicationIndex];
 

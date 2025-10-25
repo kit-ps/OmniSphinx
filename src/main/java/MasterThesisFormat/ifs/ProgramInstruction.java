@@ -32,8 +32,25 @@ public class ProgramInstruction {
         this.elseBranch = elseBranch == null ? Collections.emptyList() : elseBranch;
     }
 
-    public static ProgramInstruction StoreBytes(Register src, byte length, Register dest) {
-        return new ProgramInstruction(OpCode.STORE_BYTES, dest, src, null, length, null, null, null, null);
+    public static ProgramInstruction StoreBytes(Register src, int length, Register dest) {
+        if (length < 0) {
+            throw new IllegalArgumentException("Length must be non-negative");
+        }
+
+        OpCode opcode;
+        Byte immediate = null;
+        if (length <= 0xFF) {
+            opcode = OpCode.STORE_BYTES1;
+            immediate = (byte) length;
+        } else if (length <= 0xFFFF) {
+            opcode = OpCode.STORE_BYTES2;
+        } else if (length <= 0xFFFFFF) {
+            opcode = OpCode.STORE_BYTES3;
+        } else {
+            opcode = OpCode.STORE_BYTES4;
+        }
+
+        return new ProgramInstruction(opcode, dest, src, null, immediate, null, null, null, null);
     }
 
     public static ProgramInstruction computeSharedSecret(Register src, Register dest) {

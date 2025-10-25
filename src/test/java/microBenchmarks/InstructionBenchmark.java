@@ -44,7 +44,10 @@ public class InstructionBenchmark {
     @Test
     public void benchmarkInstructions() throws Exception {
         Map<String, InstructionScenario> scenarios = new LinkedHashMap<>();
-        scenarios.put(OpCode.STORE_BYTES.name(), this::storeBytesScenario);
+        scenarios.put(OpCode.STORE_BYTES1.name(), this::storeBytesScenario);
+        scenarios.put(OpCode.STORE_BYTES2.name(), this::storeBytesScenario);
+        scenarios.put(OpCode.STORE_BYTES3.name(), this::storeBytesScenario);
+        scenarios.put(OpCode.STORE_BYTES4.name(), this::storeBytesScenario);
         scenarios.put(OpCode.COMPUTE_SHARED_SECRET.name(), this::computeSharedSecretScenario);
         scenarios.put(OpCode.HASH.name(), this::hashScenario);
         scenarios.put(OpCode.MAC.name(), this::macScenario);

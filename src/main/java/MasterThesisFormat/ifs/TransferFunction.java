@@ -21,7 +21,11 @@ public class TransferFunction {
         rules.put(OpCode.LOAD1, this::load);
         rules.put(OpCode.LOAD2, this::load);
         rules.put(OpCode.LOAD3, this::load);
-        rules.put(OpCode.STORE_BYTES, this::storeBytes);
+        rules.put(OpCode.STORE_BYTES1, this::storeBytes);
+        rules.put(OpCode.STORE_BYTES2, this::storeBytes);
+        rules.put(OpCode.STORE_BYTES3, this::storeBytes);
+        rules.put(OpCode.STORE_BYTES4, this::storeBytes);
+        rules.put(OpCode.STORE_MULTIPLE_BYTES, this::storeBytes);
         rules.put(OpCode.CONCATE, this::concate);
         rules.put(OpCode.CONCATE_WITH_BYTE_VALUE, this::concateWithByteValue);
         rules.put(OpCode.XOR, this::xor);
