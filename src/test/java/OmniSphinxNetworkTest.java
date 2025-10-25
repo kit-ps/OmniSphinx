@@ -138,6 +138,7 @@ public class OmniSphinxNetworkTest {
             int senderIndex = random.nextInt(CLIENT_COUNT);
             Client sender = clients[senderIndex];
 
+
             int receiverCount = 2;
             int[] receivers = randomDistinctIndices(CLIENT_COUNT, receiverCount, senderIndex);
 
@@ -147,21 +148,24 @@ public class OmniSphinxNetworkTest {
 
             List<byte[][]> suffixPaths = new ArrayList<>();
             List<ECPoint[]> keySets = new ArrayList<>();
-            int[] exitIndices = randomDistinctIndices(MIX_NODE_COUNT, receiverCount, replicationIndex);
-            Map<Integer, Integer> exitToReceiver = new HashMap<>();
+
             for (int r = 0; r < receiverCount; r++) {
-                byte[][] path = new byte[][]{mixNodeIds[exitIndices[r]], clientIds[receivers[r]]};
-                suffixPaths.add(path);
-                ECPoint[] ks = new ECPoint[]{mixNodePubs[exitIndices[r]], clientPubs[receivers[r]]};
-                keySets.add(ks);
-                exitToReceiver.put(exitIndices[r], receivers[r]);
+                int hopCount = 3 + random.nextInt(3);
+                int[] mixIndices = randomDistinctIndices(MIX_NODE_COUNT, hopCount, -1);
+                byte[][] nodeList = new byte[hopCount][];
+                ECPoint[] keyList = new ECPoint[hopCount];
+                for (int i = 0; i < hopCount; i++) {
+                    nodeList[i] = mixNodeIds[mixIndices[i]];
+                    keyList[i] = mixNodePubs[mixIndices[i]];
+                }
+                suffixPaths.add(nodeList);
+                keySets.add(keyList);
             }
 
             byte[] seed = new byte[16];
             random.nextBytes(seed);
-            Pair<InstructionPacket, List<SubHeader>> pair = PolySphinxUtil.createPolySphinxPacketForTests(
+            InstructionPacket packet = PolySphinxUtil.createPolySphinxPacket(
                     params, replicationNode, replicationPub, suffixPaths, "test".getBytes(), seed, keySets);
-            InstructionPacket packet = pair.component1();
             byte[] raw = sender.packInstructionPacket(packet);
 
             TestNode replicationNodeObj = mixNodes[replicationIndex];
