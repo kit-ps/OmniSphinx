@@ -161,7 +161,7 @@ public class Params {
         digest.update(data, 0, data.length);
         digest.doFinal(output, 0);
 
-        return output;
+        return slice(output, keyLength);
     }
 
     public byte[] getAesKey(ECPoint s) {
@@ -176,7 +176,7 @@ public class Params {
 
     public byte[] deriveKey(byte[] k, byte flavor) {
         byte[] data = concatenate(k, flavor);
-        return slice(hash(data), keyLength);
+        return hash(data);
     }
 
     public BigInteger hb(ECPoint alpha, byte[] k) {
