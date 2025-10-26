@@ -92,7 +92,7 @@ public final class VMUtil {
                 index = ensureAvailable(buffer, index, 2);
                 return index;
             }
-            case MAC, XOR, DECRYPT, CONCATE, CONCATE_WITH_BYTE_VALUE, ENCRYPT -> {
+            case MAC, XOR, ADD, DECRYPT, CONCATE, CONCATE_WITH_BYTE_VALUE, ENCRYPT -> {
                 index = ensureAvailable(buffer, index, 3);
                 return index;
             }
@@ -185,6 +185,7 @@ public final class VMUtil {
                 case PAD -> pc += 3;
                 case PRG_GENERATE -> pc += 3;
                 case XOR -> pc += 3;
+                case ADD -> pc += 3;
                 case DECRYPT -> pc += 3;
                 case CONCATE -> pc += 3;
                 case CONCATE_WITH_BYTE_VALUE -> pc += 3;

@@ -103,6 +103,12 @@ public class VM {
                         byte destReg = instructions[pc++];
                         xor(inputA, inputB, destReg);
                     }
+                    case ADD -> {
+                        byte augend = instructions[pc++];
+                        byte addend = instructions[pc++];
+                        byte destReg = instructions[pc++];
+                        add(augend, addend, destReg);
+                    }
                     case DECRYPT -> {
                         byte keyReg = instructions[pc++];
                         byte inputReg = instructions[pc++];
@@ -241,6 +247,12 @@ public class VM {
                         byte inputB = instructions[innerPc++];
                         byte destReg = instructions[innerPc++];
                         xor(inputA, inputB, destReg);
+                    }
+                    case ADD -> {
+                        byte augend = instructions[innerPc++];
+                        byte addend = instructions[innerPc++];
+                        byte destReg = instructions[innerPc++];
+                        add(augend, addend, destReg);
                     }
                     case DECRYPT -> {
                         byte keyReg = instructions[innerPc++];
@@ -517,6 +529,44 @@ public class VM {
         registers.put(destReg, result);
     }
 
+    private void add(byte augendReg, byte addendReg, byte destReg) throws VMException {
+        byte[] augend = registers.get(augendReg);
+        byte[] addend = registers.get(addendReg);
+
+        if (augend == null) {
+            throw new VMException("ADD augend register not initialized");
+        }
+        if (addend == null) {
+            throw new VMException("ADD addend register not initialized");
+        }
+
+        byte[] destExisting = registers.get(destReg);
+        int targetLen = Math.max(augend.length, addend.length);
+        if (destExisting != null) {
+            targetLen = Math.max(targetLen, destExisting.length);
+        }
+
+        byte[] result = new byte[targetLen];
+        int carry = 0;
+        for (int i = 0; i < targetLen; i++) {
+            int augendIndex = augend.length - 1 - i;
+            int addendIndex = addend.length - 1 - i;
+
+            int sum = carry;
+            if (augendIndex >= 0) {
+                sum += Byte.toUnsignedInt(augend[augendIndex]);
+            }
+            if (addendIndex >= 0) {
+                sum += Byte.toUnsignedInt(addend[addendIndex]);
+            }
+
+            result[targetLen - 1 - i] = (byte) (sum & 0xFF);
+            carry = sum >>> 8;
+        }
+
+        registers.put(destReg, result);
+    }
+
     private void decrypt(byte keyReg, byte inputReg, byte destReg) throws VMException {
         byte[] result = params.decrypt(registers.get(keyReg), registers.get(inputReg));
         registers.put(destReg, result);
@@ -551,6 +601,14 @@ public class VM {
     private void concate(byte reg1, byte reg2, byte destReg) throws VMException {
         byte[] data1 = registers.get(reg1);
         byte[] data2 = registers.get(reg2);
+
+        if(data1 == null) {
+            data1 = new byte[0];
+        }
+
+        if(data2 == null) {
+            data2 = new byte[0];
+        }
 
         byte[] result = new byte[data1.length + data2.length];
         System.arraycopy(data1, 0, result, 0, data1.length);
