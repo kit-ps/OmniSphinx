@@ -151,13 +151,15 @@ public class OmniSphinxNetworkTest {
             int receiverCount = 2;
             int[] receivers = randomDistinctIndices(CLIENT_COUNT, receiverCount, senderIndex);
 
-            int replicationIndex = 0; // Erste Mix-Node ist die Replication-Node
+            int replicationIndex = randomDistinctIndices(MIX_NODE_COUNT, 1, -1)[0];
             byte[] replicationNode = mixNodeIds[replicationIndex];
             ECPoint replicationPub = mixNodePubs[replicationIndex];
 
             List<byte[][]> suffixPaths = new ArrayList<>();
             List<ECPoint[]> keySets = new ArrayList<>();
             int hopCount = 3 + random.nextInt(3);
+
+            //create Suffixpaths
             for (int r = 0; r < receiverCount; r++) {
                 int[] mixIndices = randomDistinctIndices(MIX_NODE_COUNT, hopCount, -1);
                 byte[][] nodeList = new byte[hopCount][];

@@ -197,63 +197,6 @@ public class MixNode {
         return packer.toByteArray();
     }
 
-    public List<InstructionPacketAndNextHop> processInstructionPacketAndNextHop(byte[] rawPacket) throws VMException {
-        MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(rawPacket);
-        byte[] encodedAlpha, encInstr, mac, packetRaw;
-        try {
-            int arrLen = unpacker.unpackArrayHeader();
-            if (arrLen != 4) {
-                throw new IllegalArgumentException("Invalid instruction packet layout");
-            }
-            encodedAlpha = unpacker.readPayload(unpacker.unpackBinaryHeader());
-            encInstr = unpacker.readPayload(unpacker.unpackBinaryHeader());
-            mac = unpacker.readPayload(unpacker.unpackBinaryHeader());
-            packetRaw = unpacker.readPayload(unpacker.unpackBinaryHeader());
-            unpacker.close();
-        } catch (java.io.IOException e) {
-            throw new RuntimeException("Failed to unpack instruction packet", e);
-        }
-
-        //Preprocessing
-        ECPoint alpha = SerializationUtils.decodeECPoint(encodedAlpha);
-
-        ECPoint sharedSecret  = params.getGroup().expon(alpha, secret);
-
-        byte[] aesKey = params.getAesKey(sharedSecret);
-
-        InstructionLayer layer = decryptInstructionLayer(encInstr, aesKey, mac);
-
-        //compute blinding factors
-        BigInteger b = params.hb(alpha, aesKey);
-
-        //Blinding
-        alpha = params.getGroup().expon(alpha, b);
-
-
-        HashMap<Byte, byte[]> register = new HashMap<>();
-        register.put(InstructionRegister.NEXT_ALPHA.getCode(), alpha.getEncoded(true));
-        register.put(InstructionRegister.INSTRUCTIONS.getCode(), layer.instructions());
-        register.put(InstructionRegister.NEXT_INSTRUCTIONS.getCode(), layer.nextInstructions());
-        register.put(InstructionRegister.MAC.getCode(), layer.mac());
-        register.put(InstructionRegister.PAYLOAD.getCode(), packetRaw);
-        register.put(InstructionRegister.SHARED_SECRET.getCode(), aesKey);
-        VMContext vmContext = new VMContext(register);
-        List<VMOutput> outputs = vm.interpret(vmContext);
-
-        List<InstructionPacketAndNextHop> packets = new ArrayList<>();
-        int outputIndex = 0;
-        for (VMOutput out : outputs) {
-            ECPoint nextAlpha = SerializationUtils.decodeECPoint(out.getNextAlpha());
-            byte[] processedInstructions = postProcessInstructions(out.getInstructions(), aesKey, outputIndex);
-            InstructionHeader header = new InstructionHeader(nextAlpha, processedInstructions, out.getMAC());
-            InstructionPacket packet = new InstructionPacket(header, out.getOutgoingPayload());
-            InstructionPacketAndNextHop instructionPacketAndNextHop = new InstructionPacketAndNextHop(out.getNextHop(), packet);
-            packets.add(instructionPacketAndNextHop);
-            outputIndex++;
-        }
-
-        return packets;
-    }
 
     private byte[] postProcessInstructions(byte[] instructions, byte[] sharedSecret, int outputIndex) {
         int targetSize = params.getInstructionTotalSize();

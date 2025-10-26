@@ -92,9 +92,9 @@ public class PolySphinxInstructionPresets {
         //Schleifen-Block:
         instr.write(Instruction.storeBytes(REG_SUBHEADER, nextHopLen, REG_NEXT_HOP));    // 1
         instr.write(Instruction.storeBytes(REG_SUBHEADER, keyLen, REG_KEY));   // 2
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, alphaLen, REG_ALPHA));  // 3
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, gammaLen, REG_GAMMA));   // 4
-        instr.write(Instruction.storeBytes(REG_SUBHEADER, tauPost, REG_BETA));     // 5
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, alphaLen, InstructionRegister.NEXT_ALPHA.getCode()));  // 3
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, gammaLen, InstructionRegister.MAC.getCode()));   // 4
+        instr.write(Instruction.storeBytes(REG_SUBHEADER, tauPost, InstructionRegister.NEXT_INSTRUCTIONS.getCode()));     // 5
         instr.write(Instruction.encrypt(REG_KEY, REG_PAYLOAD, REG_PAYLOAD));    // 6
         instr.write(Instruction.forward(REG_NEXT_HOP));                  //7
 

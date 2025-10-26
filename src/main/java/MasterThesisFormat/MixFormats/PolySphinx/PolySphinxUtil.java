@@ -148,7 +148,7 @@ public class PolySphinxUtil {
                 byte log2p = (byte) Integer.toBinaryString(numberOfPaths).length();
                 instructions[i] = PolySphinxInstructionPresets.createExitInstructions(seed, path, nodeList[i], r, log2p, (byte) params.keyLength());
             } else {
-                instructions[i] = PolySphinxInstructionPresets.createRelayInstructions(nodeList[i], sigmas[i]);
+                instructions[i] = PolySphinxInstructionPresets.createRelayInstructions(nodeList[i+1], sigmas[i]);
             }
         }
 
