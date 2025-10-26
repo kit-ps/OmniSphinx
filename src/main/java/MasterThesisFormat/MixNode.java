@@ -4,6 +4,7 @@ import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.InstructionPacket.InstructionPacketAndNextHop;
 import MasterThesisFormat.MixFormats.Sphinx.SphinxInstructionPresets;
 import MasterThesisFormat.VM.*;
+import MasterThesisFormat.header.InstructionEncryptor;
 import MasterThesisFormat.header.InstructionHeader;
 import MasterThesisFormat.instruction.InstructionRegister;
 import com.sun.net.httpserver.HttpExchange;
@@ -135,12 +136,15 @@ public class MixNode {
         List<VMOutput> outputs = vm.interpret(vmContext);
 
         List<InstructionPacket> packets = new ArrayList<>();
+        int outputIndex = 0;
         for (VMOutput out : outputs) {
             ECPoint nextAlpha = SerializationUtils.decodeECPoint(out.getNextAlpha());
-            InstructionHeader header = new InstructionHeader(nextAlpha, out.getInstructions(), out.getMAC());
+            byte[] processedInstructions = postProcessInstructions(out.getInstructions(), aesKey, outputIndex);
+            InstructionHeader header = new InstructionHeader(nextAlpha, processedInstructions, out.getMAC());
             InstructionPacket packet = new InstructionPacket(header, out.getOutgoingPayload());
             packets.add(packet);
             sendToNextNode(out.getNextHop(), packet);
+            outputIndex++;
         }
 
         return packets;
@@ -237,15 +241,39 @@ public class MixNode {
         List<VMOutput> outputs = vm.interpret(vmContext);
 
         List<InstructionPacketAndNextHop> packets = new ArrayList<>();
+        int outputIndex = 0;
         for (VMOutput out : outputs) {
             ECPoint nextAlpha = SerializationUtils.decodeECPoint(out.getNextAlpha());
-            InstructionHeader header = new InstructionHeader(nextAlpha, out.getInstructions(), out.getMAC());
+            byte[] processedInstructions = postProcessInstructions(out.getInstructions(), aesKey, outputIndex);
+            InstructionHeader header = new InstructionHeader(nextAlpha, processedInstructions, out.getMAC());
             InstructionPacket packet = new InstructionPacket(header, out.getOutgoingPayload());
             InstructionPacketAndNextHop instructionPacketAndNextHop = new InstructionPacketAndNextHop(out.getNextHop(), packet);
             packets.add(instructionPacketAndNextHop);
+            outputIndex++;
         }
 
         return packets;
+    }
+
+    private byte[] postProcessInstructions(byte[] instructions, byte[] sharedSecret, int outputIndex) {
+        int targetSize = params.getInstructionTotalSize();
+        if (instructions.length > targetSize) {
+            throw new RuntimeException("Instruction block exceeds allowed size");
+        }
+
+        if (instructions.length == targetSize) {
+            return instructions;
+        }
+
+        int paddingLength = targetSize - instructions.length;
+        byte[] padding;
+        try {
+            padding = InstructionEncryptor.padInstructions(params, paddingLength, instructions.length, sharedSecret, outputIndex);
+        } catch (OmniSphinxException e) {
+            throw new RuntimeException("Failed to pad instruction block", e);
+        }
+
+        return SerializationUtils.concatenate(instructions, padding);
     }
 
     private InstructionLayer decryptInstructionLayer(byte[] encInstr, byte[] aesKey, byte[] mac) {

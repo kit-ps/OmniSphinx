@@ -45,18 +45,14 @@ public final class InstructionEncryptor {
             }
 
             minLen = minLen - instructions[i].length - params.keyLength();
-
-
         }
 
-        //instructions.length - 1 = 3
-        byte[] beta = instructions[instructions.length - 1]; //Dreieck und so n3
-        beta = params.xorRho(params.hrho(secrets[secrets.length - 1]), beta); // letzte Node verschlüsseln
+        byte[] beta = instructions[instructions.length - 1];
+        beta = params.xorRho(params.hrho(secrets[secrets.length - 1]), beta);
         beta = concatenate(beta, phi);
-        beta = slice(beta, totalSize); //Beta3
+        beta = slice(beta, totalSize);
 
-        byte[] gamma = params.mac(params.hmu(secrets[secrets.length - 1]), beta); //Gamma3
-        //hops - 2 = 2
+        byte[] gamma = params.mac(params.hmu(secrets[secrets.length - 1]), beta);
         for (int i = hops - 2; i >= 0; i--) {
             byte[] currentInstr = instructions[i];
             byte[] plain = concatenate(currentInstr, gamma, beta);
@@ -79,63 +75,45 @@ public final class InstructionEncryptor {
         }
 
 
-        byte[] phi = {};
-        int minLen = totalSize;
+        byte[] phi = padding;
+        int minLen = totalSize - padding.length;
 
-        //Fall i = 1 direkt hier, aber mit dem Padding dazu!
-        //Der erste Filler String ist so groß wie das padding + MAC + Instruktionen
-        //Anstatt 0en vorne in den Filler String zu schreiben, schreibe ich das padding rein! Damit wird es mit Rho XORed.
-        //Damit kann die Replication Node das Padding wieder hinzufügen und mit dem passenden Rho wieder XORed. Somit passt alles!
-        byte[] zeroes1 = new byte[params.keyLength() + instructions[1].length];
-        Arrays.fill(zeroes1, (byte) 0x00);
-        zeroes1 = concatenate(padding, zeroes1);
-        byte[] plain = SerializationUtils.concatenate(phi, zeroes1);
-
-        byte[] zeroes2 = new byte[minLen];
-        Arrays.fill(zeroes2, (byte) 0x00);
-        byte[] zeroes2plain = SerializationUtils.concatenate(zeroes2, plain);
-
-        byte[] prg = params.xorRho(params.hrho(secrets[0]), zeroes2plain);
-        phi = Arrays.copyOfRange(prg, minLen, prg.length);
-
-        minLen -= instructions[1].length + params.keyLength();
-        if (minLen < 0) {
-            throw new IllegalArgumentException("Header too small for given instructions");
-        }
-
-
-        for (int i = 2; i < hops; i++) {
-            zeroes1 = new byte[params.keyLength() + instructions[i].length];
+        for (int i = 1; i < hops; i++) {
+            byte[] zeroes1 = new byte[params.keyLength() + instructions[i].length];
             Arrays.fill(zeroes1, (byte) 0x00);
-            plain = SerializationUtils.concatenate(phi, zeroes1);
+            byte[] plain = SerializationUtils.concatenate(phi, zeroes1);
 
-            zeroes2 = new byte[minLen];
+            byte[] zeroes2 = new byte[minLen];
             Arrays.fill(zeroes2, (byte) 0x00);
-            zeroes2plain = SerializationUtils.concatenate(zeroes2, plain);
+            byte[] zeroes2plain = SerializationUtils.concatenate(zeroes2, plain);
 
-            prg = params.xorRho(params.hrho(secrets[i - 1]), zeroes2plain);
-            phi = Arrays.copyOfRange(prg, minLen, prg.length);
+            phi = params.xorRho(params.hrho(secrets[i - 1]), zeroes2plain);
 
-            minLen -= instructions[i].length + params.keyLength();
+            phi = slice(phi, minLen, phi.length);
+
+
             if (minLen < 0) {
                 throw new IllegalArgumentException("Header too small for given instructions");
             }
+
+            minLen = minLen - instructions[i].length - params.keyLength();
         }
 
-        byte[] Instr = params.xorRho(params.hrho(secrets[secrets.length - 1]), instructions[instructions.length - 1]); // letzte Node verschlüsseln
-        Instr = concatenate(Instr, phi);
-        byte[] gamma = params.mac(params.hmu(secrets[secrets.length - 1]), Instr);
+        byte[] beta = instructions[instructions.length - 1];
+        beta = params.xorRho(params.hrho(secrets[secrets.length - 1]), beta);
+        beta = concatenate(beta, phi);
+        beta = slice(beta, totalSize);
 
+        byte[] gamma = params.mac(params.hmu(secrets[secrets.length - 1]), beta);
         for (int i = hops - 2; i >= 0; i--) {
             byte[] currentInstr = instructions[i];
-            int InstrLen = Instr.length - currentInstr.length - params.keyLength();
-            byte[] plainInstr = slice(Instr, InstrLen);
-            plain = concatenate(currentInstr, gamma, plainInstr);
-            Instr = params.xorRho(params.hrho(secrets[i]), plain);
-            gamma = params.mac(params.hmu(secrets[i]), Instr);
+            byte[] plain = concatenate(currentInstr, gamma, beta);
+            plain = slice(plain, totalSize);
+            beta = params.xorRho(params.hrho(secrets[i]), plain);
+            gamma = params.mac(params.hmu(secrets[i]), beta);
         }
 
-        return Instr;
+        return beta;
     }
 
     public static byte[] padInstructions(Params params, int padding, int currentLen, byte[] secret,
