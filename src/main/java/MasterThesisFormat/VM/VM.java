@@ -533,6 +533,8 @@ public class VM {
         byte[] augend = registers.get(augendReg);
         byte[] addend = registers.get(addendReg);
 
+
+
         if (augend == null) {
             throw new VMException("ADD augend register not initialized");
         }
@@ -540,36 +542,34 @@ public class VM {
             throw new VMException("ADD addend register not initialized");
         }
 
-        byte[] destExisting = registers.get(destReg);
-        int targetLen = Math.max(augend.length, addend.length);
-        if (destExisting != null) {
-            targetLen = Math.max(targetLen, destExisting.length);
+        int value = 0;
+        for(byte b: addend) {
+            value = (value << 8) + (b & 0xFF);
         }
 
-        byte[] result = new byte[targetLen];
-        int carry = 0;
-        for (int i = 0; i < targetLen; i++) {
-            int augendIndex = augend.length - 1 - i;
-            int addendIndex = addend.length - 1 - i;
-
-            int sum = carry;
-            if (augendIndex >= 0) {
-                sum += Byte.toUnsignedInt(augend[augendIndex]);
-            }
-            if (addendIndex >= 0) {
-                sum += Byte.toUnsignedInt(addend[addendIndex]);
-            }
-
-            result[targetLen - 1 - i] = (byte) (sum & 0xFF);
-            carry = sum >>> 8;
+        for(int i = 0; i < value; i++) {
+            augend = increment(augend);
         }
 
-        registers.put(destReg, result);
+        registers.put(destReg, augend);
+    }
+
+    private byte[] increment(byte[] value) throws VMException {
+        if (value == null) {
+            throw new VMException("INCREMENT register not initialized");
+        }
+
+        for (int i = value.length - 1; i >= 0; i--) {
+            value[i]++;
+            if (value[i] != 0) break;
+        }
+        return value;
     }
 
     private void decrypt(byte keyReg, byte inputReg, byte destReg) throws VMException {
         byte[] result = params.decrypt(registers.get(keyReg), registers.get(inputReg));
         registers.put(destReg, result);
+        System.out.println("[VM] Decrypt Key: " + Arrays.toString(registers.get(keyReg)));
     }
 
     private void encrypt(byte keyReg, byte inputReg, byte destReg) throws VMException {

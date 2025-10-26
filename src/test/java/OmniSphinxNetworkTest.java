@@ -200,8 +200,7 @@ public class OmniSphinxNetworkTest {
                     assertFalse("Mix node produced no outputs", outputs.isEmpty());
                     queue.addAll(outputs);
                 } else {
-                    System.out.println(hopKey);
-                    System.out.println(Arrays.toString(currentOut.getNextHop()));
+
                     Integer receiverIdx = clientIdMap.get(hopKey);
                     assertNotNull("Unknown recipient for key " + hopKey, receiverIdx);
                     assertTrue(contains(receivers, receiverIdx));

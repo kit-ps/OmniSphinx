@@ -6,6 +6,7 @@ import MasterThesisFormat.instruction.InstructionRegister;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class PolySphinxInstructionPresets {
 
@@ -21,7 +22,7 @@ public class PolySphinxInstructionPresets {
     public static final byte REG_KEYS    = 0x26;
     public static final byte REG_SUBHEADER    = 0x27;
     public static final byte REG_KEY = 0x28;
-    public static final byte REG_ALPHA1 = 0x29;
+    public static final byte REG_SIGMA2 = 0x29;
     public static final byte REG_ALPHA2 = 0x2A;
     public static final byte REG_ALPHA = 0x2B;
     public static final byte REG_GAMMA = 0x2C;
@@ -39,27 +40,28 @@ public class PolySphinxInstructionPresets {
         return instr.toByteArray();
     }
 
-    public static byte[] createExitInstructions(byte[] seed, byte[] path, byte[] recipient, byte r, byte log2p, byte kappaLen) throws IOException {
+    public static byte[] createExitInstructions(byte[] seed, byte[] path, byte[] recipient, byte r, int log2p, byte kappaLen) throws IOException {
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
 
         // Lade Konstanten
         instr.write(Instruction.load(seed, REG_SEED));
+        System.out.println("[PolySphinxInstructionPresets] Seed: " + Arrays.toString(seed));
         instr.write(Instruction.load(path, REG_PATH));
         instr.write(Instruction.load(recipient, REG_NEXT_HOP));
 
         // Berechne K = h(SEED) und ins Key Register laden
 
         instr.write(Instruction.hash(REG_SEED, REG_SIGMA));
-        instr.write(Instruction.concate(REG_KEYS, REG_SIGMA, REG_KEYS));
 
+        //Key from K in Keys
+        instr.write(Instruction.hash(REG_SEED, REG_KEYS));
         // Den Key Tree anhand des Paths bauen und an den Keys appenden
         // REG_SIGMA = Aktueller schlüssel
-        instr.write(Instruction.forLoop(r, (byte) 5));
+        instr.write(Instruction.forLoop(r, (byte) 4));
         instr.write(Instruction.storeBytes(REG_PATH, log2p, REG_P_I_J));  // P_i_j
         instr.write(Instruction.addRight(REG_SIGMA, REG_P_I_J, REG_SIGMA));      // K + index
-        instr.write(Instruction.hash(REG_SIGMA, REG_SIGMA));                 // K = h(K)
-        instr.write(Instruction.hash(REG_SIGMA, REG_SIGMA));                 //nochmal hashen für den Key
-        instr.write(Instruction.concate(REG_SIGMA, REG_KEYS, REG_KEYS));
+        instr.write(Instruction.hash(REG_SIGMA, REG_SIGMA2));                 // K = h(K)
+        instr.write(Instruction.concate(REG_SIGMA2, REG_KEYS, REG_KEYS));
 
 
         // die Nachricht entschlüsseln

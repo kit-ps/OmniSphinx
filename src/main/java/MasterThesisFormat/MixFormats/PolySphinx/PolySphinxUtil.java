@@ -28,8 +28,10 @@ public class PolySphinxUtil {
 
 
         byte[] payload = message.clone();
+        System.out.println("[PolySphinxUtil]: Seed "+ Arrays.toString(seed));
         byte[] K = params.hash(seed);
         byte[] key = params.hash(K);
+        System.out.println("[PolySphinx] Sigma : " + Arrays.toString(key));
         byte[] encryptedPayload = params.encrypt(key, payload);
 
         BigInteger r = group.genSecret();
@@ -73,26 +75,6 @@ public class PolySphinxUtil {
         return new InstructionPacket(header, encryptedPayload);
     }
 
-    public static byte[] keyTreeKey(Params params, byte[] seed, byte[] path) {
-        byte[] current = params.hash(seed);
-
-        for (byte p : path) {
-            for (int i = 0; i <= (p & 0xFF); i++) {
-                increment(current);
-            }
-            current = params.hash(current);
-        }
-
-        return current;
-    }
-
-    private static void increment(byte[] x) {
-        for (int i = x.length - 1; i >= 0; i--) {
-            x[i]++;
-            if (x[i] != 0) break;
-        }
-    }
-
     private static List<SubHeader> buildSubHeaderList(Params params, byte[] seed, List<byte[][]> suffixPaths, List<byte[]> receivers, List<ECPoint[]> keys, byte[] replicationSecret) throws Exception {
         List<SubHeader> subheaders = new ArrayList<>();
         ECCGroup group = params.getGroup();
@@ -116,6 +98,29 @@ public class PolySphinxUtil {
         return subheaders;
     }
 
+
+
+
+    private static void increment(byte[] x) {
+        for (int i = x.length - 1; i >= 0; i--) {
+            x[i]++;
+            if (x[i] != 0) break;
+        }
+    }
+
+    public static byte[] keyTreeKey(Params params, byte[] seed, byte[] path) {
+        byte[] current = params.hash(seed);
+
+        for (byte p : path) {
+            for (int i = 0; i <= (p & 0xFF); i++) {
+                increment(current);
+            }
+            current = params.hash(current);
+        }
+
+        return current;
+    }
+
     private static SubHeader buildSingleSubHeader(Params params, ECCGroup group, byte[] seed, byte[][] nodeList, ECPoint[] pubKeys, byte[] receiver, int pathIndex, int numberOfPaths, byte[] replicationSecret) throws Exception {        BigInteger x = group.genSecret();
 
         int hops = nodeList.length;
@@ -136,8 +141,14 @@ public class PolySphinxUtil {
             byte[] sigma = keyTreeKey(params, seed, path);
             sigmas[i] = params.hash(sigma);
 
-            path = Arrays.copyOf(path, path.length + 1);
-            path[path.length - 1] = (byte) 1;
+            if(i != hops - 1) {
+                path = Arrays.copyOf(path, path.length + 1);
+                path[path.length - 1] = (byte) 1;
+            }
+
+        }
+        for(byte[] sigma: sigmas) {
+            System.out.println("[PolySphinx] Sigma : " + Arrays.toString(sigma));
         }
 
         if (nodeList.length == 0) {
@@ -149,8 +160,10 @@ public class PolySphinxUtil {
         for (int i = 0; i < hops; i++) {
             //Letzte Mix node = Exit Node
             if (i == hops - 1) {
-                byte r = (byte) (nodeList.length - 1);
-                byte log2p = (byte) Integer.toBinaryString(numberOfPaths).length();
+                byte r = (byte) path.length;
+                int log2p = 1;
+                System.out.println("[PolySphinxUtil] pathlänge: " + path.length);
+                System.out.println("[PolySphinxUtil] log2p: " +  log2p);
                 instructions[i] = PolySphinxInstructionPresets.createExitInstructions(seed, path, receiver, r, log2p, (byte) params.keyLength());
             } else {
                 instructions[i] = PolySphinxInstructionPresets.createRelayInstructions(nodeList[i+1], sigmas[i]);
