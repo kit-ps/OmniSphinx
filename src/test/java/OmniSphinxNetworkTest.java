@@ -74,7 +74,8 @@ public class OmniSphinxNetworkTest {
             clientIds[i] = ClientUtil.encodeNode(1000 + i, 0);
             clientPubs[i] = entry.pub();
             clients[i] = new Client(params, new RandomRoutingStrategy());
-            clientIdMap.put(Base64.getEncoder().encodeToString(clientIds[i]), i);
+            byte[] truncatedId = Arrays.copyOf(clientIds[i], params.keyLength());
+            clientIdMap.put(Base64.getEncoder().encodeToString(truncatedId), i);
         }
     }
 
@@ -196,6 +197,8 @@ public class OmniSphinxNetworkTest {
                     assertFalse("Mix node produced no outputs", outputs.isEmpty());
                     queue.addAll(outputs);
                 } else {
+                    System.out.println(hopKey);
+                    System.out.println(Arrays.toString(currentOut.getNextHop()));
                     Integer receiverIdx = clientIdMap.get(hopKey);
                     assertNotNull("Unknown recipient for key " + hopKey, receiverIdx);
                     assertTrue(contains(receivers, receiverIdx));

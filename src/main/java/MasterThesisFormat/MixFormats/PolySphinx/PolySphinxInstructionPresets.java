@@ -45,7 +45,7 @@ public class PolySphinxInstructionPresets {
         // Lade Konstanten
         instr.write(Instruction.load(seed, REG_SEED));
         instr.write(Instruction.load(path, REG_PATH));
-        instr.write(Instruction.load(recipient, REG_RECIPIENT));
+        instr.write(Instruction.load(recipient, REG_NEXT_HOP));
 
         // Berechne K = h(SEED) und ins Key Register laden
 
@@ -67,7 +67,7 @@ public class PolySphinxInstructionPresets {
         instr.write(Instruction.storeBytes(REG_KEYS, kappaLen, REG_SIGMA));    // K aus Keys nehmen
         instr.write(Instruction.decrypt(REG_SIGMA, REG_PAYLOAD, REG_PAYLOAD)); // entschlüsseln
 
-        instr.write(Instruction.forward(REG_RECIPIENT));
+        instr.write(Instruction.forward(REG_NEXT_HOP));
 
         instr.write(Instruction.stop());
         return instr.toByteArray();
