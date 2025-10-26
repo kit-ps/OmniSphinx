@@ -139,7 +139,7 @@ public class PolySphinxUtil {
             x = x.multiply(b).mod(group.getOrder());
 
             byte[] sigma = keyTreeKey(params, seed, path);
-            sigmas[i] = params.hash(sigma);
+            sigmas[i] = sigma;
 
             if(i != hops - 1) {
                 path = Arrays.copyOf(path, path.length + 1);
