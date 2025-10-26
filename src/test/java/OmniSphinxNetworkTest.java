@@ -162,13 +162,16 @@ public class OmniSphinxNetworkTest {
 
             //create Suffixpaths
             for (int r = 0; r < receiverCount; r++) {
+                int receiverIndex = receivers[r];
                 int[] mixIndices = randomDistinctIndices(MIX_NODE_COUNT, hopCount, -1);
-                byte[][] nodeList = new byte[hopCount][];
-                ECPoint[] keyList = new ECPoint[hopCount];
+                byte[][] nodeList = new byte[hopCount + 1][];
+                ECPoint[] keyList = new ECPoint[hopCount + 1];
                 for (int i = 0; i < hopCount; i++) {
                     nodeList[i] = mixNodeIds[mixIndices[i]];
                     keyList[i] = mixNodePubs[mixIndices[i]];
                 }
+                nodeList[hopCount] = Arrays.copyOf(clientIds[receiverIndex], params.keyLength());
+                keyList[hopCount] = clientPubs[receiverIndex];
                 suffixPaths.add(nodeList);
                 keySets.add(keyList);
             }
