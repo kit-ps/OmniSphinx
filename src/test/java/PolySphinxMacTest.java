@@ -19,6 +19,7 @@ import org.junit.Test;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static MasterThesisFormat.SerializationUtils.concatenate;
@@ -32,6 +33,7 @@ public class PolySphinxMacTest {
     private byte[] replicationNode;
     private List<byte[][]> suffixPaths;
     private List<ECPoint[]> keys;
+    private List<byte[]> receivers;
     private BigInteger[] pathPrivs;
     private byte[] seed;
     private byte[] message;
@@ -65,6 +67,9 @@ public class PolySphinxMacTest {
         keys = new ArrayList<>();
         keys.add(pathPubs);
 
+        receivers = new ArrayList<>();
+        receivers.add(Arrays.copyOf(ClientUtil.encodeNode(1001, 0), params.keyLength()));
+
         seed = new byte[16];
         new SecureRandom().nextBytes(seed);
 
@@ -73,7 +78,7 @@ public class PolySphinxMacTest {
 
     @Test
     public void testHeaderMac() throws Exception {
-        Pair<InstructionPacket, List<SubHeader>> pair = PolySphinxUtil.createPolySphinxPacketForTests(params, replicationNode, replicationPub, suffixPaths, message, seed, keys);
+        Pair<InstructionPacket, List<SubHeader>> pair = PolySphinxUtil.createPolySphinxPacketForTests(params, replicationNode, replicationPub, suffixPaths, receivers, message, seed, keys);
 
         InstructionPacket packet = pair.component1();
         List<SubHeader> subHeaders = pair.component2();

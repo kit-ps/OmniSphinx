@@ -19,6 +19,7 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertTrue;
@@ -36,6 +37,7 @@ public class PolySphinxPackageProcessingBenchmark {
     private PkiEntry receiver;
     private List<byte[][]> suffixPaths;
     private List<ECPoint[]> keySets;
+    private List<byte[]> receivers;
     private TestMixNode replicationMix;
     private TestMixNode relayMix;
     private TestMixNode exitMix;
@@ -58,10 +60,13 @@ public class PolySphinxPackageProcessingBenchmark {
         byte[] receiverId = ClientUtil.encodeNode(1001, 0);
 
         suffixPaths = new ArrayList<>();
-        suffixPaths.add(new byte[][]{relayNode, exitNode, receiverId});
+        suffixPaths.add(new byte[][]{relayNode, exitNode});
 
         keySets = new ArrayList<>();
-        keySets.add(new ECPoint[]{relay.pub(), exit.pub(), receiver.pub()});
+        keySets.add(new ECPoint[]{relay.pub(), exit.pub()});
+
+        receivers = new ArrayList<>();
+        receivers.add(Arrays.copyOf(receiverId, params.keyLength()));
 
         replicationMix = new TestMixNode("http://replication", replication.priv(), params);
         relayMix = new TestMixNode("http://relay", relay.priv(), params);
@@ -79,7 +84,7 @@ public class PolySphinxPackageProcessingBenchmark {
             random.nextBytes(seed);
 
             Pair<InstructionPacket, List<SubHeader>> pair = PolySphinxUtil.createPolySphinxPacketForTests(
-                    params, replicationNode, replication.pub(), suffixPaths, message, seed, keySets);
+                    params, replicationNode, replication.pub(), suffixPaths, receivers,message, seed, keySets);
             InstructionPacket packet = pair.component1();
             byte[] raw = client.packInstructionPacket(packet);
 

@@ -135,6 +135,7 @@ public class MixNode {
         VMContext vmContext = new VMContext(register);
         List<VMOutput> outputs = vm.interpret(vmContext);
 
+        System.out.println("[MixNode] encInstructions: " + Arrays.toString(encInstr));
         List<InstructionPacket> packets = new ArrayList<>();
         int outputIndex = 0;
         for (VMOutput out : outputs) {
@@ -212,6 +213,7 @@ public class MixNode {
         byte[] padding;
         try {
             padding = InstructionEncryptor.padInstructions(params, paddingLength, instructions.length, sharedSecret, outputIndex);
+            System.out.println("[MixNode] padding: " + Arrays.toString(padding));
         } catch (OmniSphinxException e) {
             throw new RuntimeException("Failed to pad instruction block", e);
         }

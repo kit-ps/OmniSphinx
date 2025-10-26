@@ -22,7 +22,7 @@ public class PolySphinxUtil {
 
     // erste Mix-Node, ist die replicationNode
     // suffixPaths sind die Pfade von der Replication-Node zu jedem Empfänger
-    public static InstructionPacket createPolySphinxPacket(Params params, byte[] replicationNode, ECPoint replicationNodePubKey, List<byte[][]> suffixPaths, byte[] message, byte[] seed, List<ECPoint[]> keys) throws Exception {
+    public static InstructionPacket createPolySphinxPacket(Params params, byte[] replicationNode, ECPoint replicationNodePubKey, List<byte[][]> suffixPaths, List<byte[]> receivers, byte[] message, byte[] seed, List<ECPoint[]> keys) throws Exception {
         ECCGroup group = params.getGroup();
 
 
@@ -37,7 +37,7 @@ public class PolySphinxUtil {
         ECPoint sharedSecret = group.expon(replicationNodePubKey, r);
         byte[] sharedSecretKey = params.getAesKey(sharedSecret);
 
-        List<SubHeader> subheaders = buildSubHeaderList(params, seed, suffixPaths, keys, sharedSecretKey);
+        List<SubHeader> subheaders = buildSubHeaderList(params, seed, suffixPaths, receivers, keys, sharedSecretKey);
 
         ByteArrayOutputStream shOut = new ByteArrayOutputStream();
         for (SubHeader sh : subheaders) {
@@ -93,15 +93,21 @@ public class PolySphinxUtil {
         }
     }
 
-    private static List<SubHeader> buildSubHeaderList(Params params, byte[] seed, List<byte[][]> suffixPaths, List<ECPoint[]> keys, byte[] replicationSecret) throws Exception {
+    private static List<SubHeader> buildSubHeaderList(Params params, byte[] seed, List<byte[][]> suffixPaths, List<byte[]> receivers, List<ECPoint[]> keys, byte[] replicationSecret) throws Exception {
         List<SubHeader> subheaders = new ArrayList<>();
         ECCGroup group = params.getGroup();
+
+        if (suffixPaths.size() != receivers.size()) {
+            throw new IllegalArgumentException("Each suffix path must have a corresponding receiver");
+        }
+
 
         for (int pathIndex = 0; pathIndex < suffixPaths.size(); pathIndex++) {
             byte[][] nodeList = suffixPaths.get(pathIndex);
             ECPoint[] pubKeys = keys.get(pathIndex);
+            byte[] receiver = receivers.get(pathIndex);
 
-            SubHeader sh = buildSingleSubHeader(params, group, seed, nodeList, pubKeys, pathIndex, suffixPaths.size(), replicationSecret);
+            SubHeader sh = buildSingleSubHeader(params, group, seed, nodeList, pubKeys, receiver, pathIndex, suffixPaths.size(), replicationSecret);
             if (sh != null) {
                 subheaders.add(sh);
             }
@@ -110,8 +116,7 @@ public class PolySphinxUtil {
         return subheaders;
     }
 
-    private static SubHeader buildSingleSubHeader(Params params, ECCGroup group, byte[] seed, byte[][] nodeList, ECPoint[] pubKeys, int pathIndex, int numberOfPaths, byte[] replicationSecret) throws Exception {
-        BigInteger x = group.genSecret();
+    private static SubHeader buildSingleSubHeader(Params params, ECCGroup group, byte[] seed, byte[][] nodeList, ECPoint[] pubKeys, byte[] receiver, int pathIndex, int numberOfPaths, byte[] replicationSecret) throws Exception {        BigInteger x = group.genSecret();
 
         int hops = nodeList.length;
         ECPoint[] alphas = new ECPoint[nodeList.length];
@@ -143,10 +148,10 @@ public class PolySphinxUtil {
         byte[][] instructions = new byte[nodeList.length][];
         for (int i = 0; i < hops; i++) {
             //Letzte Mix node = Exit Node
-            if (i == nodeList.length - 1) {
+            if (i == hops - 1) {
                 byte r = (byte) (nodeList.length - 1);
                 byte log2p = (byte) Integer.toBinaryString(numberOfPaths).length();
-                instructions[i] = PolySphinxInstructionPresets.createExitInstructions(seed, path, nodeList[i], r, log2p, (byte) params.keyLength());
+                instructions[i] = PolySphinxInstructionPresets.createExitInstructions(seed, path, receiver, r, log2p, (byte) params.keyLength());
             } else {
                 instructions[i] = PolySphinxInstructionPresets.createRelayInstructions(nodeList[i+1], sigmas[i]);
             }
@@ -169,15 +174,17 @@ public class PolySphinxUtil {
 
         byte[] encInstructions = slice(onion, headerLen);
 
-        byte[] finalMac = params.mac(params.hmu(secrets[0]), onion);
+        byte[] finalMac = params.mac(params.hmu(secrets[0]), concatenate(encInstructions, padding));
+        System.out.println("[PolySphinxUtil] encInstructions: " + Arrays.toString(encInstructions));
+        System.out.println("[PolySphinxUtil] padding: " + Arrays.toString(padding));
+        System.out.println("[PolySphinxUtil] Computed MAC over: " + Arrays.toString(concatenate(encInstructions, padding)));
         byte[] alphaBytes = SerializationUtils.encodeECPoint(alphas[0]);
         byte[] nextHop = Arrays.copyOf(nodeList[0], params.keyLength());
 
         return new SubHeader(nextHop, sigmas[0], alphaBytes, encInstructions, finalMac);
     }
 
-    public static Pair<InstructionPacket, List<SubHeader>> createPolySphinxPacketForTests(Params params, byte[] replicationNode, ECPoint replicationNodePubKey, List<byte[][]> suffixPaths, byte[] message, byte[] seed, List<ECPoint[]> keys) throws Exception {
-        ECCGroup group = params.getGroup();
+    public static Pair<InstructionPacket, List<SubHeader>> createPolySphinxPacketForTests(Params params, byte[] replicationNode, ECPoint replicationNodePubKey, List<byte[][]> suffixPaths, List<byte[]> receivers, byte[] message, byte[] seed, List<ECPoint[]> keys) throws Exception {        ECCGroup group = params.getGroup();
 
 
 
@@ -191,7 +198,7 @@ public class PolySphinxUtil {
         ECPoint sharedSecret = group.expon(replicationNodePubKey, r);
         byte[] sharedSecretKey = params.getAesKey(sharedSecret);
 
-        List<SubHeader> subheaders = buildSubHeaderList(params, seed, suffixPaths, keys, sharedSecretKey);
+        List<SubHeader> subheaders = buildSubHeaderList(params, seed, suffixPaths, receivers, keys, sharedSecretKey);
 
         ByteArrayOutputStream shOut = new ByteArrayOutputStream();
         for (SubHeader sh : subheaders) {

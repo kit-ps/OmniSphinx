@@ -16,6 +16,7 @@ import org.junit.Test;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertTrue;
@@ -29,6 +30,7 @@ public class PolySphinxPackageCreationBenchmark {
     private byte[] replicationNode;
     private List<byte[][]> suffixPaths;
     private List<ECPoint[]> keySets;
+    private List<byte[]> receivers;
     private ECPoint replicationPub;
     private final SecureRandom random = new SecureRandom();
 
@@ -49,10 +51,13 @@ public class PolySphinxPackageCreationBenchmark {
         byte[] receiverId = ClientUtil.encodeNode(1001, 0);
 
         suffixPaths = new ArrayList<>();
-        suffixPaths.add(new byte[][]{relayNode, exitNode, receiverId});
+        suffixPaths.add(new byte[][]{relayNode, exitNode});
 
         keySets = new ArrayList<>();
-        keySets.add(new ECPoint[]{relay.pub(), exit.pub(), receiver.pub()});
+        keySets.add(new ECPoint[]{relay.pub(), exit.pub()});
+
+        receivers = new ArrayList<>();
+        receivers.add(Arrays.copyOf(receiverId, params.keyLength()));
         replicationPub = replication.pub();
     }
 
@@ -68,7 +73,7 @@ public class PolySphinxPackageCreationBenchmark {
             byte[] runSeed = new byte[16];
             random.nextBytes(runSeed);
             Pair<InstructionPacket, List<SubHeader>> pair = PolySphinxUtil.createPolySphinxPacketForTests(
-                    params, replicationNode, replicationPub, suffixPaths, message, runSeed, keySets);
+                    params, replicationNode, replicationPub, suffixPaths, receivers,message, runSeed, keySets);
             client.packInstructionPacket(pair.component1());
             long duration = System.nanoTime() - start;
             creationStats.record(duration);
