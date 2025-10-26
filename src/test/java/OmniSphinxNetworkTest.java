@@ -58,7 +58,7 @@ public class OmniSphinxNetworkTest {
             PkiEntry entry = generator.generateKeyPair();
             mixNodePubs[i] = entry.pub();
             mixNodePrivs[i] = entry.priv();
-            mixNodeIds[i] = ClientUtil.encodeNode(i + 1, 0);
+            mixNodeIds[i] = Arrays.copyOf(ClientUtil.encodeNode(i + 1, 0), params.keyLength());
             String url = "http://localhost:" + (9000 + i);
             mixNodes[i] = new TestNode(url.getBytes(StandardCharsets.UTF_8), mixNodePrivs[i], params);
             byte[] truncatedId = Arrays.copyOf(mixNodeIds[i], params.keyLength());
