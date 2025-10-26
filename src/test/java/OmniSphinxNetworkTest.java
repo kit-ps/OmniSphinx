@@ -84,11 +84,18 @@ public class OmniSphinxNetworkTest {
             int senderIndex = random.nextInt(CLIENT_COUNT);
             Client sender = clients[senderIndex];
 
+            System.out.println("Sender Index: " + senderIndex);
+
             int receiverIndex = randomDistinctIndices(CLIENT_COUNT, 1, senderIndex)[0];
             byte[] destination = clientIds[receiverIndex];
 
+            System.out.println("Receiver Index: " + receiverIndex);
             int hopCount = 3 + random.nextInt(3); // at least three mix nodes
             int[] mixIndices = randomDistinctIndices(MIX_NODE_COUNT, hopCount, -1);
+
+            for (int i = 0; i < mixIndices.length; i++) {
+                System.out.println(i + "te Mix Node Index: " + mixIndices[i]);
+            }
             byte[][] nodeList = new byte[hopCount][];
             ECPoint[] keyList = new ECPoint[hopCount];
             for (int i = 0; i < hopCount; i++) {
@@ -104,6 +111,7 @@ public class OmniSphinxNetworkTest {
             for (int i = 0; i < hopCount; i++) {
                 TestNode node = mixNodes[mixIndices[i]];
                 List<InstructionPacketAndNextHop> outs = node.processForTest(raw);
+                System.out.println(i + "te Mix Node hat die Onion verarbeitet mit Index: " + mixIndices[i]);
                 assertEquals(1, outs.size());
                 InstructionPacketAndNextHop res = outs.get(0);
                 nextHop = res.getNextHop();

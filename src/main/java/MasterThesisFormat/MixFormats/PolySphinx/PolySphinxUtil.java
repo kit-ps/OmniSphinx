@@ -113,6 +113,7 @@ public class PolySphinxUtil {
     private static SubHeader buildSingleSubHeader(Params params, ECCGroup group, byte[] seed, byte[][] nodeList, ECPoint[] pubKeys, int pathIndex, int numberOfPaths, byte[] replicationSecret) throws Exception {
         BigInteger x = group.genSecret();
 
+        int hops = nodeList.length;
         ECPoint[] alphas = new ECPoint[nodeList.length];
         ECPoint[] sharedSecrets = new ECPoint[nodeList.length];
         byte[][] secrets = new byte[nodeList.length][];
@@ -120,7 +121,7 @@ public class PolySphinxUtil {
         byte[] path = new byte[1];
         path[0] = (byte) (pathIndex + 1);
 
-        for (int i = 0; i < nodeList.length; i++) {
+        for (int i = 0; i < hops; i++) {
             alphas[i] = group.expon(group.getGenerator(), x);
             sharedSecrets[i] = group.expon(pubKeys[i], x);
             secrets[i] = params.getAesKey(sharedSecrets[i]);
@@ -138,15 +139,16 @@ public class PolySphinxUtil {
             return null;
         }
 
+        // create Instruction header
         byte[][] instructions = new byte[nodeList.length][];
-        for (int i = nodeList.length - 1; i >= 0; i--) {
+        for (int i = 0; i < hops; i++) {
             //Letzte Mix node = Exit Node
             if (i == nodeList.length - 1) {
                 byte r = (byte) (nodeList.length - 1);
                 byte log2p = (byte) Integer.toBinaryString(numberOfPaths).length();
                 instructions[i] = PolySphinxInstructionPresets.createExitInstructions(seed, path, nodeList[i], r, log2p, (byte) params.keyLength());
             } else {
-                instructions[i] = PolySphinxInstructionPresets.createRelayInstructions(nodeList[i + 1], sigmas[i + 1]);
+                instructions[i] = PolySphinxInstructionPresets.createRelayInstructions(nodeList[i], sigmas[i]);
             }
         }
 

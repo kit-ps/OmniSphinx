@@ -83,7 +83,7 @@ public final class SphinxUtil {
             if (i == hops - 1) {
                 instructions[i] = SphinxInstructionPresets.createExitInstructions(destination, salt);
             } else {
-                instructions[i] = SphinxInstructionPresets.createInstructions(nodelist[i], salt);
+                instructions[i] = SphinxInstructionPresets.createInstructions(nodelist[i+1], salt);
             }
         }
 

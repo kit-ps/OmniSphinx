@@ -318,7 +318,6 @@ public class MixNode {
         }
 
         byte[] nextInstructions = Arrays.copyOfRange(prg, offset, prg.length);
-        byte[] encryptedZeros = Arrays.copyOfRange(prg, encInstr.length, paddedBeta.length);
         return new InstructionLayer(instructions, nextMac, nextInstructions);
     }
 
