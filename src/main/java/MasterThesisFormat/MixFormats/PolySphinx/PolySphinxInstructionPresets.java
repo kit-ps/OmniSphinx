@@ -54,7 +54,7 @@ public class PolySphinxInstructionPresets {
         instr.write(Instruction.hash(REG_SEED, REG_SIGMA));
 
         //Key from K in Keys
-        instr.write(Instruction.hash(REG_SEED, REG_KEYS));
+        instr.write(Instruction.hash(REG_SIGMA, REG_KEYS));
         // Den Key Tree anhand des Paths bauen und an den Keys appenden
         // REG_SIGMA = Aktueller schlüssel
         instr.write(Instruction.forLoop(r, (byte) 4));
