@@ -149,9 +149,8 @@ public class OmniSphinxNetworkTest {
 
             List<byte[][]> suffixPaths = new ArrayList<>();
             List<ECPoint[]> keySets = new ArrayList<>();
-
+            int hopCount = 3 + random.nextInt(3);
             for (int r = 0; r < receiverCount; r++) {
-                int hopCount = 3 + random.nextInt(3);
                 int[] mixIndices = randomDistinctIndices(MIX_NODE_COUNT, hopCount, -1);
                 byte[][] nodeList = new byte[hopCount][];
                 ECPoint[] keyList = new ECPoint[hopCount];

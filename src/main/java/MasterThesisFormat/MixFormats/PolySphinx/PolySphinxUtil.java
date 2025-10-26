@@ -150,18 +150,19 @@ public class PolySphinxUtil {
             }
         }
 
-        int instructionLength = 0;
+        int headerLen = 0;
         for(byte[] instruction: instructions) {
-            instructionLength += instruction.length;
+            headerLen += instruction.length + params.keyLength();
         }
-        int toPad = params.getInstructionTotalSize() - instructionLength;
+
+        int instPadLen = params.getInstructionTotalSize() - headerLen + params.keyLength(); //nochmal params.keyLength abziehen, weil die letzte Instruktion kein Gamma hat!
 
         // compute padding for replication node but do not append
-        byte[] padding = InstructionEncryptor.padInstructions(params, toPad, instructionLength, replicationSecret, pathIndex);
+        byte[] padding = InstructionEncryptor.padInstructions(params, instPadLen, headerLen, replicationSecret, pathIndex);
 
         byte[] onion = InstructionEncryptor.encryptWithPadding(params, instructions, secrets, params.getInstructionTotalSize(), padding);
 
-        byte[] encInstructions = slice(onion, instructionLength);
+        byte[] encInstructions = slice(onion, headerLen);
 
         byte[] finalMac = params.mac(params.hmu(secrets[0]), concatenate(encInstructions, padding));
         byte[] alphaBytes = SerializationUtils.encodeECPoint(alphas[0]);
