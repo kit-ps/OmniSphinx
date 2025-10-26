@@ -96,6 +96,10 @@ public final class VMUtil {
                 index = ensureAvailable(buffer, index, 3);
                 return index;
             }
+            case COPY -> {
+                index = ensureAvailable(buffer, index, 2);
+                return index;
+            }
             case EXPONENT -> {
                 index = ensureAvailable(buffer, index, 4);
                 return index;
@@ -180,6 +184,7 @@ public final class VMUtil {
                 case COMPUTE_SHARED_SECRET -> pc += 2;
                 case HASH -> pc += 2;
                 case MAC -> pc += 3;
+                case COPY -> pc += 2;
                 case VERIFY -> pc += 2;
                 case EXPONENT -> pc += 4;
                 case PAD -> pc += 3;

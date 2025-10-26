@@ -28,10 +28,8 @@ public class PolySphinxUtil {
 
 
         byte[] payload = message.clone();
-        System.out.println("[PolySphinxUtil]: Seed "+ Arrays.toString(seed));
         byte[] K = params.hash(seed);
         byte[] key = params.hash(K);
-        System.out.println("[PolySphinx] Sigma : " + Arrays.toString(key));
         byte[] encryptedPayload = params.encrypt(key, payload);
 
         BigInteger r = group.genSecret();
@@ -147,9 +145,6 @@ public class PolySphinxUtil {
             }
 
         }
-        for(byte[] sigma: sigmas) {
-            System.out.println("[PolySphinx] Sigma : " + Arrays.toString(sigma));
-        }
 
         if (nodeList.length == 0) {
             return null;
@@ -162,11 +157,9 @@ public class PolySphinxUtil {
             if (i == hops - 1) {
                 byte r = (byte) path.length;
                 int log2p = 1;
-                System.out.println("[PolySphinxUtil] pathlänge: " + path.length);
-                System.out.println("[PolySphinxUtil] log2p: " +  log2p);
                 instructions[i] = PolySphinxInstructionPresets.createExitInstructions(seed, path, receiver, r, log2p, (byte) params.keyLength());
             } else {
-                instructions[i] = PolySphinxInstructionPresets.createRelayInstructions(nodeList[i+1], sigmas[i]);
+                instructions[i] = PolySphinxInstructionPresets.createRelayInstructions(nodeList[i+1], sigmas[i+1]);
             }
         }
 
@@ -188,9 +181,7 @@ public class PolySphinxUtil {
         byte[] encInstructions = slice(onion, headerLen);
 
         byte[] finalMac = params.mac(params.hmu(secrets[0]), concatenate(encInstructions, padding));
-        System.out.println("[PolySphinxUtil] encInstructions: " + Arrays.toString(encInstructions));
-        System.out.println("[PolySphinxUtil] padding: " + Arrays.toString(padding));
-        System.out.println("[PolySphinxUtil] Computed MAC over: " + Arrays.toString(concatenate(encInstructions, padding)));
+
         byte[] alphaBytes = SerializationUtils.encodeECPoint(alphas[0]);
         byte[] nextHop = Arrays.copyOf(nodeList[0], params.keyLength());
 

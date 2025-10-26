@@ -15,6 +15,7 @@ public enum OpCode {
     FORWARD((byte) 0x0B),
     FIND_NEXT((byte) 0x0C),
     CONCATE((byte) 0x0D),
+    COPY((byte) 0x0E),
     ENCRYPT((byte) 0x0F),
     MIX_NONE((byte) 0x10),
     MIX_TIMED((byte) 0x11),

@@ -149,10 +149,10 @@ public class OmniSphinxNetworkTest {
             Client sender = clients[senderIndex];
 
 
-            int receiverCount = 2;
+            int receiverCount = 5;
             int[] receivers = randomDistinctIndices(CLIENT_COUNT, receiverCount, senderIndex);
 
-            int replicationIndex = randomDistinctIndices(MIX_NODE_COUNT, 1, -1)[0];
+            int replicationIndex =  random.nextInt(MIX_NODE_COUNT);
             byte[] replicationNode = mixNodeIds[replicationIndex];
             ECPoint replicationPub = mixNodePubs[replicationIndex];
 

@@ -85,6 +85,10 @@ public class ProgramInstruction {
         return new ProgramInstruction(OpCode.XOR, destReg, src1, src2, null, null, null, null, null);
     }
 
+    public static ProgramInstruction copy(Register src, Register destReg) {
+        return new ProgramInstruction(OpCode.COPY, destReg, src, null, null, null, null, null, null);
+    }
+
     public static ProgramInstruction add(Register src1, Register src2, Register destReg) {
         return new ProgramInstruction(OpCode.ADD, destReg, src1, src2, null, null, null, null, null);
     }

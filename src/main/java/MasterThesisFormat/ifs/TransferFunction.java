@@ -29,6 +29,7 @@ public class TransferFunction {
         rules.put(OpCode.CONCATE, this::concate);
         rules.put(OpCode.CONCATE_WITH_BYTE_VALUE, this::concateWithByteValue);
         rules.put(OpCode.XOR, this::xor);
+        rules.put(OpCode.COPY, this::copy);
         rules.put(OpCode.ADD, this::add);
         rules.put(OpCode.HASH, this::hash);
         rules.put(OpCode.PRG_GENERATE, this::prgGenerate);
@@ -78,6 +79,12 @@ public class TransferFunction {
 
     private void xor(ProgramInstruction ins, TaintState state, List<Violation> v, Policy policy) {
         Taint res = joinPc(state, state.get(ins.getSrc1()), state.get(ins.getSrc2()));
+        state.set(ins.getDest(), res);
+        checkSink(ins, res, v, policy);
+    }
+
+    private void copy(ProgramInstruction ins, TaintState state, List<Violation> v, Policy policy) {
+        Taint res = joinPc(state, state.get(ins.getSrc1()));
         state.set(ins.getDest(), res);
         checkSink(ins, res, v, policy);
     }

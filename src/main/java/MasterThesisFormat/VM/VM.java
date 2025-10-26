@@ -103,6 +103,11 @@ public class VM {
                         byte destReg = instructions[pc++];
                         xor(inputA, inputB, destReg);
                     }
+                    case COPY -> {
+                        byte sourceReg = instructions[pc++];
+                        byte destReg = instructions[pc++];
+                        copy(sourceReg, destReg);
+                    }
                     case ADD -> {
                         byte augend = instructions[pc++];
                         byte addend = instructions[pc++];
@@ -247,6 +252,11 @@ public class VM {
                         byte inputB = instructions[innerPc++];
                         byte destReg = instructions[innerPc++];
                         xor(inputA, inputB, destReg);
+                    }
+                    case COPY -> {
+                        byte sourceReg = instructions[innerPc++];
+                        byte destReg = instructions[innerPc++];
+                        copy(sourceReg, destReg);
                     }
                     case ADD -> {
                         byte augend = instructions[innerPc++];
@@ -511,6 +521,14 @@ public class VM {
         return result;
     }
 
+    private void copy(byte sourceReg, byte destReg) throws VMException {
+        byte[] value = registers.get(sourceReg);
+        if (value == null) {
+            throw new VMException("COPY source register not initialized");
+        }
+
+        registers.put(destReg, Arrays.copyOf(value, value.length));
+    }
 
     private void xor(byte inputA, byte inputB, byte destReg) throws VMException {
         byte[] a = registers.get(inputA);
@@ -569,7 +587,6 @@ public class VM {
     private void decrypt(byte keyReg, byte inputReg, byte destReg) throws VMException {
         byte[] result = params.decrypt(registers.get(keyReg), registers.get(inputReg));
         registers.put(destReg, result);
-        System.out.println("[VM] Decrypt Key: " + Arrays.toString(registers.get(keyReg)));
     }
 
     private void encrypt(byte keyReg, byte inputReg, byte destReg) throws VMException {

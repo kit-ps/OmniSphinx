@@ -22,7 +22,7 @@ public class PolySphinxInstructionPresets {
     public static final byte REG_KEYS    = 0x26;
     public static final byte REG_SUBHEADER    = 0x27;
     public static final byte REG_KEY = 0x28;
-    public static final byte REG_SIGMA2 = 0x29;
+    public static final byte REG_PAYLOAD_COPY = 0x29;
     public static final byte REG_ALPHA2 = 0x2A;
     public static final byte REG_ALPHA = 0x2B;
     public static final byte REG_GAMMA = 0x2C;
@@ -45,7 +45,6 @@ public class PolySphinxInstructionPresets {
 
         // Lade Konstanten
         instr.write(Instruction.load(seed, REG_SEED));
-        System.out.println("[PolySphinxInstructionPresets] Seed: " + Arrays.toString(seed));
         instr.write(Instruction.load(path, REG_PATH));
         instr.write(Instruction.load(recipient, REG_NEXT_HOP));
 
@@ -85,6 +84,7 @@ public class PolySphinxInstructionPresets {
 
         ByteArrayOutputStream instr = new ByteArrayOutputStream();
 
+        instr.write(Instruction.copy(REG_PAYLOAD, REG_PAYLOAD_COPY));
         instr.write(Instruction.load(B, REG_SUBHEADER));
         byte instrCount = 7; // so viele Instruktionen sind in der Schleife!
 
@@ -97,7 +97,7 @@ public class PolySphinxInstructionPresets {
         instr.write(Instruction.storeBytes(REG_SUBHEADER, alphaLen, InstructionRegister.NEXT_ALPHA.getCode()));  // 3
         instr.write(Instruction.storeBytes(REG_SUBHEADER, gammaLen, InstructionRegister.MAC.getCode()));   // 4
         instr.write(Instruction.storeBytes(REG_SUBHEADER, tauPost, InstructionRegister.NEXT_INSTRUCTIONS.getCode()));     // 5
-        instr.write(Instruction.encrypt(REG_KEY, REG_PAYLOAD, REG_PAYLOAD));    // 6
+        instr.write(Instruction.encrypt(REG_KEY, REG_PAYLOAD_COPY, REG_PAYLOAD));    // 6
         instr.write(Instruction.forward(REG_NEXT_HOP));                  //7
 
         instr.write(Instruction.stop());

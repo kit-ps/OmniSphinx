@@ -67,7 +67,15 @@ public class Instruction {
         return new byte[]{OpCode.HASH.getCode(), inputReg,  destReg};
     }
 
-
+    /**
+     * Kopiert den Inhalt eines Registers in ein anderes Register.
+     * @param sourceReg Quellregister, dessen Inhalt kopiert wird
+     * @param destReg Zielregister, das die Kopie erhält
+     * @return Instruction für die Kopier-Operation
+     */
+    public static byte[] copy(byte sourceReg, byte destReg) {
+        return new byte[]{OpCode.COPY.getCode(), sourceReg, destReg};
+    }
 
     /**
      * Berechnet einen MAC (Message Authentication Code) über Daten.
