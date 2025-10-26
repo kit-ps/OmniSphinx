@@ -182,21 +182,25 @@ public class OmniSphinxNetworkTest {
             List<InstructionPacketAndNextHop> replicationOutputs = replicationNodeObj.processForTest(raw);
             assertEquals(receiverCount, replicationOutputs.size());
 
-            for (InstructionPacketAndNextHop out : replicationOutputs) {
-                String key = Base64.getEncoder().encodeToString(out.getNextHop());
-                Integer exitIndex = mixIdMap.get(key);
-                assertNotNull("Unknown exit mix node for key " + key, exitIndex);
-                TestNode exitNode = mixNodes[exitIndex];
+            Deque<InstructionPacketAndNextHop> queue = new ArrayDeque<>(replicationOutputs);
 
-                List<InstructionPacketAndNextHop> exitOutputs =
-                        exitNode.processForTest(sender.packInstructionPacket(out.getPacket()));
-                assertEquals(1, exitOutputs.size());
-                InstructionPacketAndNextHop finalPacket = exitOutputs.get(0);
+            while (!queue.isEmpty()) {
+                InstructionPacketAndNextHop currentOut = queue.removeFirst();
+                String hopKey = Base64.getEncoder().encodeToString(currentOut.getNextHop());
+                Integer mixIndex = mixIdMap.get(hopKey);
 
-                String destKey = Base64.getEncoder().encodeToString(finalPacket.getNextHop());
-                int receiverIdx = clientIdMap.get(destKey);
-                assertTrue(contains(receivers, receiverIdx));
-                assertEquals("test", new String(finalPacket.getPacket().getPayload()));
+                if (mixIndex != null) {
+                    TestNode mixNode = mixNodes[mixIndex];
+                    byte[] packed = sender.packInstructionPacket(currentOut.getPacket());
+                    List<InstructionPacketAndNextHop> outputs = mixNode.processForTest(packed);
+                    assertFalse("Mix node produced no outputs", outputs.isEmpty());
+                    queue.addAll(outputs);
+                } else {
+                    Integer receiverIdx = clientIdMap.get(hopKey);
+                    assertNotNull("Unknown recipient for key " + hopKey, receiverIdx);
+                    assertTrue(contains(receivers, receiverIdx));
+                    assertEquals("test", new String(currentOut.getPacket().getPayload()));
+                }
             }
         }
     }

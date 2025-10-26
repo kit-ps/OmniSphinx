@@ -153,11 +153,14 @@ public class PolySphinxUtil {
         }
 
         int headerLen = 0;
-        for(byte[] instruction: instructions) {
-            headerLen += instruction.length + params.keyLength();
+        for (int i = 0; i < hops; i++) {
+            headerLen += instructions[i].length;
+            if (i < hops - 1) {
+                headerLen += params.keyLength(); // only non-exit hops include a gamma value
+            }
         }
 
-        int instPadLen = params.getInstructionTotalSize() - headerLen + params.keyLength(); //nochmal params.keyLength abziehen, weil die letzte Instruktion kein Gamma hat!
+        int instPadLen = params.getInstructionTotalSize() - headerLen;
 
         // compute padding for replication node but do not append
         byte[] padding = InstructionEncryptor.padInstructions(params, instPadLen, headerLen, replicationSecret, pathIndex);
@@ -166,7 +169,7 @@ public class PolySphinxUtil {
 
         byte[] encInstructions = slice(onion, headerLen);
 
-        byte[] finalMac = params.mac(params.hmu(secrets[0]), concatenate(encInstructions, padding));
+        byte[] finalMac = params.mac(params.hmu(secrets[0]), onion);
         byte[] alphaBytes = SerializationUtils.encodeECPoint(alphas[0]);
         byte[] nextHop = Arrays.copyOf(nodeList[0], params.keyLength());
 
