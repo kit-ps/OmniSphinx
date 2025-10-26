@@ -112,7 +112,7 @@ public class PolySphinxUtil {
         byte[] current = params.hash(seed);
 
         for (byte p : path) {
-            for (int i = 0; i <= (p & 0xFF); i++) {
+            for (int i = 0; i < (p & 0xFF); i++) {
                 increment(current);
             }
             current = params.hash(current);
