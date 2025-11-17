@@ -3,7 +3,6 @@ package MasterThesisFormat.instruction;
 public enum OpCode {
     STOP((byte) 0x00),
     STORE_BYTES1((byte) 0x01),
-    COMPUTE_SHARED_SECRET((byte) 0x02),
     HASH((byte) 0x03),
     MAC((byte) 0x04),
     VERIFY((byte) 0x05),
@@ -13,7 +12,6 @@ public enum OpCode {
     XOR((byte) 0x09),
     DECRYPT((byte) 0x0A),
     FORWARD((byte) 0x0B),
-    FIND_NEXT((byte) 0x0C),
     CONCATE((byte) 0x0D),
     COPY((byte) 0x0E),
     ENCRYPT((byte) 0x0F),
@@ -24,7 +22,6 @@ public enum OpCode {
     MIX_POISSON((byte) 0x14),
     STORE_BYTES2((byte) 0x15),
     ADD((byte) 0x16),
-    IF((byte) 0x17),
     CONCATE_WITH_BYTE_VALUE((byte)0x18),
     FOR((byte) 0x19),
     STORE_MULTIPLE_BYTES((byte)0x1A),
