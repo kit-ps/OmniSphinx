@@ -235,7 +235,7 @@ public class OmniSphinxNetworkTest {
     private static class TestNode extends MixNode {
         private final List<InstructionPacketAndNextHop> forwarded = new ArrayList<>();
 
-        protected TestNode(byte[] id, BigInteger secret, Params params) throws IOException {
+        public TestNode(byte[] id, BigInteger secret, Params params) throws IOException {
             super(id, secret, params);
         }
 

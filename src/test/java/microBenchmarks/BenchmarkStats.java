@@ -1,14 +1,14 @@
 package microBenchmarks;
 
 public class BenchmarkStats {
-    private long total;
-    private long min = Long.MAX_VALUE;
-    private long max = Long.MIN_VALUE;
+    private double total;
+    private double min = Double.MAX_VALUE;
+    private double max = Double.MIN_VALUE;
     private int count;
     private int errors;
     private Exception lastException;
 
-    public void record(long duration) {
+    public void record(double duration) {
         total += duration;
         count++;
         if (duration < min) {
@@ -24,15 +24,15 @@ public class BenchmarkStats {
         lastException = e;
     }
 
-    public long getAverage() {
+    public double getAverage() {
         return count == 0 ? 0 : total / count;
     }
 
-    public long getMin() {
+    public double getMin() {
         return count == 0 ? 0 : min;
     }
 
-    public long getMax() {
+    public double getMax() {
         return count == 0 ? 0 : max;
     }
 

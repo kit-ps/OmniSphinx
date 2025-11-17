@@ -2,6 +2,7 @@ package microBenchmarks;
 
 import MasterThesisFormat.Client;
 import MasterThesisFormat.ClientUtil;
+import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.Params;
 import MasterThesisFormat.pki.PkiEntry;
 import MasterThesisFormat.pki.PkiGenerator;
@@ -11,11 +12,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.security.SecureRandom;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertTrue;
 
 public class SphinxPackageCreationBenchmark {
-    private static final int RUNS = 50;
+    private static final int RUNS = 100;
 
     private Params params;
     private Client client;
@@ -52,13 +54,14 @@ public class SphinxPackageCreationBenchmark {
             random.nextBytes(message);
 
             long start = System.nanoTime();
-            var packet = client.createSphinxInstructionPacket(nodeList, keys, destination, message);
-            client.packInstructionPacket(packet);
+            InstructionPacket packet = client.createSphinxInstructionPacket(nodeList, keys, destination, message);
             long duration = System.nanoTime() - start;
-            creationStats.record(duration);
+            packet.getPayload();
+            double durationMs = duration / 1_000_000.0;
+            creationStats.record(durationMs);
         }
 
-        System.out.printf("Sphinx creation avg ns: %d (min=%d, max=%d)%n",
+        System.out.printf("Sphinx creation avg ms: %.2f (min=%.2f, max=%.2f)%n",
                 creationStats.getAverage(), creationStats.getMin(), creationStats.getMax());
 
         assertTrue(creationStats.getCount() > 0);
