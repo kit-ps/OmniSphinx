@@ -39,7 +39,6 @@ public class TransferFunction {
         rules.put(OpCode.FOR, this::forLoop);
         rules.put(OpCode.EXPONENT, this::exponent);
         rules.put(OpCode.PAD, this::pad);
-        rules.put(OpCode.COMPUTE_SHARED_SECRET, this::computeSharedSecret);
         rules.put(OpCode.FORWARD, this::forward);
         rules.put(OpCode.VERIFY, this::verify);
     }

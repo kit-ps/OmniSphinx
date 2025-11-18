@@ -58,6 +58,9 @@ public class SphinxPackageCreationBenchmark {
             long duration = System.nanoTime() - start;
             packet.getPayload();
             double durationMs = duration / 1_000_000.0;
+            if(i == 0) {
+                continue;
+            }
             creationStats.record(durationMs);
         }
 

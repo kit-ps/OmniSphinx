@@ -124,7 +124,11 @@ public class PolySphinxPackageCreationBenchmark {
             random.nextBytes(seed);
             InstructionPacket packet = PolySphinxUtil.createPolySphinxPacket(params, replicationNode, replicationPub, suffixPaths, receiversList,"test".getBytes(), seed, keySets);
             long duration = System.nanoTime() - start;
+            packet.getPayload();
             double durationMs = duration / 1_000_000.0;
+            if(i == 0) {
+                continue;
+            }
             creationStats.record(durationMs);
             packet.getPayload();
         }

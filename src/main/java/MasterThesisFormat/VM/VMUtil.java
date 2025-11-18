@@ -88,7 +88,7 @@ public final class VMUtil {
                 index = ensureAvailable(buffer, index, 3);
                 return index;
             }
-            case COMPUTE_SHARED_SECRET, HASH, VERIFY, FIND_NEXT -> {
+            case HASH, VERIFY -> {
                 index = ensureAvailable(buffer, index, 2);
                 return index;
             }
@@ -181,7 +181,6 @@ public final class VMUtil {
                 case STORE_BYTES3 -> pc += 5; // source, 3-byte length, destReg
                 case STORE_BYTES4 -> pc += 6; // source, 4-byte length, destReg
                 case STORE_MULTIPLE_BYTES -> pc += 3;
-                case COMPUTE_SHARED_SECRET -> pc += 2;
                 case HASH -> pc += 2;
                 case MAC -> pc += 3;
                 case COPY -> pc += 2;
@@ -194,7 +193,6 @@ public final class VMUtil {
                 case DECRYPT -> pc += 3;
                 case CONCATE -> pc += 3;
                 case CONCATE_WITH_BYTE_VALUE -> pc += 3;
-                case FIND_NEXT -> pc += 2;
                 case FORWARD -> pc += 2;
                 default -> throw new VMException("Unknown OpCode in block: " + op);
             }

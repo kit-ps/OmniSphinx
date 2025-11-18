@@ -48,7 +48,6 @@ public class InstructionBenchmark {
         scenarios.put(OpCode.STORE_BYTES2.name(), this::storeBytesScenario);
         scenarios.put(OpCode.STORE_BYTES3.name(), this::storeBytesScenario);
         scenarios.put(OpCode.STORE_BYTES4.name(), this::storeBytesScenario);
-        scenarios.put(OpCode.COMPUTE_SHARED_SECRET.name(), this::computeSharedSecretScenario);
         scenarios.put(OpCode.HASH.name(), this::hashScenario);
         scenarios.put(OpCode.MAC.name(), this::macScenario);
         scenarios.put(OpCode.VERIFY.name(), this::verifyScenario);
@@ -59,13 +58,7 @@ public class InstructionBenchmark {
         scenarios.put(OpCode.DECRYPT.name(), this::decryptScenario);
         scenarios.put(OpCode.ENCRYPT.name(), this::encryptScenario);
         scenarios.put(OpCode.CONCATE.name(), this::concateScenario);
-        scenarios.put(OpCode.FIND_NEXT.name(), this::findNextScenario);
         scenarios.put(OpCode.FORWARD.name(), this::forwardScenario);
-        scenarios.put(OpCode.MIX_NONE.name(), this::mixNoneScenario);
-        scenarios.put(OpCode.MIX_TIMED.name(), this::mixTimedScenario);
-        scenarios.put(OpCode.MIX_THRESHOLD.name(), this::mixThresholdScenario);
-        scenarios.put(OpCode.MIX_POOL.name(), this::mixPoolScenario);
-        scenarios.put(OpCode.MIX_POISSON.name(), this::mixPoissonScenario);
         scenarios.put(OpCode.LOAD1.name(), this::loadScenario);
         scenarios.put(OpCode.FOR.name(), this::forScenario);
 
@@ -124,13 +117,6 @@ public class InstructionBenchmark {
             length = 1;
         }
         return Instruction.storeBytes(REG_SOURCE, length, REG_DEST);
-    }
-
-    private byte[] computeSharedSecretScenario(Map<Byte, byte[]> registers) {
-        BigInteger otherPriv = params.generatePrivateKey();
-        ECPoint pub = params.derivePublicKey(otherPriv);
-        registers.put(REG_SOURCE, SerializationUtils.encodeECPoint(pub));
-        return Instruction.computeSharedSecret(REG_SOURCE, REG_DEST);
     }
 
     private byte[] hashScenario(Map<Byte, byte[]> registers) {
@@ -211,17 +197,6 @@ public class InstructionBenchmark {
         return Instruction.concate(REG_A, REG_B, REG_DEST);
     }
 
-    private byte[] findNextScenario(Map<Byte, byte[]> registers) {
-        int routingLen = 4 + random.nextInt(4);
-        byte[] routing = randomBytes(routingLen);
-        byte[] remainder = randomBytes(6);
-        byte[] source = new byte[1 + routing.length + remainder.length];
-        source[0] = (byte) routing.length;
-        System.arraycopy(routing, 0, source, 1, routing.length);
-        System.arraycopy(remainder, 0, source, 1 + routing.length, remainder.length);
-        registers.put(REG_A, source);
-        return new byte[]{OpCode.FIND_NEXT.getCode(), REG_A, REG_DEST};
-    }
 
     private byte[] forwardScenario(Map<Byte, byte[]> registers) throws Exception {
         registers.put(REG_A, ClientUtil.encodeNode(500 + random.nextInt(500), 1));

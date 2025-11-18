@@ -33,7 +33,6 @@ public class Analyzer {
             ins.setId(counter);
             counter++;
             switch (ins.getOpCode()) {
-                case IF -> analyzeIf(ins, state, violations, counter);
                 default -> tf.apply(ins, state, violations, policy);
             }
         }

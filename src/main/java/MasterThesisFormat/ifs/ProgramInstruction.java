@@ -53,9 +53,6 @@ public class ProgramInstruction {
         return new ProgramInstruction(opcode, dest, src, null, immediate, null, null, null, null);
     }
 
-    public static ProgramInstruction computeSharedSecret(Register src, Register dest) {
-        return new ProgramInstruction(OpCode.COMPUTE_SHARED_SECRET, dest, src, null, null, null, null, null, null);
-    }
 
     public static ProgramInstruction hash(Register src,  Register dest) {
         return new ProgramInstruction(OpCode.HASH, dest, src, null, null, null, null, null, null);

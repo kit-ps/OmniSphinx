@@ -57,11 +57,7 @@ public class VM {
                         byte destReg = instructions[pc++];
                         storeMultipleBytes(source, lengthReg, destReg);
                     }
-                    case COMPUTE_SHARED_SECRET -> {
-                        byte pubKeyReg = instructions[pc++];
-                        byte destReg = instructions[pc++];
-                        computeSharedSecret(pubKeyReg, destReg);
-                    }
+
                     case HASH -> {
                         byte inputReg = instructions[pc++];
                         byte destReg = instructions[pc++];
@@ -132,11 +128,7 @@ public class VM {
                         byte destReg = instructions[pc++];
                         concateWithByteValue(reg1, value, destReg);
                     }
-                    case FIND_NEXT -> {
-                        byte sourceReg = instructions[pc++];
-                        byte destReg = instructions[pc++];
-                        findNext(sourceReg, destReg);
-                    }
+
                     case FORWARD -> {
                         byte idReg = instructions[pc++];
                         forward(idReg);
@@ -207,11 +199,7 @@ public class VM {
                         byte destReg = instructions[innerPc++];
                         storeMultipleBytes(source, lengthReg, destReg);
                     }
-                    case COMPUTE_SHARED_SECRET -> {
-                        byte pubKeyReg = instructions[innerPc++];
-                        byte destReg = instructions[innerPc++];
-                        computeSharedSecret(pubKeyReg, destReg);
-                    }
+
                     case HASH -> {
                         byte inputReg = instructions[innerPc++];
                         byte destReg = instructions[innerPc++];
@@ -281,11 +269,6 @@ public class VM {
                         byte value = instructions[innerPc++];
                         byte destReg = instructions[innerPc++];
                         concateWithByteValue(reg1, value, destReg);
-                    }
-                    case FIND_NEXT -> {
-                        byte sourceReg = instructions[innerPc++];
-                        byte destReg = instructions[innerPc++];
-                        findNext(sourceReg, destReg);
                     }
                     case FORWARD -> {
                         byte idReg = instructions[innerPc++];

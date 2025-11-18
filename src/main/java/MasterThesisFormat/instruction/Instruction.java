@@ -46,16 +46,6 @@ public class Instruction {
         return new byte[]{OpCode.STORE_MULTIPLE_BYTES.getCode(), source,  lengthReg, destReg};
     }
 
-    /**
-     * Berechnet ein gemeinsames Geheimnis (Shared Secret) aus einem öffentlichen Schlüssel.
-     * Verwendet den privaten Schlüssel der Node und den übergebenen öffentlichen Schlüssel.
-     * @param pubKeyReg Register mit dem öffentlichen Schlüssel (Alpha)
-     * @param destReg Zielregister für das berechnete Shared Secret
-     * @return Instruction für die Shared-Secret-Berechnung
-     */
-    public static byte[] computeSharedSecret(byte pubKeyReg, byte destReg) {
-        return new byte[]{OpCode.COMPUTE_SHARED_SECRET.getCode(), pubKeyReg, destReg};
-    }
 
     /**
      * Berechnet einen Hash-Wert aus dem Inhalt eines Registers.
