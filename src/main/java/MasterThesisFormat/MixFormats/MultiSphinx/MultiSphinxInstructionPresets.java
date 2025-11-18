@@ -82,11 +82,11 @@ public class MultiSphinxInstructionPresets {
 		instr.write(Instruction.copy(REG_PAYLOAD, REG_PAYLOAD_COPY));
 
 		// Jedes einzelnes unterpacket extrahieren und senden
-		instr.write(Instruction.forLoop(p, (byte) 4));
+		instr.write(Instruction.forLoop(p, (byte) 6));
 		instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD_COPY, REG_AlPHALENGTH, REG_ALPHA));
 		instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD_COPY, REG_BETALENGTH, REG_BETA));
 		instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD_COPY, REG_GAMMALENGTH, REG_GAMMA));
-		instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD_COPY, REG_PAYLOADLENGTH, REG_TEMP_PAYLOAD));
+		instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD_COPY, REG_PAYLOADLENGTH, REG_PAYLOAD));
 		instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD_COPY, REG_NEXT_HOPS_LENGTH, REG_NEXT_HOP));
 
 		// Mixen

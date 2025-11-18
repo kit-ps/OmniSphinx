@@ -107,8 +107,6 @@ public class MixNode {
             throw new RuntimeException("Failed to unpack instruction packet", e);
         }
 
-        System.out.println("[MixNode] received packet with payload: " +  Arrays.toString(packetRaw));
-
 
         //Preprocessing
         ECPoint alpha = SerializationUtils.decodeECPoint(encodedAlpha);
@@ -238,8 +236,6 @@ public class MixNode {
         } catch (OmniSphinxException e) {
             throw new RuntimeException("Failed to pad instruction block", e);
         }
-
-        System.out.println("[MixNode] payload padding: " + Arrays.toString(padding));
 
         return SerializationUtils.concatenate(payload, padding);
     }

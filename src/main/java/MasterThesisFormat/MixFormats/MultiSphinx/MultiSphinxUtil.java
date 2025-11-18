@@ -241,7 +241,6 @@ public class MultiSphinxUtil {
             throw new RuntimeException("Failed to pad instruction block", e);
         }
 
-        //System.out.println("[MultiSphinxUtil] payload padding: " + Arrays.toString(padding));
 
         byte[][] encryptedMixNodePayloads = new byte[hops][];
         byte[] encryptedPayload = payload;
@@ -254,7 +253,7 @@ public class MultiSphinxUtil {
         byte[] encryptedPayloadWithPadding = SerializationUtils.concatenate(encryptedMixNodePayloads[0], padding);
         encryptedMixNodePayloadsWithPadding[0] = encryptedPayloadWithPadding;
         for (int i = 1; i < hops; i++) {
-            encryptedPayloadWithPadding = params.xorRho(params.hrho(secrets[i]), encryptedPayloadWithPadding);
+            encryptedPayloadWithPadding = params.xorRho(params.hrho(secrets[i-1]), encryptedPayloadWithPadding);
             encryptedMixNodePayloadsWithPadding[i] = encryptedPayloadWithPadding;
         }
 
@@ -293,7 +292,6 @@ public class MultiSphinxUtil {
 
         InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
 
-        System.out.println("[MultiSphinxUtil] payload: " + Arrays.toString(encryptedMixNodePayloadsWithPadding[0]));
         return new InstructionPacket(header, encryptedMixNodePayloads[0]);
     }
 

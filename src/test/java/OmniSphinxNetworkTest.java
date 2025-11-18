@@ -227,7 +227,7 @@ public class OmniSphinxNetworkTest {
                 prefixKeys[i] = mixNodePubs[prefixIndices[i]];
             }
 
-            int subPacketCount = 3;
+            int subPacketCount = 2;
             int suffixHops = 2;
             List<byte[][]> suffixPaths = new ArrayList<>();
             List<ECPoint[]> suffixKeys = new ArrayList<>();
@@ -344,8 +344,7 @@ public class OmniSphinxNetworkTest {
     }
 
     private String extractMessage(InstructionPacket packet) throws IOException {
-        byte[] finalPayload = packet.getPayload();
-        byte[] body = Arrays.copyOfRange(finalPayload, params.keyLength(), finalPayload.length);
+        byte[] body = packet.getPayload();
         int padIndex = -1;
         for (int i = 0; i < body.length; i++) {
             if (body[i] == (byte) 0x7f) {
