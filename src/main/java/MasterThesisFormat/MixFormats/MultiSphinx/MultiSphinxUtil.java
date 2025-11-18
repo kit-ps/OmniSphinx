@@ -11,10 +11,13 @@ import MasterThesisFormat.MixFormats.Sphinx.SphinxInstructionPresets;
 import MasterThesisFormat.MixFormats.Sphinx.SphinxUtil;
 import kotlin.Pair;
 import org.bouncycastle.math.ec.ECPoint;
+import org.msgpack.core.MessageBufferPacker;
+import org.msgpack.core.MessagePack;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.Arrays;
 import java.util.List;
 import static MasterThesisFormat.SerializationUtils.concatenate;
 
@@ -31,43 +34,11 @@ public class MultiSphinxUtil {
             throw new IllegalArgumentException("At least one prefix hop (the replication node) is required");
         }
 
-
         byte[][][] suffixNodeLists = suffixPaths.toArray(new byte[0][][]);
-
-        Pair<byte[][], InstructionPacket[]> bundle = buildSubPackets(params, suffixNodeLists, suffixKeys, destinations, messages);
-        return createMultiSphinxPacket(params, prefixNodes, prefixKeys, bundle.component1(), bundle.component2());
-    }
-
-    private static Pair<byte[][], InstructionPacket[]> buildSubPackets(Params params, byte[][][] nodeLists, List<ECPoint[]> keys, byte[][] destinations, byte[][] messages) throws Exception {
-        int packetCount = nodeLists.length;
-        if (keys.size() != packetCount || destinations.length != packetCount || messages.length != packetCount) {
-            throw new IllegalArgumentException("nodeLists, keys, destinations and messages must have the same length");
-        }
-
-        byte[][] nextHops = extractNextHops(nodeLists);
-        InstructionPacket[] subPackets = new InstructionPacket[packetCount];
-
-        for (int i = 0; i < packetCount; i++) {
-            subPackets[i] = SphinxUtil.createSphinxInstructionPacket(params, nodeLists[i], keys.get(i), destinations[i], messages[i]);
-        }
-
-        return new Pair<>(nextHops, subPackets);
-    }
-
-
-
-    private static InstructionPacket createMultiSphinxPacket(Params params, byte[][] prefixNodes, ECPoint[] prefixKeys, byte[][] nextHops, InstructionPacket[] subPackets) throws Exception {
-        if (nextHops.length != subPackets.length) {
-            throw new IllegalArgumentException("Each sub-packet must have a corresponding next hop");
-        }
-
-        int p = subPackets.length;
-        if (p == 0) {
-            throw new IllegalArgumentException("At least one sub-packet is required");
-        }
 
         ECCGroup group = params.getGroup();
         int hops = prefixNodes.length;
+        int p = suffixNodeLists.length;
         if (hops != prefixKeys.length || hops == 0) {
             throw new IllegalArgumentException("prefixNodes and prefixKeys must have the same non-zero length");
         }
@@ -85,6 +56,19 @@ public class MultiSphinxUtil {
         }
 
         byte[] sharedSecretKey = secrets[hops - 1];
+
+
+        Pair<byte[][], InstructionPacket[]> bundle = buildSubPackets(params, sharedSecretKey, suffixNodeLists, suffixKeys, destinations, messages);
+        byte[][] nextHops = bundle.component1();
+        InstructionPacket[] subPackets = bundle.component2();
+
+        if (nextHops.length != subPackets.length) {
+            throw new IllegalArgumentException("Each sub-packet must have a corresponding next hop");
+        }
+
+        if (p == 0) {
+            throw new IllegalArgumentException("At least one sub-packet is required");
+        }
 
         byte[][] headers = new byte[p][];
         byte[][] payloads = new byte[p][];
@@ -159,6 +143,124 @@ public class MultiSphinxUtil {
         InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
 
         return new InstructionPacket(header, wrappedPayload);
+    }
+
+    private static Pair<byte[][], InstructionPacket[]> buildSubPackets(Params params, byte[] sharedSecretKey, byte[][][] nodeLists, List<ECPoint[]> keys, byte[][] destinations, byte[][] messages) throws Exception {
+        int packetCount = nodeLists.length;
+        if (keys.size() != packetCount || destinations.length != packetCount || messages.length != packetCount) {
+            throw new IllegalArgumentException("nodeLists, keys, destinations and messages must have the same length");
+        }
+
+        byte[][] nextHops = extractNextHops(nodeLists);
+        InstructionPacket[] subPackets = new InstructionPacket[packetCount];
+
+        for (int i = 0; i < packetCount; i++) {
+            subPackets[i] = createPostReplicationPacket(params, sharedSecretKey, i, nodeLists[i], keys.get(i), destinations[i], messages[i]);
+        }
+
+        return new Pair<>(nextHops, subPackets);
+    }
+
+    private static InstructionPacket createPostReplicationPacket(Params params, byte[] sharedSecretKey, int counter, byte[][] nodeList, ECPoint[] keys, byte[] destination, byte[] message) throws Exception {
+        int hops = nodeList.length;
+
+        if (keys.length != hops) {
+            throw new IllegalArgumentException("nodelist/keys length mismatch");
+        }
+
+        ECCGroup group = params.getGroup();
+
+        java.math.BigInteger x = group.genSecret();
+
+        ECPoint[] alphas = new ECPoint[hops];
+        ECPoint[] sharedSecrets = new ECPoint[hops];
+        byte[][] secrets = new byte[hops][];
+        for (int i = 0; i < hops; i++) {
+            alphas[i] = group.expon(group.getGenerator(), x);
+            sharedSecrets[i] = group.expon(keys[i], x);
+            secrets[i] = params.getAesKey(sharedSecrets[i]);
+            java.math.BigInteger b = params.hb(alphas[i], secrets[i]);
+            x = x.multiply(b).mod(group.getOrder());
+        }
+
+        byte[] encodedMessage;
+        try (MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+            packer.packArrayHeader(1);
+            packer.packBinaryHeader(message.length);
+            packer.writePayload(message);
+            encodedMessage = packer.toByteArray();
+        } catch (IOException e) {
+            throw new Exception("Failed to encode destination payload", e);
+        }
+
+        int msgTotalSize = params.bodyLength() - params.keyLength();
+        byte[] initialPad = {(byte) 0x7f};
+        int padLen = msgTotalSize - (encodedMessage.length + 1);
+
+        if (padLen < 0) {
+            throw new Exception("Insufficient space for message");
+        }
+
+        byte[] padBytes = new byte[padLen];
+        Arrays.fill(padBytes, (byte) 0xff);
+
+        byte[] payload = concatenate(encodedMessage, initialPad, padBytes);
+
+
+        byte[] delta = params.xorRho(params.hrho(secrets[hops - 1]), payload);
+        for (int i = hops - 2; i >= 0; i--) {
+            delta = params.xorRho(params.hrho(secrets[i]), delta);
+        }
+
+        int targetSize = params.bodyLength();
+        if (payload.length >= targetSize) {
+            throw new RuntimeException("Instruction block exceeds allowed size");
+        }
+
+
+        int paddingLength = targetSize - payload.length;
+        byte[] replicationPadding;
+        try {
+            replicationPadding = InstructionEncryptor.padInstructions(params, paddingLength, payload.length, sharedSecretKey, counter);
+        } catch (OmniSphinxException e) {
+            throw new RuntimeException("Failed to pad instruction block", e);
+        }
+
+        byte[][] encryptedMixNodePayloads = new byte[hops][];
+        encryptedMixNodePayloads[0] = SerializationUtils.concatenate(payload, replicationPadding);
+        for(int i = 1; i < hops; i++) {
+            encryptedMixNodePayloads[i] = params.xorRho(params.hrho(secrets[i]), encryptedMixNodePayloads[i - 1]);
+        }
+
+        byte[][] deltaMACS = new byte[hops][];
+        for(int i = 0; i < hops; i++) {
+            deltaMACS[i] = params.mac(params.hmu(secrets[i]), encryptedMixNodePayloads[i]);
+        }
+
+
+        byte[][] instructions = new byte[hops][];
+        for (int i = 0; i < hops; i++) {
+            instructions[i] = MultiSphinxInstructionPresets.createInstructionsSolo(nodeList[i+1], Params.HRHO_SALT, deltaMACS[i], Params.HMU_SALT);
+        }
+
+        int instLen = 0;
+        for (byte[] instruction : instructions) {
+            instLen += instruction.length + params.keyLength();
+        }
+
+        int instPadLen = params.getInstructionTotalSize() - instLen + params.keyLength();
+
+        byte[] padding = InstructionEncryptor.padInstructions(params, instPadLen,
+                params.getInstructionTotalSize() - instPadLen, sharedSecretKey, counter);
+
+        byte[] onion = InstructionEncryptor.encryptWithPadding(params, instructions, secrets,
+                params.getInstructionTotalSize(), padding);
+
+        byte[] finalMac = params.mac(params.hmu(secrets[0]), onion);
+
+        InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
+
+        return new InstructionPacket(header, delta);
     }
 
     private static byte[][] extractNextHops(byte[][][] nodeLists) {

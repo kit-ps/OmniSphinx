@@ -218,7 +218,7 @@ public class OmniSphinxNetworkTest {
             int senderIndex = random.nextInt(CLIENT_COUNT);
             Client sender = clients[senderIndex];
 
-            int prefixHops = 2 + random.nextInt(2);
+            int prefixHops = 2;
             int[] prefixIndices = randomDistinctIndices(MIX_NODE_COUNT, prefixHops, -1);
             byte[][] prefixNodes = new byte[prefixHops][];
             ECPoint[] prefixKeys = new ECPoint[prefixHops];

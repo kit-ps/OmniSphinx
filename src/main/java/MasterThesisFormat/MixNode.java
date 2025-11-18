@@ -140,8 +140,9 @@ public class MixNode {
         for (VMOutput out : outputs) {
             ECPoint nextAlpha = SerializationUtils.decodeECPoint(out.getNextAlpha());
             byte[] processedInstructions = postProcessInstructions(out.getInstructions(), aesKey, outputIndex);
+            byte[] processedPayload = postProcessPayload(out.getOutgoingPayload(), aesKey, outputIndex);
             InstructionHeader header = new InstructionHeader(nextAlpha, processedInstructions, out.getMAC());
-            InstructionPacket packet = new InstructionPacket(header, out.getOutgoingPayload());
+            InstructionPacket packet = new InstructionPacket(header, processedPayload);
             packets.add(packet);
             sendToNextNode(out.getNextHop(), packet);
             outputIndex++;
@@ -217,6 +218,27 @@ public class MixNode {
         }
 
         return SerializationUtils.concatenate(instructions, padding);
+    }
+
+    private byte[] postProcessPayload(byte[] payload, byte[] sharedSecret, int outputIndex) {
+        int targetSize = params.bodyLength();
+        if (payload.length > targetSize) {
+            throw new RuntimeException("Instruction block exceeds allowed size");
+        }
+
+        if (payload.length == targetSize) {
+            return payload;
+        }
+
+        int paddingLength = targetSize - payload.length;
+        byte[] padding;
+        try {
+            padding = InstructionEncryptor.padInstructions(params, paddingLength, payload.length, sharedSecret, outputIndex);
+        } catch (OmniSphinxException e) {
+            throw new RuntimeException("Failed to pad instruction block", e);
+        }
+
+        return SerializationUtils.concatenate(payload, padding);
     }
 
     private InstructionLayer decryptInstructionLayer(byte[] encInstr, byte[] aesKey, byte[] mac) {
