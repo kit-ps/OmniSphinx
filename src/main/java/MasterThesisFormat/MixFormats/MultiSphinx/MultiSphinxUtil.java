@@ -95,31 +95,19 @@ public class MultiSphinxUtil {
 
         byte[] payload = buildPayload(headers, payloads, nextHops);
 
-        byte[] encryptedPayload = params.xorRho(params.hrho(replicationsharedSecretKey), payload);
-
-        for (int i = hops - 2; i >= 0; i--) {
-            encryptedPayload = params.xorRho(params.hrho(secrets[i]), encryptedPayload);
-        }
-
         int targetSize = params.bodyLength();
         if (payload.length >= targetSize) {
             throw new RuntimeException("payload exceeds allowed size with a length of : " + payload.length);
         }
 
 
-        int paddingLength = targetSize - payload.length;
-        byte[] padding;
-        try {
-            padding = InstructionEncryptor.padInstructions(params, paddingLength, payload.length, secrets[0], 40);
-        } catch (OmniSphinxException e) {
-            throw new RuntimeException("Failed to pad instruction block", e);
+        byte[][] encryptedMixNodePayloads = new byte[hops][];
+        byte[] encryptedPayload = payload;
+        for (int i = hops - 1; i >= 0; i--) {
+            encryptedPayload = params.xorRho(params.hrho(secrets[i]), encryptedPayload);
+            encryptedMixNodePayloads[i] = encryptedPayload;
         }
 
-        byte[][] encryptedMixNodePayloads = new byte[hops][];
-        encryptedMixNodePayloads[0] = SerializationUtils.concatenate(payload, padding);
-        for(int i = 1; i < hops; i++) {
-            encryptedMixNodePayloads[i] = params.xorRho(params.hrho(secrets[i]), encryptedMixNodePayloads[i - 1]);
-        }
 
         byte[][] deltaMACS = new byte[hops][];
         for(int i = 0; i < hops; i++) {
@@ -220,10 +208,6 @@ public class MultiSphinxUtil {
         byte[] payload = concatenate(encodedMessage, initialPad);
 
 
-        byte[] delta = params.xorRho(params.hrho(secrets[hops - 1]), payload);
-        for (int i = hops - 2; i >= 0; i--) {
-            delta = params.xorRho(params.hrho(secrets[i]), delta);
-        }
 
         int targetSize = params.bodyLength();
         if (payload.length >= targetSize) {
@@ -232,24 +216,31 @@ public class MultiSphinxUtil {
 
 
         int paddingLength = targetSize - payload.length;
-        byte[] replicationPadding;
+        byte[] padding;
         try {
-            replicationPadding = InstructionEncryptor.padInstructions(params, paddingLength, payload.length, sharedSecretKey, counter);
+            padding = InstructionEncryptor.padInstructions(params, paddingLength, payload.length, secrets[0], 40);
         } catch (OmniSphinxException e) {
             throw new RuntimeException("Failed to pad instruction block", e);
         }
 
         byte[][] encryptedMixNodePayloads = new byte[hops][];
-        encryptedMixNodePayloads[0] = SerializationUtils.concatenate(delta, replicationPadding);
+        byte[] encryptedPayload = payload;
+        for (int i = hops - 1; i >= 0; i--) {
+            encryptedPayload = params.xorRho(params.hrho(secrets[i]), encryptedPayload);
+            encryptedMixNodePayloads[i] = encryptedPayload;
+        }
+
+        byte[][] encryptedMixNodePayloadsWithPadding = new byte[hops][];
+        byte[] encryptedPayloadWithPadding = SerializationUtils.concatenate(encryptedMixNodePayloads[0], padding);
         for(int i = 1; i < hops; i++) {
-            encryptedMixNodePayloads[i] = params.xorRho(params.hrho(secrets[i]), encryptedMixNodePayloads[i - 1]);
+            encryptedPayloadWithPadding  = params.xorRho(params.hrho(secrets[i]), encryptedPayloadWithPadding);
+            encryptedMixNodePayloadsWithPadding [i] = encryptedPayloadWithPadding;
         }
 
         byte[][] deltaMACS = new byte[hops][];
         for(int i = 0; i < hops; i++) {
-            deltaMACS[i] = params.mac(params.hmu(secrets[i]), encryptedMixNodePayloads[i]);
+            deltaMACS[i] = params.mac(params.hmu(secrets[i]), encryptedMixNodePayloadsWithPadding[i]);
         }
-
 
         byte[][] instructions = new byte[hops][];
         for (int i = 0; i < hops - 1; i++) {
@@ -281,7 +272,7 @@ public class MultiSphinxUtil {
 
         InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
 
-        return new InstructionPacket(header, delta);
+        return new InstructionPacket(header, encryptedMixNodePayloads[0]);
     }
 
     private static byte[][] extractNextHops(byte[][][] nodeLists) {
