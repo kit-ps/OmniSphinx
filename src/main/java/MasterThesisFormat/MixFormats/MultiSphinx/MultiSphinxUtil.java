@@ -262,7 +262,7 @@ public class MultiSphinxUtil {
 
 
         byte[][] instructions = new byte[hops][];
-        for (int i = 0; i < hops; i++) {
+        for (int i = 0; i < hops-1; i++) {
             instructions[i] = MultiSphinxInstructionPresets.createInstructionsSolo(nodeList[i+1], Params.HRHO_SALT, deltaMACS[i], Params.HMU_SALT);
         }
 
