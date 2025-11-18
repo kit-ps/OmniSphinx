@@ -165,7 +165,7 @@ public class MultiSphinxUtil {
 
         InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
 
-        return new InstructionPacket(header, onion);
+        return new InstructionPacket(header, encryptedMixNodePayloads[0]);
     }
 
     private static Pair<byte[][], InstructionPacket[]> buildSubPackets(Params params, byte[] sharedSecretKey, byte[][][] nodeLists, List<ECPoint[]> keys, byte[][] destinations, byte[][] messages) throws Exception {
