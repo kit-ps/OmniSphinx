@@ -232,9 +232,10 @@ public class MultiSphinxUtil {
 
         byte[][] encryptedMixNodePayloadsWithPadding = new byte[hops][];
         byte[] encryptedPayloadWithPadding = SerializationUtils.concatenate(encryptedMixNodePayloads[0], padding);
-        for(int i = 1; i < hops; i++) {
-            encryptedPayloadWithPadding  = params.xorRho(params.hrho(secrets[i]), encryptedPayloadWithPadding);
-            encryptedMixNodePayloadsWithPadding [i] = encryptedPayloadWithPadding;
+        encryptedMixNodePayloadsWithPadding[0] = encryptedPayloadWithPadding;
+        for (int i = 1; i < hops; i++) {
+            encryptedPayloadWithPadding = params.xorRho(params.hrho(secrets[i]), encryptedPayloadWithPadding);
+            encryptedMixNodePayloadsWithPadding[i] = encryptedPayloadWithPadding;
         }
 
         byte[][] deltaMACS = new byte[hops][];
