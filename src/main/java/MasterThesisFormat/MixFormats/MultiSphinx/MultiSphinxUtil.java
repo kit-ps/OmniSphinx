@@ -121,7 +121,6 @@ public class MultiSphinxUtil {
         for (int i = hops - 1; i >= 0; i--) {
             encryptedPayload = params.xorRho(params.hrho(secrets[i]), encryptedPayload);
             encryptedMixNodePayloads[i] = encryptedPayload;
-            System.out.println("encryptedMixNodePayloads[" + i + "] = " + Arrays.toString(encryptedMixNodePayloads[i]));
         }
 
 

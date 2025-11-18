@@ -28,7 +28,7 @@ public class MultiSphinxPackageCreationBenchmark {
 
     private static final int MIX_NODE_COUNT = 100;
     private static final int CLIENT_COUNT = 30;
-    private static final int SUB_PACKET_COUNT = 3;
+    private static final int SUB_PACKET_COUNT = 10;
 
     private Params params;
     private byte[][] mixNodeIds;
@@ -81,8 +81,8 @@ public class MultiSphinxPackageCreationBenchmark {
 
     @Test
     public void benchmarkMultiSphinxPackageCreation() throws Exception {
-        int prefixHops = 2;
-        int suffixHops = 2;
+        int prefixHops = 3;
+        int suffixHops = 3;
 
         BenchmarkStats creationStats = new BenchmarkStats();
 
@@ -117,7 +117,7 @@ public class MultiSphinxPackageCreationBenchmark {
                 suffixPaths.add(path);
                 suffixKeys.add(keyList);
 
-                byte[] message = new byte[32 + random.nextInt(32)];
+                byte[] message = new byte[256];
                 random.nextBytes(message);
                 messages[p] = message;
             }
