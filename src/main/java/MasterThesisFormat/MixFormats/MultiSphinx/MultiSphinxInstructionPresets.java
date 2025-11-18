@@ -9,6 +9,9 @@ import java.io.IOException;
 public class MultiSphinxInstructionPresets {
 	// Register-Definitionen
 	private static final byte REG_PAYLOAD = InstructionRegister.PAYLOAD.getCode();
+	private static final byte REG_ALPHA = InstructionRegister.NEXT_ALPHA.getCode();
+	private static final byte REG_BETA = InstructionRegister.NEXT_INSTRUCTIONS.getCode();
+	private static final byte REG_GAMMA = InstructionRegister.MAC.getCode();
 	private static final byte REG_SHARED_SECRET = InstructionRegister.SHARED_SECRET.getCode();
 	private static final byte REG_NEXT_HOP = InstructionRegister.NEXT_HOP.getCode();
 
@@ -20,10 +23,13 @@ public class MultiSphinxInstructionPresets {
 	private static final byte REG_KEYSTREAM = 0x25;
 	private static final byte REG_PAYLOAD_COPY = 0x26;
 	private static final byte REG_NEXT_HOPS_LENGTH = 0x27;
-	private static final byte REG_HEADERLENGTH = 0x28;
 	private static final byte REG_PAYLOADLENGTH = 0x29;
 	private static final byte REG_HEADER = 0x2A;
 	private static final byte REG_TEMP_PAYLOAD = 0x2B;
+	private static final byte REG_AlPHALENGTH = 0x30;
+	private static final byte REG_BETALENGTH = 0x31;
+	private static final byte REG_GAMMALENGTH = 0x32;
+
 
 	public static byte[] createInstructionsSolo(byte[] nextHop, byte saltDec, byte[] payloadMAC, byte saltMAC)
 			throws IOException {
@@ -52,7 +58,7 @@ public class MultiSphinxInstructionPresets {
 	}
 
 	public static byte[] createInstructionsMulti(byte[] nextHopsLength, byte saltDec, byte[] payloadMAC, byte saltMAC,
-			byte p, byte[] payloadLength, byte[] headerLength) throws IOException {
+			byte p, byte[] payloadLength, byte[] alphaLen, byte[] betaLen, byte[] gammaLen) throws IOException {
 		ByteArrayOutputStream instr = new ByteArrayOutputStream();
 
 		// MAC verifizieren über Payload
@@ -69,13 +75,17 @@ public class MultiSphinxInstructionPresets {
 		instr.write(Instruction.xor(REG_KEYSTREAM, REG_PAYLOAD, REG_PAYLOAD));
 
 		instr.write(Instruction.load(payloadLength, REG_PAYLOADLENGTH));
-		instr.write(Instruction.load(headerLength, REG_HEADERLENGTH));
+		instr.write(Instruction.load(alphaLen, REG_AlPHALENGTH));
+		instr.write(Instruction.load(betaLen, REG_BETALENGTH));
+		instr.write(Instruction.load(gammaLen, REG_GAMMALENGTH));
 		instr.write(Instruction.load(nextHopsLength, REG_NEXT_HOPS_LENGTH));
 		instr.write(Instruction.copy(REG_PAYLOAD, REG_PAYLOAD_COPY));
 
 		// Jedes einzelnes unterpacket extrahieren und senden
 		instr.write(Instruction.forLoop(p, (byte) 4));
-		instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD_COPY, REG_HEADERLENGTH, REG_HEADER));
+		instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD_COPY, REG_AlPHALENGTH, REG_ALPHA));
+		instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD_COPY, REG_BETALENGTH, REG_BETA));
+		instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD_COPY, REG_GAMMALENGTH, REG_GAMMA));
 		instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD_COPY, REG_PAYLOADLENGTH, REG_TEMP_PAYLOAD));
 		instr.write(Instruction.storeMultipleBytes(REG_PAYLOAD_COPY, REG_NEXT_HOPS_LENGTH, REG_NEXT_HOP));
 

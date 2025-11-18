@@ -7,7 +7,8 @@ public enum InstructionRegister {
     MAC((byte) 0x03),
     PAYLOAD((byte) 0x04),
     NEXT_INSTRUCTIONS((byte) 0x05),
-    SHARED_SECRET((byte) 0x06);
+    SHARED_SECRET((byte) 0x06),
+    NEXT_GAMMA((byte) 0x07);
 
     private final byte code;
 

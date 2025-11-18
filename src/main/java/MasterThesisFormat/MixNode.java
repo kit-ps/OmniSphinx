@@ -239,6 +239,8 @@ public class MixNode {
             throw new RuntimeException("Failed to pad instruction block", e);
         }
 
+        System.out.println("[MixNode] payload padding: " + Arrays.toString(padding));
+
         return SerializationUtils.concatenate(payload, padding);
     }
 

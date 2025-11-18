@@ -77,14 +77,13 @@ public class MultiSphinxUtil {
             payloads[i] = subPackets[i].getPayload();
         }
 
-        int headerSize = headers[0].length;
+        int alphaSize = 0;
+        int betaSize = 0;
+        int gammaSize = 0;
         int payloadSize = payloads[0].length;
         int nextHopSize = nextHops[0].length;
 
         for (int i = 1; i < p; i++) {
-            if (headers[i].length != headerSize) {
-                throw new IllegalArgumentException("All sub-packets must have the same header length");
-            }
             if (payloads[i].length != payloadSize) {
                 throw new IllegalArgumentException("All sub-packets must have the same payload length");
             }
@@ -124,7 +123,9 @@ public class MultiSphinxUtil {
             deltaMACS[i] = params.mac(params.hmu(secrets[i]), encryptedMixNodePayloads[i]);
         }
 
-        byte[] headerLength = SerializationUtils.encodeInt(headerSize);
+        byte[] alphaLength = SerializationUtils.encodeInt(alphaSize);
+        byte[] betaLength = SerializationUtils.encodeInt(betaSize);
+        byte[] gammaLength = SerializationUtils.encodeInt(gammaSize);
         byte[] payloadLength = SerializationUtils.encodeInt(payloadSize);
         byte[] nextHopLength = SerializationUtils.encodeInt(nextHopSize);
 
@@ -135,7 +136,7 @@ public class MultiSphinxUtil {
         for (int i = 0; i < hops; i++) {
             if (i == hops - 1) {
                 instructions[i] = MultiSphinxInstructionPresets.createInstructionsMulti(nextHopLength, saltDec,
-                        deltaMACS[i], saltMac, (byte) p, payloadLength, headerLength);
+                        deltaMACS[i], saltMac, (byte) p, payloadLength, alphaLength,betaLength,gammaLength);
             } else {
                 instructions[i] = MultiSphinxInstructionPresets.createInstructionsSolo(prefixNodes[i+1], Params.HRHO_SALT, deltaMACS[i], Params.HMU_SALT);
             }
@@ -233,6 +234,8 @@ public class MultiSphinxUtil {
             throw new RuntimeException("Failed to pad instruction block", e);
         }
 
+        //System.out.println("[MultiSphinxUtil] payload padding: " + Arrays.toString(padding));
+
         byte[][] encryptedMixNodePayloads = new byte[hops][];
         byte[] encryptedPayload = payload;
         for (int i = hops - 1; i >= 0; i--) {
@@ -283,6 +286,7 @@ public class MultiSphinxUtil {
 
         InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
 
+        System.out.println("[MultiSphinxUtil] payload: " + Arrays.toString(encryptedMixNodePayloadsWithPadding[0]));
         return new InstructionPacket(header, encryptedMixNodePayloads[0]);
     }
 
