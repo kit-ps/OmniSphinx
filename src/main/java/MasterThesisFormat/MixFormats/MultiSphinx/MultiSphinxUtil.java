@@ -55,10 +55,10 @@ public class MultiSphinxUtil {
             x = x.multiply(b).mod(group.getOrder());
         }
 
-        byte[] sharedSecretKey = secrets[hops - 1];
+        byte[] replicationsharedSecretKey = secrets[hops - 1];
 
 
-        Pair<byte[][], InstructionPacket[]> bundle = buildSubPackets(params, sharedSecretKey, suffixNodeLists, suffixKeys, destinations, messages);
+        Pair<byte[][], InstructionPacket[]> bundle = buildSubPackets(params, replicationsharedSecretKey, suffixNodeLists, suffixKeys, destinations, messages);
         byte[][] nextHops = bundle.component1();
         InstructionPacket[] subPackets = bundle.component2();
 
@@ -95,12 +95,35 @@ public class MultiSphinxUtil {
 
         byte[] payload = buildPayload(headers, payloads, nextHops);
 
-        byte[] encryptedPayload = params.xorRho(params.hrho(sharedSecretKey), payload);
-        byte[] payloadMac = params.mac(params.hmu(sharedSecretKey), encryptedPayload);
+        byte[] encryptedPayload = params.xorRho(params.hrho(replicationsharedSecretKey), payload);
 
-        byte[] wrappedPayload = encryptedPayload;
         for (int i = hops - 2; i >= 0; i--) {
-            wrappedPayload = params.encrypt(params.hpi(secrets[i]), wrappedPayload);
+            encryptedPayload = params.xorRho(params.hrho(secrets[i]), encryptedPayload);
+        }
+
+        int targetSize = params.bodyLength();
+        if (payload.length >= targetSize) {
+            throw new RuntimeException("Instruction block exceeds allowed size");
+        }
+
+
+        int paddingLength = targetSize - payload.length;
+        byte[] padding;
+        try {
+            padding = InstructionEncryptor.padInstructions(params, paddingLength, payload.length, secrets[0], 40);
+        } catch (OmniSphinxException e) {
+            throw new RuntimeException("Failed to pad instruction block", e);
+        }
+
+        byte[][] encryptedMixNodePayloads = new byte[hops][];
+        encryptedMixNodePayloads[0] = SerializationUtils.concatenate(payload, padding);
+        for(int i = 1; i < hops; i++) {
+            encryptedMixNodePayloads[i] = params.xorRho(params.hrho(secrets[i]), encryptedMixNodePayloads[i - 1]);
+        }
+
+        byte[][] deltaMACS = new byte[hops][];
+        for(int i = 0; i < hops; i++) {
+            deltaMACS[i] = params.mac(params.hmu(secrets[i]), encryptedMixNodePayloads[i]);
         }
 
         byte[] headerLength = SerializationUtils.encodeInt(headerSize);
@@ -114,9 +137,9 @@ public class MultiSphinxUtil {
         for (int i = 0; i < hops; i++) {
             if (i == hops - 1) {
                 instructions[i] = MultiSphinxInstructionPresets.createInstructionsMulti(nextHopLength, saltDec,
-                        payloadMac, saltMac, (byte) p, payloadLength, headerLength);
+                        deltaMACS[i], saltMac, (byte) p, payloadLength, headerLength);
             } else {
-                instructions[i] = SphinxInstructionPresets.createInstructions(prefixNodes[i + 1], Params.HPI_SALT);
+                instructions[i] = MultiSphinxInstructionPresets.createInstructionsSolo(prefixNodes[i+1], Params.HRHO_SALT, deltaMACS[i], Params.HMU_SALT);
             }
         }
 
@@ -142,7 +165,7 @@ public class MultiSphinxUtil {
 
         InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
 
-        return new InstructionPacket(header, wrappedPayload);
+        return new InstructionPacket(header, onion);
     }
 
     private static Pair<byte[][], InstructionPacket[]> buildSubPackets(Params params, byte[] sharedSecretKey, byte[][][] nodeLists, List<ECPoint[]> keys, byte[][] destinations, byte[][] messages) throws Exception {
@@ -243,18 +266,23 @@ public class MultiSphinxUtil {
             instructions[i] = MultiSphinxInstructionPresets.createInstructionsSolo(nodeList[i+1], Params.HRHO_SALT, deltaMACS[i], Params.HMU_SALT);
         }
 
-        int instLen = 0;
+        int headerLen = 0;
         for (byte[] instruction : instructions) {
-            instLen += instruction.length + params.keyLength();
+            headerLen += instruction.length + params.keyLength();
         }
 
-        int instPadLen = params.getInstructionTotalSize() - instLen + params.keyLength();
+        int instPadLen = params.getInstructionTotalSize() - headerLen + params.keyLength();
+        if (instPadLen < 0) {
+            throw new OmniSphinxException("Header to small!");
+        }
 
-        byte[] padding = InstructionEncryptor.padInstructions(params, instPadLen,
-                params.getInstructionTotalSize() - instPadLen, sharedSecretKey, counter);
+        byte[] randomPad = new byte[instPadLen];
+        new java.security.SecureRandom().nextBytes(randomPad);
 
-        byte[] onion = InstructionEncryptor.encryptWithPadding(params, instructions, secrets,
-                params.getInstructionTotalSize(), padding);
+        instructions[hops - 1] = concatenate(instructions[hops - 1], randomPad);
+
+        byte[] onion = InstructionEncryptor.encryptFixedSize(params, instructions, secrets,
+                params.getInstructionTotalSize());
 
         byte[] finalMac = params.mac(params.hmu(secrets[0]), onion);
 
