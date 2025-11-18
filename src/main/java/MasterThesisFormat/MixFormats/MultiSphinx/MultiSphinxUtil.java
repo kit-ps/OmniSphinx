@@ -103,7 +103,7 @@ public class MultiSphinxUtil {
 
         int targetSize = params.bodyLength();
         if (payload.length >= targetSize) {
-            throw new RuntimeException("Instruction block exceeds allowed size");
+            throw new RuntimeException("payload exceeds allowed size with a length of : " + payload.length);
         }
 
 
@@ -250,7 +250,7 @@ public class MultiSphinxUtil {
         }
 
         byte[][] encryptedMixNodePayloads = new byte[hops][];
-        encryptedMixNodePayloads[0] = SerializationUtils.concatenate(payload, replicationPadding);
+        encryptedMixNodePayloads[0] = SerializationUtils.concatenate(delta, replicationPadding);
         for(int i = 1; i < hops; i++) {
             encryptedMixNodePayloads[i] = params.xorRho(params.hrho(secrets[i]), encryptedMixNodePayloads[i - 1]);
         }
@@ -262,9 +262,12 @@ public class MultiSphinxUtil {
 
 
         byte[][] instructions = new byte[hops][];
-        for (int i = 0; i < hops-1; i++) {
+        for (int i = 0; i < hops - 1; i++) {
             instructions[i] = MultiSphinxInstructionPresets.createInstructionsSolo(nodeList[i+1], Params.HRHO_SALT, deltaMACS[i], Params.HMU_SALT);
         }
+
+        // Final hop exits the mix network towards the destination
+        instructions[hops - 1] = MultiSphinxInstructionPresets.createInstructionsSolo(destination, Params.HRHO_SALT, deltaMACS[hops - 1], Params.HMU_SALT);
 
         int headerLen = 0;
         for (byte[] instruction : instructions) {
@@ -288,6 +291,7 @@ public class MultiSphinxUtil {
 
         InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
 
+        System.out.println("delta length: " + delta.length);
         return new InstructionPacket(header, delta);
     }
 

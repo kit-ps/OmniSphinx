@@ -43,7 +43,7 @@ public class Params {
     }
 
     public Params() {
-        this(16, 1024, 192, new ECCGroup(), 6000);
+        this(16, 4096, 192, new ECCGroup(), 250);
     }
 
     public int keyLength() {
