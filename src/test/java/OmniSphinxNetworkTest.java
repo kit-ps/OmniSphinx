@@ -2,6 +2,7 @@ import MasterThesisFormat.Client;
 import MasterThesisFormat.ClientUtil;
 import MasterThesisFormat.InstructionPacket.InstructionPacket;
 import MasterThesisFormat.InstructionPacket.InstructionPacketAndNextHop;
+import MasterThesisFormat.MixFormats.MultiSphinx.MultiSphinxUtil;
 import MasterThesisFormat.MixNode;
 import MasterThesisFormat.Params;
 import MasterThesisFormat.MixFormats.PolySphinx.PolySphinxUtil;
@@ -209,6 +210,92 @@ public class OmniSphinxNetworkTest {
             }
         }
     }
+
+
+    @Test
+    public void testOmniSphinxEmulatingMultiSphinx() throws Exception {
+        for (int p = 0; p < PACKET_COUNT; p++) {
+            int senderIndex = random.nextInt(CLIENT_COUNT);
+            Client sender = clients[senderIndex];
+
+            int prefixHops = 2 + random.nextInt(2);
+            int[] prefixIndices = randomDistinctIndices(MIX_NODE_COUNT, prefixHops, -1);
+            byte[][] prefixNodes = new byte[prefixHops][];
+            ECPoint[] prefixKeys = new ECPoint[prefixHops];
+            for (int i = 0; i < prefixHops; i++) {
+                prefixNodes[i] = mixNodeIds[prefixIndices[i]];
+                prefixKeys[i] = mixNodePubs[prefixIndices[i]];
+            }
+
+            int subPacketCount = 3;
+            int suffixHops = 2;
+            List<byte[][]> suffixPaths = new ArrayList<>();
+            List<ECPoint[]> suffixKeys = new ArrayList<>();
+            byte[][] messages = new byte[subPacketCount][];
+            byte[][] destinations = new byte[subPacketCount][];
+            Map<String, String> expectedMessages = new HashMap<>();
+
+            for (int i = 0; i < subPacketCount; i++) {
+                int[] receiverArray = randomDistinctIndices(CLIENT_COUNT, 1, senderIndex);
+                int receiverIndex = receiverArray[0];
+                byte[] destination = Arrays.copyOf(clientIds[receiverIndex], params.keyLength());
+                destinations[i] = destination;
+
+                int[] mixIndices = randomDistinctIndices(MIX_NODE_COUNT, suffixHops, -1);
+                byte[][] path = new byte[suffixHops][];
+                ECPoint[] keyList = new ECPoint[suffixHops];
+                for (int h = 0; h < suffixHops; h++) {
+                    path[h] = mixNodeIds[mixIndices[h]];
+                    keyList[h] = mixNodePubs[mixIndices[h]];
+                }
+                suffixPaths.add(path);
+                suffixKeys.add(keyList);
+
+                messages[i] = ("message-" + i).getBytes(StandardCharsets.UTF_8);
+                expectedMessages.put(Base64.getEncoder().encodeToString(destination), new String(messages[i]));
+            }
+
+            InstructionPacket packet = MultiSphinxUtil.createMultiSphinxPacket(
+                    params, prefixNodes, prefixKeys, suffixPaths, suffixKeys, messages, destinations);
+
+            byte[] raw = sender.packInstructionPacket(packet);
+            Deque<InstructionPacketAndNextHop> queue = new ArrayDeque<>();
+
+            for (int hop = 0; hop < prefixHops; hop++) {
+                TestNode node = mixNodes[prefixIndices[hop]];
+                List<InstructionPacketAndNextHop> outs = node.processForTest(raw);
+                if (hop < prefixHops - 1) {
+                    assertEquals(1, outs.size());
+                    InstructionPacketAndNextHop out = outs.get(0);
+                    raw = sender.packInstructionPacket(out.getPacket());
+                } else {
+                    assertEquals(subPacketCount, outs.size());
+                    queue.addAll(outs);
+                }
+            }
+
+            while (!queue.isEmpty()) {
+                InstructionPacketAndNextHop currentOut = queue.removeFirst();
+                String hopKey = Base64.getEncoder().encodeToString(currentOut.getNextHop());
+                Integer mixIndex = mixIdMap.get(hopKey);
+
+                if (mixIndex != null) {
+                    TestNode mixNode = mixNodes[mixIndex];
+                    byte[] packed = sender.packInstructionPacket(currentOut.getPacket());
+                    List<InstructionPacketAndNextHop> outputs = mixNode.processForTest(packed);
+                    assertFalse(outputs.isEmpty());
+                    queue.addAll(outputs);
+                } else {
+                    Integer receiverIdx = clientIdMap.get(hopKey);
+                    assertNotNull("Unknown recipient for key " + hopKey, receiverIdx);
+                    String expected = expectedMessages.get(hopKey);
+                    assertNotNull("Missing expected message for receiver" + hopKey, expected);
+                    assertEquals(expected, extractMessage(currentOut.getPacket()));
+                }
+            }
+        }
+    }
+
     private boolean contains(int[] arr, int value) {
         for (int v : arr) {
             if (v == value) return true;
@@ -254,5 +341,25 @@ public class OmniSphinxNetworkTest {
             super.process(rawPacket);
             return new ArrayList<>(forwarded);
         }
+    }
+
+    private String extractMessage(InstructionPacket packet) throws IOException {
+        byte[] finalPayload = packet.getPayload();
+        byte[] body = Arrays.copyOfRange(finalPayload, params.keyLength(), finalPayload.length);
+        int padIndex = -1;
+        for (int i = 0; i < body.length; i++) {
+            if (body[i] == (byte) 0x7f) {
+                padIndex = i;
+                break;
+            }
+        }
+        assertTrue("Padding delimiter not found", padIndex > 0);
+        byte[] destMsg = Arrays.copyOf(body, padIndex);
+        MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(destMsg);
+        int arrLen = unpacker.unpackArrayHeader();
+        assertEquals(1, arrLen);
+        byte[] msg = unpacker.readPayload(unpacker.unpackBinaryHeader());
+        unpacker.close();
+        return new String(msg);
     }
 }

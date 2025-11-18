@@ -407,17 +407,6 @@ public class VM {
         storeBytes(source, length, destReg);
     }
 
-    private void computeSharedSecret(byte pubKeyReg, byte destReg) throws VMException {
-        try {
-            byte[] pubKeyBytes = registers.get(pubKeyReg);
-            byte[] result = params.computeSharedSecret(nodeSecret, pubKeyBytes);
-            registers.put(destReg, result);
-        } catch (Exception e) {
-            throw new VMException("Shared secret computation failed: " + e.getMessage(), e);
-        }
-    }
-
-
 
     private void hash(byte inputReg, byte destReg) throws VMException {
         byte[] input = registers.get(inputReg);
