@@ -114,6 +114,11 @@ public class MultiSphinxUtil {
         byte[] encryptedPayload = params.xorRho(params.hrho(sharedSecretKey), payload);
         byte[] payloadMac = params.mac(params.hmu(sharedSecretKey), encryptedPayload);
 
+        byte[] wrappedPayload = encryptedPayload;
+        for (int i = hops - 2; i >= 0; i--) {
+            wrappedPayload = params.encrypt(params.hpi(secrets[i]), wrappedPayload);
+        }
+
         byte[] headerLength = SerializationUtils.encodeInt(headerSize);
         byte[] payloadLength = SerializationUtils.encodeInt(payloadSize);
         byte[] nextHopLength = SerializationUtils.encodeInt(nextHopSize);
@@ -153,7 +158,7 @@ public class MultiSphinxUtil {
 
         InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
 
-        return new InstructionPacket(header, encryptedPayload);
+        return new InstructionPacket(header, wrappedPayload);
     }
 
     private static byte[][] extractNextHops(byte[][][] nodeLists) {
