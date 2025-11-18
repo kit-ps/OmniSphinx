@@ -77,15 +77,22 @@ public class MultiSphinxUtil {
             payloads[i] = subPackets[i].getPayload();
         }
 
-        int alphaSize = 0;
-        int betaSize = 0;
-        int gammaSize = 0;
+        InstructionHeader firstHeader = subPackets[0].getHeader();
+        int alphaSize = SerializationUtils.encodeECPoint(firstHeader.getAlpha()).length;
+        int betaSize = firstHeader.getInstructions().length;
+        int gammaSize = firstHeader.getMAC().length;
         int payloadSize = payloads[0].length;
         int nextHopSize = nextHops[0].length;
 
         for (int i = 1; i < p; i++) {
             if (payloads[i].length != payloadSize) {
                 throw new IllegalArgumentException("All sub-packets must have the same payload length");
+            }
+            InstructionHeader header = subPackets[i].getHeader();
+            if (SerializationUtils.encodeECPoint(header.getAlpha()).length != alphaSize
+                    || header.getInstructions().length != betaSize
+                    || header.getMAC().length != gammaSize) {
+                throw new IllegalArgumentException("All sub-packet headers must have the same layout");
             }
             if (nextHops[i].length != nextHopSize) {
                 throw new IllegalArgumentException("All next hops must have the same length");
