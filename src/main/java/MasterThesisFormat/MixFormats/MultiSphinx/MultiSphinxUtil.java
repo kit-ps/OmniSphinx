@@ -101,11 +101,21 @@ public class MultiSphinxUtil {
         }
 
 
+        int paddingLength = targetSize - payload.length;
+        byte[] padding;
+        try {
+            padding = InstructionEncryptor.padInstructions(params, paddingLength, payload.length, secrets[0], 0);
+        } catch (OmniSphinxException e) {
+            throw new RuntimeException("[MultiSphinxUtil] Failed to pad instruction block", e);
+        }
+        payload = SerializationUtils.concatenate(payload, padding);
+
         byte[][] encryptedMixNodePayloads = new byte[hops][];
         byte[] encryptedPayload = payload;
         for (int i = hops - 1; i >= 0; i--) {
             encryptedPayload = params.xorRho(params.hrho(secrets[i]), encryptedPayload);
             encryptedMixNodePayloads[i] = encryptedPayload;
+            System.out.println("encryptedMixNodePayloads[" + i + "] = " + Arrays.toString(encryptedMixNodePayloads[i]));
         }
 
 
@@ -218,7 +228,7 @@ public class MultiSphinxUtil {
         int paddingLength = targetSize - payload.length;
         byte[] padding;
         try {
-            padding = InstructionEncryptor.padInstructions(params, paddingLength, payload.length, secrets[0], 40);
+            padding = InstructionEncryptor.padInstructions(params, paddingLength, payload.length, sharedSecretKey, counter);
         } catch (OmniSphinxException e) {
             throw new RuntimeException("Failed to pad instruction block", e);
         }

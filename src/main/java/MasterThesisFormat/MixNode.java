@@ -107,6 +107,7 @@ public class MixNode {
             throw new RuntimeException("Failed to unpack instruction packet", e);
         }
 
+        System.out.println("[MixNode] received packet with payload: " +  Arrays.toString(packetRaw));
 
 
         //Preprocessing
