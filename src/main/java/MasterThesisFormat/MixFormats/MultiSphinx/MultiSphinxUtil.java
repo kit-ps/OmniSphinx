@@ -215,19 +215,9 @@ public class MultiSphinxUtil {
         } catch (IOException e) {
             throw new Exception("Failed to encode destination payload", e);
         }
-
-        int msgTotalSize = params.bodyLength() - params.keyLength();
         byte[] initialPad = {(byte) 0x7f};
-        int padLen = msgTotalSize - (encodedMessage.length + 1);
 
-        if (padLen < 0) {
-            throw new Exception("Insufficient space for message");
-        }
-
-        byte[] padBytes = new byte[padLen];
-        Arrays.fill(padBytes, (byte) 0xff);
-
-        byte[] payload = concatenate(encodedMessage, initialPad, padBytes);
+        byte[] payload = concatenate(encodedMessage, initialPad);
 
 
         byte[] delta = params.xorRho(params.hrho(secrets[hops - 1]), payload);
@@ -291,7 +281,6 @@ public class MultiSphinxUtil {
 
         InstructionHeader header = new InstructionHeader(alphas[0], onion, finalMac);
 
-        System.out.println("delta length: " + delta.length);
         return new InstructionPacket(header, delta);
     }
 
