@@ -477,12 +477,8 @@ public class VM {
             throw new VMException("Invalid PRG output length");
         }
 
-        byte[] stream = params.prg(seed);
-        if (outputLength > stream.length) {
-            throw new VMException("Requested PRG output exceeds available keystream");
-        }
-
-        registers.put(destReg, Arrays.copyOf(stream, outputLength));
+        byte[] stream = params.prg(seed, outputLength);
+        registers.put(destReg, stream);
     }
 
     private int toUnsignedInt(byte[] value) {

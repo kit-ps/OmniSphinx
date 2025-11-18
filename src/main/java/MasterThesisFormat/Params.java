@@ -122,8 +122,12 @@ public class Params {
     }
 
     public byte[] prg(byte[] key) {
+        return prg(key, 1024);
+    }
+
+    public byte[] prg(byte[] key, int outputLength) {
         byte[] iv = new byte[16];
-        byte[] zeroInput = new byte[1024];
+        byte[] zeroInput = new byte[outputLength];
         return aesCtr(key, zeroInput, iv);
     }
 
