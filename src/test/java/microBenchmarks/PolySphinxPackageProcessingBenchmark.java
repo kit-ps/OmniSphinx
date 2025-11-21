@@ -91,14 +91,16 @@ public class PolySphinxPackageProcessingBenchmark {
             byte[] relayNode = ClientUtil.encodeNode(20 + (i * 10), 0);
             pathNodes.add(relayNode);
             keys.add(relay.pub());
-            mixNodes.put(Base64.getEncoder().encodeToString(relayNode), new TestMixNode("http://relay-" + i, relay.priv(), params));
+            mixNodes.put(Base64.getEncoder().encodeToString(Arrays.copyOf(relayNode, params.keyLength())),
+                    new TestMixNode("http://relay-" + i, relay.priv(), params));
+
 
             PkiEntry exit = generator.generateKeyPair();
             byte[] exitNode = ClientUtil.encodeNode(21 + (i * 10), 0);
             pathNodes.add(exitNode);
             keys.add(exit.pub());
-            String exitKey = Base64.getEncoder().encodeToString(exitNode);
-            mixNodes.put(exitKey, new TestMixNode("http://exit-" + i, exit.priv(), params));
+            mixNodes.put(Base64.getEncoder().encodeToString(Arrays.copyOf(exitNode, params.keyLength())),
+                    new TestMixNode("http://exit-" + i, exit.priv(), params));
 
             suffixPaths.add(pathNodes.toArray(new byte[0][]));
             keySets.add(keys.toArray(new ECPoint[0]));
@@ -128,9 +130,10 @@ public class PolySphinxPackageProcessingBenchmark {
         InstructionPacket packet = pair.component1();
         byte[] raw = client.packInstructionPacket(packet);
 
+        TestMixNode replication = context.replicationMix();
         //Replication
         long replicationStart = System.nanoTime();
-        List<InstructionPacketAndNextHop> replicationOutputs = context.replicationMix.processForTest(raw);
+        List<InstructionPacketAndNextHop> replicationOutputs = replication.processForTest(raw);
         double replicationDurationMicros = (System.nanoTime() - replicationStart) / 1_000.0;
         if (recordStats) {
             statsByStage.computeIfAbsent(labelForStage(0, p), k -> new BenchmarkStats())
@@ -142,6 +145,7 @@ public class PolySphinxPackageProcessingBenchmark {
         for (InstructionPacketAndNextHop replicationOutput : replicationOutputs) {
             TestMixNode relayNode = context.mixNodes.get(Base64.getEncoder().encodeToString(replicationOutput.getNextHop()));
             if (relayNode == null) {
+                System.out.println("RelayNode not found?!");
                 continue;
             }
 
@@ -160,6 +164,7 @@ public class PolySphinxPackageProcessingBenchmark {
         for (InstructionPacketAndNextHop relayOutput : relayOutputs) {
             TestMixNode exitNode = context.mixNodes.get(Base64.getEncoder().encodeToString(relayOutput.getNextHop()));
             if (exitNode == null) {
+                System.out.println("ExitNode not found?!");
                 continue;
             }
 
