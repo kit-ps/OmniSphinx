@@ -54,19 +54,18 @@ public class SphinxPackageProcessingBenchmark {
                 long start = System.nanoTime();
                 List<InstructionPacket> outputs = mixNode.process(current);
                 long duration = System.nanoTime() - start;
-                if( run < warmUp ) {
+                if (hop < context.privs.length - 1 && !outputs.isEmpty()) {
+                    current = client.packInstructionPacket(outputs.get(0));
+                }
+                if (run < warmUp) {
                     continue;
                 }
                 String label = hop == context.privs.length - 1 ? "Exit" : "Relay ";
                 stats.computeIfAbsent(label, l -> new BenchmarkStats()).record(duration);
-
-                if (hop < context.privs.length - 1 && !outputs.isEmpty()) {
-                    current = client.packInstructionPacket(outputs.get(0));
-                }
             }
         }
         BenchmarkReporter.printStats("Sphinx " , stats);
-        BenchmarkReporter.plotViolin("Sphinx " , stats, "sphinx-p" + ".png");
+        BenchmarkReporter.plotViolin("Sphinx " , stats, "sphinx" + ".png");
         assertTrue(stats.values().stream().anyMatch(s -> s.getCount() > 0));
     }
 
