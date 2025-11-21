@@ -24,8 +24,6 @@ import static org.junit.Assert.assertTrue;
 public class MultiSphinxPackageProcessingBenchmark {
     private static final int RUNS = 1000;
     private static final int WARMUP_RUNS = 300;
-    private static final int PREFIX_HOPS = 2;
-    private static final int SUFFIX_HOPS = 2;
     private static final int[] P_VALUES = {3, 5, 10};
 
     private Params params;
@@ -61,9 +59,11 @@ public class MultiSphinxPackageProcessingBenchmark {
     }
 
     private void runPath(MultiSphinxContext context, int p, Map<String, BenchmarkStats> statsByStage, boolean recordStats) throws Exception {
+        int prefixHopCount = context.prefixHopCount;
+        int suffixHopCount = context.suffixHopCount;
         byte[][] messages = new byte[p][];
         for (int i = 0; i < p; i++) {
-            byte[] message = new byte[1024];
+            byte[] message = new byte[24];
             random.nextBytes(message);
             messages[i] = message;
         }
@@ -73,16 +73,17 @@ public class MultiSphinxPackageProcessingBenchmark {
         byte[] raw = client.packInstructionPacket(packet);
 
         List<InstructionPacketAndNextHop> replicationOutputs = null;
-        for (int hop = 0; hop < PREFIX_HOPS; hop++) {
+        for (int hop = 0; hop < prefixHopCount; hop++) {
+            TestMixNode node = context.prefixMixNodes[hop];
             long start = System.nanoTime();
-            replicationOutputs = context.prefixMixNodes[hop].processForTest(raw);
+            replicationOutputs = node.processForTest(raw);
             double durationMicros = (System.nanoTime() - start) / 1_000.0;
-            if (recordStats && hop == PREFIX_HOPS - 1) {
+            if (recordStats && hop == prefixHopCount - 1) {
                 statsByStage.computeIfAbsent(labelForStageName("Replication", p), k -> new BenchmarkStats())
                         .record(durationMicros);
             }
 
-            if (hop < PREFIX_HOPS - 1) {
+            if (hop < prefixHopCount - 1) {
                 raw = client.packInstructionPacket(replicationOutputs.get(0).getPacket());
             }
         }
@@ -93,12 +94,12 @@ public class MultiSphinxPackageProcessingBenchmark {
 
         Deque<QueueEntry> queue = new ArrayDeque<>();
         for (InstructionPacketAndNextHop out : replicationOutputs) {
-            queue.add(new QueueEntry(out.getPacket(), out.getNextHop(), PREFIX_HOPS));
+            queue.add(new QueueEntry(out.getPacket(), out.getNextHop(), prefixHopCount));
         }
 
         while (!queue.isEmpty()) {
             QueueEntry entry = queue.removeFirst();
-            if (entry.stage >= PREFIX_HOPS + SUFFIX_HOPS) {
+            if (entry.stage >= prefixHopCount + suffixHopCount) {
                 continue;
             }
             String hopKey = Base64.getEncoder().encodeToString(entry.nextHop);
@@ -106,17 +107,18 @@ public class MultiSphinxPackageProcessingBenchmark {
             if (target == null) {
                 continue;
             }
-
+            List<InstructionPacketAndNextHop> outputs;
+            byte[] rawpacket = client.packInstructionPacket(entry.packet);
             long start = System.nanoTime();
-            List<InstructionPacketAndNextHop> outputs = target.processForTest(client.packInstructionPacket(entry.packet));
+            outputs = target.processForTest(rawpacket);
             double durationMicros = (System.nanoTime() - start) / 1_000.0;
 
-            if (recordStats && entry.stage == PREFIX_HOPS) {
+            if (recordStats && entry.stage == prefixHopCount) {
                 statsByStage.computeIfAbsent(labelForStageName("Relay", p), k -> new BenchmarkStats())
                         .record(durationMicros);
             }
             int nextStage = entry.stage + 1;
-            if (nextStage < PREFIX_HOPS + SUFFIX_HOPS) {
+            if (nextStage < prefixHopCount + suffixHopCount) {
                 for (InstructionPacketAndNextHop output : outputs) {
                     queue.add(new QueueEntry(output.getPacket(), output.getNextHop(), nextStage));
                 }
@@ -153,12 +155,15 @@ public class MultiSphinxPackageProcessingBenchmark {
     }
 
     private MultiSphinxContext prepareContext(int subPacketCount) throws Exception {
-        byte[][] prefixNodeIds = new byte[PREFIX_HOPS][];
-        ECPoint[] prefixNodeKeys = new ECPoint[PREFIX_HOPS];
-        TestMixNode[] prefixMixNodes = new TestMixNode[PREFIX_HOPS];
-        for (int i = 0; i < PREFIX_HOPS; i++) {
+        int prefixHopCount = 1; // Replication -> Relay path starts with a single replication hop
+        int suffixHopCount = 1; // ...and ends with a single relay hop
+
+        byte[][] prefixNodeIds = new byte[prefixHopCount][];
+        ECPoint[] prefixNodeKeys = new ECPoint[prefixHopCount];
+        TestMixNode[] prefixMixNodes = new TestMixNode[prefixHopCount];
+        for (int i = 0; i < prefixHopCount; i++) {
             PkiEntry entry = generator.generateKeyPair();
-            prefixNodeIds[i] = ClientUtil.encodeNode(10 + i, 0);
+            prefixNodeIds[i] = Arrays.copyOf(ClientUtil.encodeNode(10 + i, 0), params.keyLength());
             prefixNodeKeys[i] = entry.pub();
             prefixMixNodes[i] = new TestMixNode("http://prefix-" + i, entry.priv(), params);
         }
@@ -169,11 +174,11 @@ public class MultiSphinxPackageProcessingBenchmark {
         byte[][] destinations = new byte[subPacketCount][];
 
         for (int packet = 0; packet < subPacketCount; packet++) {
-            byte[][] path = new byte[SUFFIX_HOPS][];
-            ECPoint[] keys = new ECPoint[SUFFIX_HOPS];
-            for (int hop = 0; hop < SUFFIX_HOPS; hop++) {
+            byte[][] path = new byte[suffixHopCount][];
+            ECPoint[] keys = new ECPoint[suffixHopCount];
+            for (int hop = 0; hop < suffixHopCount; hop++) {
                 PkiEntry hopEntry = generator.generateKeyPair();
-                path[hop] = ClientUtil.encodeNode(100 + (packet * 10) + hop, 0);
+                path[hop] = Arrays.copyOf(ClientUtil.encodeNode(100 + (packet * 10) + hop, 0), params.keyLength());
                 keys[hop] = hopEntry.pub();
                 suffixMixNodes.put(Base64.getEncoder().encodeToString(path[hop]),
                         new TestMixNode("http://suffix-" + packet + "-" + hop, hopEntry.priv(), params));
@@ -185,10 +190,9 @@ public class MultiSphinxPackageProcessingBenchmark {
             destinations[packet] = Arrays.copyOf(ClientUtil.encodeNode(2000 + packet, 0), params.keyLength());
         }
 
-        return new MultiSphinxContext(prefixNodeIds, prefixNodeKeys, prefixMixNodes, suffixPaths, suffixKeys, suffixMixNodes, destinations);
+        return new MultiSphinxContext(prefixHopCount, suffixHopCount, prefixNodeIds, prefixNodeKeys, prefixMixNodes, suffixPaths, suffixKeys, suffixMixNodes, destinations);
     }
-    private record MultiSphinxContext(byte[][] prefixNodeIds, ECPoint[] prefixNodeKeys, TestMixNode[] prefixMixNodes, List<byte[][]> suffixPaths, List<ECPoint[]> suffixKeys, Map<String, TestMixNode> suffixMixNodes, byte[][] destinations) { }
-
+    private record MultiSphinxContext(int prefixHopCount, int suffixHopCount, byte[][] prefixNodeIds, ECPoint[] prefixNodeKeys, TestMixNode[] prefixMixNodes, List<byte[][]> suffixPaths, List<ECPoint[]> suffixKeys, Map<String, TestMixNode> suffixMixNodes, byte[][] destinations) { }
     private String labelForStageName(String stage, int replicationCount) {
         return stage + " p=" + replicationCount;
     }
