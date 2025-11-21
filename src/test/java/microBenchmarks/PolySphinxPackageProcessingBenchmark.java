@@ -32,6 +32,7 @@ import static org.junit.Assert.assertTrue;
 
 public class PolySphinxPackageProcessingBenchmark {
     private static final int RUNS = 1000;
+    private static final int WARMUP_RUNS = 300;
     private static final int[] P_VALUES = {3, 5, 10};
 
     private Params params;
@@ -50,66 +51,23 @@ public class PolySphinxPackageProcessingBenchmark {
     public void benchmarkPolySphinxProcessing() throws Exception {
         for (int p : P_VALUES) {
             if (p == 3) {
-                params.setInstructionTotalSize(700);
+                params.setInstructionTotalSize(1400);
             }
             if (p == 5) {
-                params.setInstructionTotalSize(1200);
+                params.setInstructionTotalSize(2000);
             }
             if (p == 10) {
-                params.setInstructionTotalSize(2200);
+                params.setInstructionTotalSize(4000);
             }
             PolySphinxContext context = prepareContext(p);
             Map<String, BenchmarkStats> stats = new LinkedHashMap<>();
 
+            for (int warmup = 0; warmup < WARMUP_RUNS; warmup++) {
+                runIteration(context, p, stats, false);
+            }
             for (int run = 0; run < RUNS; run++) {
-                byte[] message = new byte[32 + random.nextInt(32)];
-                random.nextBytes(message);
-                byte[] seed = new byte[16];
-                random.nextBytes(seed);
+                runIteration(context, p, stats, true);
 
-                Pair<InstructionPacket, List<SubHeader>> pair = PolySphinxUtil.createPolySphinxPacketForTests(
-                        params,
-                        context.replicationNode,
-                        context.replication.pub(),
-                        context.suffixPaths,
-                        context.receivers,
-                        message,
-                        seed,
-                        context.keySets);
-                InstructionPacket packet = pair.component1();
-                byte[] raw = client.packInstructionPacket(packet);
-
-                long replicationStart = System.nanoTime();
-                List<InstructionPacketAndNextHop> replicationOutputs = context.replicationMix.processForTest(raw);
-                double replicationDurationMicros = (System.nanoTime() - replicationStart) / 1_000.0;
-                stats.computeIfAbsent(labelForStage(0, p), k -> new BenchmarkStats()).record(replicationDurationMicros);
-
-                Deque<QueueEntry> queue = new ArrayDeque<>();
-                for (InstructionPacketAndNextHop out : replicationOutputs) {
-                    queue.add(new QueueEntry(out.getPacket(), out.getNextHop(), 1));
-                }
-
-                while (!queue.isEmpty()) {
-                    QueueEntry entry = queue.removeFirst();
-                    if (entry.stage > 2) {
-                        continue;
-                    }
-                    String nextHopKey = Base64.getEncoder().encodeToString(entry.nextHop);
-                    TestMixNode target = context.mixNodes.get(nextHopKey);
-                    if (target == null) {
-                        continue;
-                    }
-
-                    long start = System.nanoTime();
-                    List<InstructionPacketAndNextHop> outputs = target.processForTest(client.packInstructionPacket(entry.packet));
-                    double durationMicros = (System.nanoTime() - start) / 1_000.0;
-                    stats.computeIfAbsent(labelForStage(entry.stage, p), k -> new BenchmarkStats())
-                            .record(durationMicros);
-
-                    for (InstructionPacketAndNextHop output : outputs) {
-                        queue.add(new QueueEntry(output.getPacket(), output.getNextHop(), entry.stage + 1));
-                    }
-                }
             }
 
             BenchmarkReporter.printStats("PolySphinx p=" + p, stats);
@@ -120,32 +78,97 @@ public class PolySphinxPackageProcessingBenchmark {
 
     private PolySphinxContext prepareContext(int replicationCount) throws Exception {
         PkiEntry replication = generator.generateKeyPair();
-        byte[] replicationNode = ClientUtil.encodeNode(10, 0);
+        byte[] replicationNode = Arrays.copyOf(ClientUtil.encodeNode(10, 0), params.keyLength());
 
         List<byte[][]> suffixPaths = new ArrayList<>();
         List<ECPoint[]> keySets = new ArrayList<>();
         List<byte[]> receivers = new ArrayList<>();
         Map<String, TestMixNode> mixNodes = new LinkedHashMap<>();
+        List<String> exitNodeKeys = new ArrayList<>();
+
 
         for (int i = 0; i < replicationCount; i++) {
-            PkiEntry relay = generator.generateKeyPair();
+            List<byte[]> pathNodes = new ArrayList<>();
+            List<ECPoint> keys = new ArrayList<>();
+
+            for (int hop = 0; hop < 4; hop++) {
+                PkiEntry relay = generator.generateKeyPair();
+                byte[] relayNode = Arrays.copyOf(ClientUtil.encodeNode(20 + (i * 10) + hop, 0), params.keyLength());
+                pathNodes.add(relayNode);
+                keys.add(relay.pub());
+                mixNodes.put(Base64.getEncoder().encodeToString(relayNode), new TestMixNode("http://relay-" + i + "-" + hop, relay.priv(), params));
+            }
+
             PkiEntry exit = generator.generateKeyPair();
-            PkiEntry receiver = generator.generateKeyPair();
+            byte[] exitNode = Arrays.copyOf(ClientUtil.encodeNode(21 + (i * 10), 0), params.keyLength());
+            pathNodes.add(exitNode);
+            keys.add(exit.pub());
+            String exitKey = Base64.getEncoder().encodeToString(exitNode);
+            exitNodeKeys.add(exitKey);
+            mixNodes.put(exitKey, new TestMixNode("http://exit-" + i, exit.priv(), params));
 
-            byte[] relayNode = ClientUtil.encodeNode(20 + (i * 2), 0);
-            byte[] exitNode = ClientUtil.encodeNode(21 + (i * 2), 0);
-            suffixPaths.add(new byte[][]{relayNode, exitNode});
-            keySets.add(new ECPoint[]{relay.pub(), exit.pub()});
+            suffixPaths.add(pathNodes.toArray(new byte[0][]));
+            keySets.add(keys.toArray(new ECPoint[0]));
             receivers.add(Arrays.copyOf(ClientUtil.encodeNode(1001 + i, 0), params.keyLength()));
-
-            mixNodes.put(Base64.getEncoder().encodeToString(relayNode), new TestMixNode("http://relay-" + i, relay.priv(), params));
-            mixNodes.put(Base64.getEncoder().encodeToString(exitNode), new TestMixNode("http://exit-" + i, exit.priv(), params));
         }
 
 
         TestMixNode replicationMix = new TestMixNode("http://replication", replication.priv(), params);
 
-        return new PolySphinxContext(replication, replicationNode, suffixPaths, keySets, receivers, mixNodes, replicationMix);
+        return new PolySphinxContext(replication, replicationNode, suffixPaths, keySets, receivers, mixNodes, exitNodeKeys, replicationMix);
+    }
+
+    private void runIteration(PolySphinxContext context, int p, Map<String, BenchmarkStats> stats, boolean recordStats) throws Exception {
+        byte[] message = new byte[32 + random.nextInt(32)];
+        random.nextBytes(message);
+        byte[] seed = new byte[16];
+        random.nextBytes(seed);
+
+        Pair<InstructionPacket, List<SubHeader>> pair = PolySphinxUtil.createPolySphinxPacketForTests(
+                params,
+                context.replicationNode,
+                context.replication.pub(),
+                context.suffixPaths,
+                context.receivers,
+                message,
+                seed,
+                context.keySets);
+        InstructionPacket packet = pair.component1();
+        byte[] raw = client.packInstructionPacket(packet);
+
+        long replicationStart = System.nanoTime();
+        List<InstructionPacketAndNextHop> replicationOutputs = context.replicationMix.processForTest(raw);
+        double replicationDurationMicros = (System.nanoTime() - replicationStart) / 1_000.0;
+        if (recordStats) {
+            stats.computeIfAbsent(labelForStage(0, p), k -> new BenchmarkStats()).record(replicationDurationMicros);
+        }
+
+        Deque<QueueEntry> queue = new ArrayDeque<>();
+        for (InstructionPacketAndNextHop out : replicationOutputs) {
+            queue.add(new QueueEntry(out.getPacket(), out.getNextHop(), 1));
+        }
+
+        while (!queue.isEmpty()) {
+            QueueEntry entry = queue.removeFirst();
+            String nextHopKey = Base64.getEncoder().encodeToString(entry.nextHop);
+            TestMixNode target = context.mixNodes.get(nextHopKey);
+            if (target == null) {
+                continue;
+            }
+
+            long start = System.nanoTime();
+            List<InstructionPacketAndNextHop> outputs = target.processForTest(client.packInstructionPacket(entry.packet));
+            double durationMicros = (System.nanoTime() - start) / 1_000.0;
+            if (recordStats) {
+                int stageLabel = context.exitNodeKeys.contains(nextHopKey) ? 2 : 1;
+                stats.computeIfAbsent(labelForStage(stageLabel, p), k -> new BenchmarkStats())
+                        .record(durationMicros);
+            }
+
+            for (InstructionPacketAndNextHop output : outputs) {
+                queue.add(new QueueEntry(output.getPacket(), output.getNextHop(), entry.stage + 1));
+            }
+        }
     }
 
     private String labelForStage(int stage, int replicationCount) {
@@ -166,6 +189,7 @@ public class PolySphinxPackageProcessingBenchmark {
                                      List<ECPoint[]> keySets,
                                      List<byte[]> receivers,
                                      Map<String, TestMixNode> mixNodes,
+                                     List<String> exitNodeKeys,
                                      TestMixNode replicationMix) {
     }
 
