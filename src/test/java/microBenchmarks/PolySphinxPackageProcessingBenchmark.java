@@ -102,7 +102,7 @@ public class PolySphinxPackageProcessingBenchmark {
             }
 
             BenchmarkReporter.printStats("PolySphinx p=" + p, stats);
-            BenchmarkReporter.plotViolin("PolySphinx p=" + p, stats, "polysphinx-p" + p + ".png");
+            BenchmarkReporter.plotViolin("PolySphinx p=" + p, stats, "polysphinx-p" + p + ".pdf");
             assertTrue(stats.values().stream().anyMatch(s -> s.getCount() > 0));
         }
     }

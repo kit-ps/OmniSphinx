@@ -65,7 +65,7 @@ public class SphinxPackageProcessingBenchmark {
             }
         }
         BenchmarkReporter.printStats("Sphinx " , stats);
-        BenchmarkReporter.plotViolin("Sphinx " , stats, "sphinx" + ".png");
+        BenchmarkReporter.plotViolin("Sphinx " , stats, "sphinx" + ".pdf");
         assertTrue(stats.values().stream().anyMatch(s -> s.getCount() > 0));
     }
 

@@ -97,7 +97,7 @@ public class MultiSphinxPackageProcessingBenchmark {
             }
 
             BenchmarkReporter.printStats("MultiSphinx p=" + p, stats);
-            BenchmarkReporter.plotViolin("MultiSphinx p=" + p, stats, "multisphinx-p" + p + ".png");
+            BenchmarkReporter.plotViolin("MultiSphinx p=" + p, stats, "multisphinx-p" + p + ".pdf");
             assertTrue(stats.values().stream().anyMatch(s -> s.getCount() > 0));
         }
     }
