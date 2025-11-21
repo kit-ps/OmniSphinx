@@ -1,5 +1,8 @@
 package microBenchmarks;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class BenchmarkStats {
     private double total;
     private double min = Double.MAX_VALUE;
@@ -7,6 +10,8 @@ public class BenchmarkStats {
     private int count;
     private int errors;
     private Exception lastException;
+    private final List<Double> values = new ArrayList<>();
+
 
     public void record(double duration) {
         total += duration;
@@ -17,6 +22,7 @@ public class BenchmarkStats {
         if (duration > max) {
             max = duration;
         }
+        values.add(duration);
     }
 
     public void recordError(Exception e) {
@@ -46,5 +52,9 @@ public class BenchmarkStats {
 
     public Exception getLastException() {
         return lastException;
+    }
+
+    public java.util.List<Double> getValues() {
+        return values;
     }
 }
