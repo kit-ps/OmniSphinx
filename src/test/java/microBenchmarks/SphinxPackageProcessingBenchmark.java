@@ -22,9 +22,9 @@ import java.util.LinkedHashMap;
 import static org.junit.Assert.assertTrue;
 
 public class SphinxPackageProcessingBenchmark {
-    private static final int RUNS = 1000;
+    private static final int RUNS = 3000;
     private static final int pathLength = 6;
-
+    private static final int warmUp = 300;
     private Params params;
     private Client client;
     private PkiGenerator generator;
@@ -42,7 +42,7 @@ public class SphinxPackageProcessingBenchmark {
         SphinxContext context = prepareContext(pathLength);
         Map<String, BenchmarkStats> stats = new LinkedHashMap<>();
 
-        for (int run = 0; run < RUNS; run++) {
+        for (int run = 0; run < (RUNS + warmUp); run++) {
             byte[] message = new byte[32 + random.nextInt(32)];
             random.nextBytes(message);
             InstructionPacket packet = client.createSphinxInstructionPacket(context.nodeList, context.keys, context.destination, message);
@@ -54,6 +54,9 @@ public class SphinxPackageProcessingBenchmark {
                 long start = System.nanoTime();
                 List<InstructionPacket> outputs = mixNode.process(current);
                 long duration = System.nanoTime() - start;
+                if( run < warmUp ) {
+                    continue;
+                }
                 String label = hop == context.privs.length - 1 ? "Exit" : "Relay ";
                 stats.computeIfAbsent(label, l -> new BenchmarkStats()).record(duration);
 
@@ -66,7 +69,9 @@ public class SphinxPackageProcessingBenchmark {
         BenchmarkReporter.plotViolin("Sphinx " , stats, "sphinx-p" + ".png");
         assertTrue(stats.values().stream().anyMatch(s -> s.getCount() > 0));
     }
-        private SphinxContext prepareContext (int pathLength) throws Exception {
+
+
+    private SphinxContext prepareContext (int pathLength) throws Exception {
             byte[][] nodeList = new byte[pathLength][];
             ECPoint[] keys = new ECPoint[pathLength];
             BigInteger[] privs = new BigInteger[pathLength];
