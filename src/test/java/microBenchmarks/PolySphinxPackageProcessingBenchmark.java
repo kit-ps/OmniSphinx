@@ -78,7 +78,7 @@ public class PolySphinxPackageProcessingBenchmark {
 
     private PolySphinxContext prepareContext(int replicationCount) throws Exception {
         PkiEntry replication = generator.generateKeyPair();
-        byte[] replicationNode = Arrays.copyOf(ClientUtil.encodeNode(10, 0), params.keyLength());
+        byte[] replicationNode = ClientUtil.encodeNode(10, 0);
 
         List<byte[][]> suffixPaths = new ArrayList<>();
         List<ECPoint[]> keySets = new ArrayList<>();
@@ -93,14 +93,14 @@ public class PolySphinxPackageProcessingBenchmark {
 
             for (int hop = 0; hop < 4; hop++) {
                 PkiEntry relay = generator.generateKeyPair();
-                byte[] relayNode = Arrays.copyOf(ClientUtil.encodeNode(20 + (i * 10) + hop, 0), params.keyLength());
+                byte[] relayNode = ClientUtil.encodeNode(20 + (i * 10) + hop, 0);
                 pathNodes.add(relayNode);
                 keys.add(relay.pub());
                 mixNodes.put(Base64.getEncoder().encodeToString(relayNode), new TestMixNode("http://relay-" + i + "-" + hop, relay.priv(), params));
             }
 
             PkiEntry exit = generator.generateKeyPair();
-            byte[] exitNode = Arrays.copyOf(ClientUtil.encodeNode(21 + (i * 10), 0), params.keyLength());
+            byte[] exitNode = ClientUtil.encodeNode(21 + (i * 10), 0);
             pathNodes.add(exitNode);
             keys.add(exit.pub());
             String exitKey = Base64.getEncoder().encodeToString(exitNode);
@@ -109,7 +109,7 @@ public class PolySphinxPackageProcessingBenchmark {
 
             suffixPaths.add(pathNodes.toArray(new byte[0][]));
             keySets.add(keys.toArray(new ECPoint[0]));
-            receivers.add(Arrays.copyOf(ClientUtil.encodeNode(1001 + i, 0), params.keyLength()));
+            receivers.add(ClientUtil.encodeNode(1001 + i, 0));
         }
 
 
@@ -156,8 +156,9 @@ public class PolySphinxPackageProcessingBenchmark {
                 continue;
             }
 
+            byte[] currPacket = client.packInstructionPacket(entry.packet);
             long start = System.nanoTime();
-            List<InstructionPacketAndNextHop> outputs = target.processForTest(client.packInstructionPacket(entry.packet));
+            List<InstructionPacketAndNextHop> outputs = target.processForTest(currPacket);
             double durationMicros = (System.nanoTime() - start) / 1_000.0;
             if (recordStats) {
                 int stageLabel = context.exitNodeKeys.contains(nextHopKey) ? 2 : 1;
