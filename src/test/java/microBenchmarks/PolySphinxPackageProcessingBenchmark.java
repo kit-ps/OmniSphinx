@@ -70,8 +70,7 @@ public class PolySphinxPackageProcessingBenchmark {
 
             }
 
-            BenchmarkReporter.printStats("PolySphinx p=" + p, stats);
-            BenchmarkReporter.plotViolin("PolySphinx p=" + p, stats, "polysphinx-p" + p + ".pdf");
+            reportStageBenchmarks(p, stats);
             assertTrue(stats.values().stream().anyMatch(s -> s.getCount() > 0));
         }
     }
@@ -109,7 +108,7 @@ public class PolySphinxPackageProcessingBenchmark {
 
             suffixPaths.add(pathNodes.toArray(new byte[0][]));
             keySets.add(keys.toArray(new ECPoint[0]));
-            receivers.add(ClientUtil.encodeNode(1001 + i, 0));
+            receivers.add(Arrays.copyOf(ClientUtil.encodeNode(1001 + i, 0), params.keyLength()));
         }
 
 
@@ -147,6 +146,7 @@ public class PolySphinxPackageProcessingBenchmark {
         for (InstructionPacketAndNextHop out : replicationOutputs) {
             queue.add(new QueueEntry(out.getPacket(), out.getNextHop(), 1));
         }
+        int pathLength = context.suffixPaths.get(0).length;
 
         while (!queue.isEmpty()) {
             QueueEntry entry = queue.removeFirst();
@@ -161,7 +161,8 @@ public class PolySphinxPackageProcessingBenchmark {
             List<InstructionPacketAndNextHop> outputs = target.processForTest(currPacket);
             double durationMicros = (System.nanoTime() - start) / 1_000.0;
             if (recordStats) {
-                int stageLabel = context.exitNodeKeys.contains(nextHopKey) ? 2 : 1;
+                boolean isExitHop = entry.stage >= pathLength || context.exitNodeKeys.contains(nextHopKey);
+                int stageLabel = isExitHop ? 2 : 1;
                 stats.computeIfAbsent(labelForStage(stageLabel, p), k -> new BenchmarkStats())
                         .record(durationMicros);
             }
@@ -172,16 +173,41 @@ public class PolySphinxPackageProcessingBenchmark {
         }
     }
 
+    private void reportStageBenchmarks(int p, Map<String, BenchmarkStats> stats) throws Exception {
+        reportSingleStage("Replication", p, stats);
+        reportSingleStage("Relay", p, stats);
+        reportSingleStage("Exit", p, stats);
+    }
+
+    private void reportSingleStage(String stage, int p, Map<String, BenchmarkStats> stats) throws Exception {
+        String label = labelForStageName(stage, p);
+        BenchmarkStats stageStats = stats.get(label);
+        if (stageStats == null) {
+            System.out.printf("No stats recorded for %s%n", label);
+            return;
+        }
+
+        Map<String, BenchmarkStats> stageMap = Map.of(label, stageStats);
+        String title = "PolySphinx " + stage + " p=" + p;
+        BenchmarkReporter.printStats(title, stageMap);
+        BenchmarkReporter.plotViolin(title, stageMap, "polysphinx-" + stage.toLowerCase() + "-p" + p + ".pdf");
+    }
+
     private String labelForStage(int stage, int replicationCount) {
         if (stage == 0) {
-            return "Replication p=" + replicationCount;
+            return labelForStageName("Replication", replicationCount);
         }
 
         if (stage == 2) {
-            return "Exit p=" + replicationCount;
+            return labelForStageName("Exit", replicationCount);
         }
-        return "Relay p=" + replicationCount;
+        return labelForStageName("Relay", replicationCount);
     }
+
+    private String labelForStageName(String stage, int replicationCount) {
+        return stage + " p=" + replicationCount;
+    }
+
     private record QueueEntry(InstructionPacket packet, byte[] nextHop, int stage) { }
 
     private record PolySphinxContext(PkiEntry replication,
