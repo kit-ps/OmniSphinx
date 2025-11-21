@@ -23,13 +23,15 @@ import java.util.Map;
 import static org.junit.Assert.assertFalse;
 
 public class InstructionBenchmark {
-    private static final int RUNS = 50;
+    private static final int RUNS = 10000;
+    private static final int WARMUP_RUNS = 200;
     private static final byte REG_SOURCE = (byte) 0x20;
     private static final byte REG_DEST = (byte) 0x21;
     private static final byte REG_KEY = (byte) 0x22;
     private static final byte REG_A = (byte) 0x23;
     private static final byte REG_B = (byte) 0x24;
     private static final byte REG_C = (byte) 0x25;
+    private static final byte REG_LENGTH = (byte) 0x26;
 
     private final SecureRandom random = new SecureRandom();
     private Params params;
@@ -44,10 +46,12 @@ public class InstructionBenchmark {
     @Test
     public void benchmarkInstructions() throws Exception {
         Map<String, InstructionScenario> scenarios = new LinkedHashMap<>();
-        scenarios.put(OpCode.STORE_BYTES1.name(), this::storeBytesScenario);
-        scenarios.put(OpCode.STORE_BYTES2.name(), this::storeBytesScenario);
-        scenarios.put(OpCode.STORE_BYTES3.name(), this::storeBytesScenario);
-        scenarios.put(OpCode.STORE_BYTES4.name(), this::storeBytesScenario);
+        scenarios.put(OpCode.STOP.name(), this::stopScenario);
+        scenarios.put(OpCode.STORE_BYTES1.name(), registers -> storeBytesScenario(registers, 1));
+        scenarios.put(OpCode.STORE_BYTES2.name(), registers -> storeBytesScenario(registers, 2));
+        scenarios.put(OpCode.STORE_BYTES3.name(), registers -> storeBytesScenario(registers, 3));
+        scenarios.put(OpCode.STORE_BYTES4.name(), registers -> storeBytesScenario(registers, 4));
+        scenarios.put(OpCode.STORE_MULTIPLE_BYTES.name(), this::storeMultipleScenario);
         scenarios.put(OpCode.HASH.name(), this::hashScenario);
         scenarios.put(OpCode.MAC.name(), this::macScenario);
         scenarios.put(OpCode.VERIFY.name(), this::verifyScenario);
@@ -58,44 +62,57 @@ public class InstructionBenchmark {
         scenarios.put(OpCode.DECRYPT.name(), this::decryptScenario);
         scenarios.put(OpCode.ENCRYPT.name(), this::encryptScenario);
         scenarios.put(OpCode.CONCATE.name(), this::concateScenario);
+        scenarios.put(OpCode.CONCATE_WITH_BYTE_VALUE.name(), this::concateWithByteValueScenario);
+        scenarios.put(OpCode.COPY.name(), this::copyScenario);
+        scenarios.put(OpCode.ADD.name(), this::addScenario);
         scenarios.put(OpCode.FORWARD.name(), this::forwardScenario);
-        scenarios.put(OpCode.LOAD1.name(), this::loadScenario);
+
+        scenarios.put(OpCode.LOAD1.name(), registers -> loadScenario(registers, 1));
+        scenarios.put(OpCode.LOAD2.name(), registers -> loadScenario(registers, 2));
+        scenarios.put(OpCode.LOAD3.name(), registers -> loadScenario(registers, 3));
+        scenarios.put(OpCode.LOAD_MULTIPLE_BYTES.name(), this::loadMultipleScenario);
         scenarios.put(OpCode.FOR.name(), this::forScenario);
 
         Map<String, BenchmarkStats> results = new LinkedHashMap<>();
         for (Map.Entry<String, InstructionScenario> entry : scenarios.entrySet()) {
             BenchmarkStats stats = runScenario(entry.getValue());
             results.put(entry.getKey(), stats);
-            if (stats.getCount() > 0) {
-                System.out.printf("%s avg ns: %d (min=%d, max=%d, errors=%d)%n",
-                        entry.getKey(), stats.getAverage(), stats.getMin(), stats.getMax(), stats.getErrors());
-            } else {
-                System.out.printf("%s had only errors (%d). Last error: %s%n",
-                        entry.getKey(), stats.getErrors(),
-                        stats.getLastException() != null ? stats.getLastException().getMessage() : "none");
-            }
         }
 
+        BenchmarkReporter.printStats("Instruction VM", results);
         assertFalse(results.isEmpty());
+        assertFalse(results.values().stream().anyMatch(s -> s.getCount() == 0 && s.getErrors() == 0));
     }
 
     private BenchmarkStats runScenario(InstructionScenario scenario) throws Exception {
         BenchmarkStats stats = new BenchmarkStats();
-        for (int i = 0; i < RUNS; i++) {
-            Map<Byte, byte[]> registers = createBaseRegisters();
-            byte[] instructions = scenario.createInstructions(registers);
-            registers.put(InstructionRegister.INSTRUCTIONS.getCode(), instructions);
-            VM vm = new VM(nodeSecret, params);
+        for (int warmup = 0; warmup < WARMUP_RUNS; warmup++) {
             try {
-                long start = System.nanoTime();
-                vm.interpret(new VMContext(registers));
-                long duration = System.nanoTime() - start;
-                stats.record(duration);
-            } catch (VMException e) {
+                executeScenario(scenario);
+            } catch (Exception ignored) {
+                // Warmup errors should not affect measurements.
+            }
+        }
+        for (int i = 0; i < RUNS; i++) {
+            try {
+                double durationMicros = executeScenario(scenario);
+                stats.record(durationMicros);
+            } catch (Exception e) {
                 stats.recordError(e);
             }
         }
         return stats;
+    }
+
+    private double executeScenario(InstructionScenario scenario) throws Exception {
+        Map<Byte, byte[]> registers = createBaseRegisters();
+        byte[] instructions = scenario.createInstructions(registers);
+        registers.put(InstructionRegister.INSTRUCTIONS.getCode(), instructions);
+        VM vm = new VM(nodeSecret, params);
+        long start = System.nanoTime();
+        vm.interpret(new VMContext(registers));
+        long duration = System.nanoTime() - start;
+        return duration / 1_000.0;
     }
 
     private Map<Byte, byte[]> createBaseRegisters() throws Exception {
@@ -109,14 +126,21 @@ public class InstructionBenchmark {
         return registers;
     }
 
-    private byte[] storeBytesScenario(Map<Byte, byte[]> registers) {
-        byte[] source = randomBytes(32 + random.nextInt(32));
+    private byte[] stopScenario(Map<Byte, byte[]> registers) {
+        return Instruction.stop();
+    }
+
+    private byte[] storeBytesScenario(Map<Byte, byte[]> registers, int lengthBytes) throws IOException {
+        int maxLength = switch (lengthBytes) {
+            case 1 -> 64;
+            case 2 -> 512;
+            case 3 -> 1024;
+            default -> 2048;
+        };
+        int length = 1 + random.nextInt(maxLength);
+        byte[] source = randomBytes(length + random.nextInt(128));
         registers.put(REG_SOURCE, source);
-        byte length = (byte) Math.min(16, source.length);
-        if (length == 0) {
-            length = 1;
-        }
-        return Instruction.storeBytes(REG_SOURCE, length, REG_DEST);
+        return buildStoreInstruction(lengthBytes, length);
     }
 
     private byte[] hashScenario(Map<Byte, byte[]> registers) {
@@ -203,37 +227,74 @@ public class InstructionBenchmark {
         return Instruction.forward(REG_A);
     }
 
-    private byte[] mixNoneScenario(Map<Byte, byte[]> registers) {
-        return Instruction.mixNone();
+    private byte[] copyScenario(Map<Byte, byte[]> registers) {
+        registers.put(REG_SOURCE, randomBytes(24));
+        return Instruction.copy(REG_SOURCE, REG_DEST);
     }
 
-    private byte[] mixTimedScenario(Map<Byte, byte[]> registers) {
-        byte delay = (byte) random.nextInt(2);
-        return Instruction.mixTimed(delay);
+    private byte[] addScenario(Map<Byte, byte[]> registers) {
+        registers.put(REG_A, randomBytes(8));
+        registers.put(REG_B, new byte[]{(byte) random.nextInt(4)});
+        return Instruction.addRight(REG_A, REG_B, REG_DEST);
     }
 
-    private byte[] mixThresholdScenario(Map<Byte, byte[]> registers) {
-        return Instruction.mixThreshold((byte) 2);
+    private byte[] concateWithByteValueScenario(Map<Byte, byte[]> registers) {
+        registers.put(REG_A, randomBytes(6));
+        byte value = (byte) random.nextInt(255);
+        return Instruction.concateWithByteValue(REG_A, value, REG_DEST);
     }
 
-    private byte[] mixPoolScenario(Map<Byte, byte[]> registers) {
-        return Instruction.mixPool((byte) 2, (byte) 1);
+    private byte[] storeMultipleScenario(Map<Byte, byte[]> registers) {
+        int length = 1 + random.nextInt(32);
+        registers.put(REG_SOURCE, randomBytes(length + random.nextInt(32)));
+        registers.put(REG_LENGTH, toLengthBytes(length));
+        return Instruction.storeMultipleBytes(REG_SOURCE, REG_LENGTH, REG_DEST);
     }
 
-    private byte[] mixPoissonScenario(Map<Byte, byte[]> registers) {
-        byte mean = (byte) random.nextInt(2);
-        return Instruction.mixPoisson(mean);
+    private byte[] loadScenario(Map<Byte, byte[]> registers, int lengthBytes) throws IOException {
+        int length = switch (lengthBytes) {
+            case 1 -> 1 + random.nextInt(64);
+            case 2 -> 256 + random.nextInt(256);
+            case 3 -> 512 + random.nextInt(512);
+            default -> 16;
+        };
+        byte[] value = randomBytes(length);
+        return switch (lengthBytes) {
+            case 1 -> Instruction.load1(value, REG_DEST);
+            case 2 -> Instruction.load2(value, REG_DEST);
+            case 3 -> Instruction.load3(value, REG_DEST);
+            default -> Instruction.load(value, REG_DEST);
+        };
     }
 
-    private byte[] loadScenario(Map<Byte, byte[]> registers) throws IOException {
-        byte[] value = randomBytes(12);
-        return Instruction.load(value, REG_DEST);
+    private byte[] loadMultipleScenario(Map<Byte, byte[]> registers) {
+        registers.put(REG_SOURCE, randomBytes(16));
+        registers.put(REG_LENGTH, toLengthBytes(4));
+        return new byte[]{OpCode.LOAD_MULTIPLE_BYTES.getCode(), REG_SOURCE, REG_LENGTH, REG_DEST};
     }
 
     private byte[] forScenario(Map<Byte, byte[]> registers) {
         byte times = (byte) (1 + random.nextInt(4));
         byte[] loopInstruction = Instruction.mixNone();
         return SerializationUtils.concatenate(Instruction.forLoop(times, (byte) 1), loopInstruction);
+    }
+
+    private byte[] buildStoreInstruction(int lengthBytes, int length) throws IOException {
+        return switch (lengthBytes) {
+            case 1 -> Instruction.storeBytes(REG_SOURCE, length, REG_DEST);
+            case 2 -> new byte[]{OpCode.STORE_BYTES2.getCode(), REG_SOURCE, (byte) ((length >> 8) & 0xFF), (byte) (length & 0xFF), REG_DEST};
+            case 3 -> new byte[]{OpCode.STORE_BYTES3.getCode(), REG_SOURCE,
+                    (byte) ((length >> 16) & 0xFF),
+                    (byte) ((length >> 8) & 0xFF),
+                    (byte) (length & 0xFF),
+                    REG_DEST};
+            default -> new byte[]{OpCode.STORE_BYTES4.getCode(), REG_SOURCE,
+                    (byte) ((length >> 24) & 0xFF),
+                    (byte) ((length >> 16) & 0xFF),
+                    (byte) ((length >> 8) & 0xFF),
+                    (byte) (length & 0xFF),
+                    REG_DEST};
+        };
     }
 
     private byte[] randomBytes(int length) {
