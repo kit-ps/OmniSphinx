@@ -11,7 +11,7 @@ public final class BenchmarkReporter {
 
     public static void printStats(String title, Map<String, BenchmarkStats> statsByLabel) {
         System.out.println("==== " + title + " ====");
-        statsByLabel.forEach((label, stats) -> System.out.printf("%s -> avg: %.2f ns (min=%.2f, max=%.2f, runs=%d)%n",
+        statsByLabel.forEach((label, stats) -> System.out.printf("%s -> avg: %.2f µs (min=%.2f, max=%.2f, runs=%d)%n",
                 label, stats.getAverage(), stats.getMin(), stats.getMax(), stats.getCount()));
     }
 

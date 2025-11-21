@@ -32,7 +32,7 @@ public class Params {
     private final int bodyLength;
     private final int headerLength;
     private final ECCGroup group;
-    private final int instructionTotalSize;
+    private int instructionTotalSize;
 
     public Params(int keyLength, int bodyLength, int headerLength, ECCGroup group, int instructionTotalSize) {
         this.keyLength = keyLength;
@@ -64,6 +64,10 @@ public class Params {
 
     public ECCGroup getGroup() {
         return group;
+    }
+
+    public void setInstructionTotalSize(int newInstructionTotalSize) {
+        instructionTotalSize = newInstructionTotalSize;
     }
 
     public BigInteger generatePrivateKey() {

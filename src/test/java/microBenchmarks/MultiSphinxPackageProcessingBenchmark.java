@@ -61,8 +61,9 @@ public class MultiSphinxPackageProcessingBenchmark {
                 for (int hop = 0; hop < PREFIX_HOPS; hop++) {
                     long start = System.nanoTime();
                     replicationOutputs = context.prefixMixNodes[hop].processForTest(raw);
+                    double durationMicros = (System.nanoTime() - start) / 1_000.0;
                     stats.computeIfAbsent(labelForStage(hop, p), k -> new BenchmarkStats())
-                            .record(System.nanoTime() - start);
+                            .record(durationMicros);
 
                     if (hop < PREFIX_HOPS - 1) {
                         raw = client.packInstructionPacket(replicationOutputs.get(0).getPacket());
@@ -87,8 +88,10 @@ public class MultiSphinxPackageProcessingBenchmark {
 
                     long start = System.nanoTime();
                     List<InstructionPacketAndNextHop> outputs = target.processForTest(client.packInstructionPacket(entry.packet));
+                    double durationMicros = (System.nanoTime() - start) / 1_000.0;
+
                     stats.computeIfAbsent(labelForStage(entry.stage, p), k -> new BenchmarkStats())
-                            .record(System.nanoTime() - start);
+                            .record(durationMicros);
 
                     for (InstructionPacketAndNextHop output : outputs) {
                         queue.add(new QueueEntry(output.getPacket(), output.getNextHop(), entry.stage + 1));

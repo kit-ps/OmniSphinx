@@ -53,7 +53,7 @@ public class SphinxPackageProcessingBenchmark {
                 TestMixNode mixNode = context.mixNodes[hop];
                 long start = System.nanoTime();
                 List<InstructionPacket> outputs = mixNode.process(current);
-                long duration = System.nanoTime() - start;
+                double durationMicros = (System.nanoTime() - start) / 1_000.0;
                 if (hop < context.privs.length - 1 && !outputs.isEmpty()) {
                     current = client.packInstructionPacket(outputs.get(0));
                 }
@@ -61,7 +61,7 @@ public class SphinxPackageProcessingBenchmark {
                     continue;
                 }
                 String label = hop == context.privs.length - 1 ? "Exit" : "Relay ";
-                stats.computeIfAbsent(label, l -> new BenchmarkStats()).record(duration);
+                stats.computeIfAbsent(label, l -> new BenchmarkStats()).record(durationMicros);
             }
         }
         BenchmarkReporter.printStats("Sphinx " , stats);

@@ -110,7 +110,7 @@ public final class ViolinPlotter {
         g.drawString(title, MARGIN, MARGIN / 2 - 10);
 
         g.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        g.drawString("ns", MARGIN - 35, MARGIN - 10);
+        g.drawString("µs", MARGIN - 35, MARGIN - 10);
 
         int tickCount = 5;
         for (int i = 0; i <= tickCount; i++) {

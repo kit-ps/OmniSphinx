@@ -49,6 +49,15 @@ public class PolySphinxPackageProcessingBenchmark {
     @Test
     public void benchmarkPolySphinxProcessing() throws Exception {
         for (int p : P_VALUES) {
+            if (p == 3) {
+                params.setInstructionTotalSize(700);
+            }
+            if (p == 5) {
+                params.setInstructionTotalSize(1200);
+            }
+            if (p == 10) {
+                params.setInstructionTotalSize(2200);
+            }
             PolySphinxContext context = prepareContext(p);
             Map<String, BenchmarkStats> stats = new LinkedHashMap<>();
 
@@ -72,7 +81,8 @@ public class PolySphinxPackageProcessingBenchmark {
 
                 long replicationStart = System.nanoTime();
                 List<InstructionPacketAndNextHop> replicationOutputs = context.replicationMix.processForTest(raw);
-                stats.computeIfAbsent(labelForStage(0, p), k -> new BenchmarkStats()).record(System.nanoTime() - replicationStart);
+                double replicationDurationMicros = (System.nanoTime() - replicationStart) / 1_000.0;
+                stats.computeIfAbsent(labelForStage(0, p), k -> new BenchmarkStats()).record(replicationDurationMicros);
 
                 Deque<QueueEntry> queue = new ArrayDeque<>();
                 for (InstructionPacketAndNextHop out : replicationOutputs) {
@@ -92,8 +102,9 @@ public class PolySphinxPackageProcessingBenchmark {
 
                     long start = System.nanoTime();
                     List<InstructionPacketAndNextHop> outputs = target.processForTest(client.packInstructionPacket(entry.packet));
+                    double durationMicros = (System.nanoTime() - start) / 1_000.0;
                     stats.computeIfAbsent(labelForStage(entry.stage, p), k -> new BenchmarkStats())
-                            .record(System.nanoTime() - start);
+                            .record(durationMicros);
 
                     for (InstructionPacketAndNextHop output : outputs) {
                         queue.add(new QueueEntry(output.getPacket(), output.getNextHop(), entry.stage + 1));
