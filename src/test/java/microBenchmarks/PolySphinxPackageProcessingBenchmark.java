@@ -113,7 +113,8 @@ public class PolySphinxPackageProcessingBenchmark {
         return new PolySphinxContext(replication, replicationNode, suffixPaths, keySets, receivers, mixNodes, replicationMix);
     }
 
-    private void runPath(PolySphinxContext context, int p, Map<String, BenchmarkStats> statsByStage, boolean recordStats) throws Exception {        byte[] message = new byte[32 + random.nextInt(32)];
+    private void runPath(PolySphinxContext context, int p, Map<String, BenchmarkStats> statsByStage, boolean recordStats) throws Exception {
+        byte[] message = new byte[1024];
         random.nextBytes(message);
         byte[] seed = new byte[16];
         random.nextBytes(seed);
