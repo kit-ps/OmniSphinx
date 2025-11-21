@@ -58,25 +58,19 @@ public class PolySphinxPackageProcessingBenchmark {
                 params.setInstructionTotalSize(4000);
             }
             PolySphinxContext context = prepareContext(p);
-            Map<String, BenchmarkStats> statsReplication = new LinkedHashMap<>();
-            Map<String, BenchmarkStats> statsRelay = new LinkedHashMap<>();
-            Map<String, BenchmarkStats> statsExit = new LinkedHashMap<>();
-
+            Map<String, BenchmarkStats> stageStats = new LinkedHashMap<>();
 
             for (int warmup = 0; warmup < WARMUP_RUNS; warmup++) {
-                runPath(context, p, statsReplication, statsRelay, statsExit, false);            }
+                runPath(context, p, stageStats, false);
+            }
             for (int run = 0; run < RUNS; run++) {
-                runPath(context, p, statsReplication, statsRelay, statsExit, true);
+                runPath(context, p, stageStats, true);
             }
 
-            reportStageBenchmarks(p, statsReplication);
-            assertTrue(statsReplication.values().stream().anyMatch(s -> s.getCount() > 0));
-
-            reportStageBenchmarks(p, statsExit);
-            assertTrue(statsExit.values().stream().anyMatch(s -> s.getCount() > 0));
-
-            reportStageBenchmarks(p, statsRelay);
-            assertTrue(statsRelay.values().stream().anyMatch(s -> s.getCount() > 0));
+            assertHasDataForStage("Replication", p, stageStats);
+            assertHasDataForStage("Relay", p, stageStats);
+            assertHasDataForStage("Exit", p, stageStats);
+            reportStageBenchmarks(p, stageStats);
         }
     }
 
@@ -117,8 +111,7 @@ public class PolySphinxPackageProcessingBenchmark {
         return new PolySphinxContext(replication, replicationNode, suffixPaths, keySets, receivers, mixNodes, replicationMix);
     }
 
-    private void runPath(PolySphinxContext context, int p, Map<String, BenchmarkStats> statsReplication, Map<String, BenchmarkStats> statsExit, Map<String, BenchmarkStats> statsRelay, boolean recordStats) throws Exception {
-        byte[] message = new byte[32 + random.nextInt(32)];
+    private void runPath(PolySphinxContext context, int p, Map<String, BenchmarkStats> statsByStage, boolean recordStats) throws Exception {        byte[] message = new byte[32 + random.nextInt(32)];
         random.nextBytes(message);
         byte[] seed = new byte[16];
         random.nextBytes(seed);
@@ -140,7 +133,7 @@ public class PolySphinxPackageProcessingBenchmark {
         List<InstructionPacketAndNextHop> replicationOutputs = context.replicationMix.processForTest(raw);
         double replicationDurationMicros = (System.nanoTime() - replicationStart) / 1_000.0;
         if (recordStats) {
-            statsReplication.computeIfAbsent(labelForStage(0, p), k -> new BenchmarkStats())
+            statsByStage.computeIfAbsent(labelForStage(0, p), k -> new BenchmarkStats())
                     .record(replicationDurationMicros);
         }
 
@@ -157,7 +150,7 @@ public class PolySphinxPackageProcessingBenchmark {
             List<InstructionPacketAndNextHop> outputs = relayNode.processForTest(relayPacket);
             double relayDurationMicros = (System.nanoTime() - relayStart) / 1_000.0;
             if (recordStats) {
-                statsRelay.computeIfAbsent(labelForStage(1, p), k -> new BenchmarkStats())
+                statsByStage.computeIfAbsent(labelForStage(1, p), k -> new BenchmarkStats())
                         .record(relayDurationMicros);
             }
             relayOutputs.addAll(outputs);
@@ -175,7 +168,7 @@ public class PolySphinxPackageProcessingBenchmark {
             exitNode.processForTest(exitPacket);
             double exitDurationMicros = (System.nanoTime() - exitStart) / 1_000.0;
             if (recordStats) {
-                statsExit.computeIfAbsent(labelForStage(2, p), k -> new BenchmarkStats())
+                statsByStage.computeIfAbsent(labelForStage(2, p), k -> new BenchmarkStats())
                         .record(exitDurationMicros);
             }
         }
@@ -210,6 +203,12 @@ public class PolySphinxPackageProcessingBenchmark {
             return labelForStageName("Exit", replicationCount);
         }
         return labelForStageName("Relay", replicationCount);
+    }
+
+    private void assertHasDataForStage(String stage, int replicationCount, Map<String, BenchmarkStats> stats) {
+        String label = labelForStageName(stage, replicationCount);
+        BenchmarkStats stageStats = stats.get(label);
+        assertTrue("No stats recorded for " + label, stageStats != null && stageStats.getCount() > 0);
     }
 
     private String labelForStageName(String stage, int replicationCount) {
