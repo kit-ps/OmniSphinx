@@ -1,13 +1,13 @@
 package microBenchmarks;
 
-import MasterThesisFormat.ClientUtil;
-import MasterThesisFormat.Params;
-import MasterThesisFormat.SerializationUtils;
-import MasterThesisFormat.VM.VM;
-import MasterThesisFormat.VM.VMContext;
-import MasterThesisFormat.VM.VMException;
-import MasterThesisFormat.instruction.Instruction;
-import MasterThesisFormat.instruction.InstructionRegister;
+import OmniSphinx.ClientUtil;
+import OmniSphinx.Params;
+import OmniSphinx.SerializationUtils;
+import OmniSphinx.VM.VM;
+import OmniSphinx.VM.VMContext;
+import OmniSphinx.VM.VMException;
+import OmniSphinx.instruction.Instruction;
+import OmniSphinx.instruction.InstructionRegister;
 import org.bouncycastle.math.ec.ECPoint;
 import org.junit.Before;
 import org.junit.Test;

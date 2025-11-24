@@ -1,15 +1,15 @@
 package microBenchmarks;
 
-import MasterThesisFormat.Client;
-import MasterThesisFormat.ClientUtil;
-import MasterThesisFormat.InstructionPacket.InstructionPacket;
-import MasterThesisFormat.InstructionPacket.InstructionPacketAndNextHop;
-import MasterThesisFormat.MixFormats.MultiSphinx.MultiSphinxUtil;
-import MasterThesisFormat.MixNode;
-import MasterThesisFormat.Params;
-import MasterThesisFormat.pki.PkiEntry;
-import MasterThesisFormat.pki.PkiGenerator;
-import MasterThesisFormat.routing.RandomRoutingStrategy;
+import OmniSphinx.Client;
+import OmniSphinx.ClientUtil;
+import OmniSphinx.InstructionPacket.InstructionPacket;
+import OmniSphinx.InstructionPacket.InstructionPacketAndNextHop;
+import OmniSphinx.MixFormats.MultiSphinx.MultiSphinxUtil;
+import OmniSphinx.MixNode;
+import OmniSphinx.Params;
+import OmniSphinx.pki.PkiEntry;
+import OmniSphinx.pki.PkiGenerator;
+import OmniSphinx.routing.RandomRoutingStrategy;
 import org.bouncycastle.math.ec.ECPoint;
 import org.junit.Before;
 import org.junit.Test;

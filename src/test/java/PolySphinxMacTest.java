@@ -1,16 +1,11 @@
-import MasterThesisFormat.MixFormats.PolySphinx.SubHeader;
-import MasterThesisFormat.Params;
-import MasterThesisFormat.ClientUtil;
-import MasterThesisFormat.MixFormats.PolySphinx.PolySphinxUtil;
-import MasterThesisFormat.InstructionPacket.InstructionPacket;
-import MasterThesisFormat.header.InstructionEncryptor;
-import MasterThesisFormat.header.InstructionHeader;
-import MasterThesisFormat.SerializationUtils;
-import MasterThesisFormat.VM.VM;
-import MasterThesisFormat.VM.VMContext;
-import MasterThesisFormat.VM.VMOutput;
-import MasterThesisFormat.instruction.Instruction;
-import MasterThesisFormat.instruction.InstructionRegister;
+import OmniSphinx.MixFormats.PolySphinx.SubHeader;
+import OmniSphinx.Params;
+import OmniSphinx.ClientUtil;
+import OmniSphinx.MixFormats.PolySphinx.PolySphinxUtil;
+import OmniSphinx.InstructionPacket.InstructionPacket;
+import OmniSphinx.header.InstructionEncryptor;
+import OmniSphinx.header.InstructionHeader;
+import OmniSphinx.SerializationUtils;
 import kotlin.Pair;
 import org.bouncycastle.math.ec.ECPoint;
 import org.junit.Before;
@@ -22,7 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static MasterThesisFormat.SerializationUtils.concatenate;
+import static OmniSphinx.SerializationUtils.concatenate;
 import static org.junit.Assert.assertArrayEquals;
 
 public class PolySphinxMacTest {

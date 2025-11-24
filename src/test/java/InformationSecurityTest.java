@@ -1,4 +1,4 @@
-import MasterThesisFormat.ifs.*;
+import OmniSphinx.ifs.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
