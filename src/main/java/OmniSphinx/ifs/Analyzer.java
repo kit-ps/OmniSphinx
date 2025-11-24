@@ -1,5 +1,7 @@
 package OmniSphinx.ifs;
 
+import OmniSphinx.instruction.OpCode;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,15 +26,35 @@ public class Analyzer {
         return new Report(violations);
     }
 
-    private void analyzeSeq(List<ProgramInstruction> program, TaintState state,
-                            List<Violation> violations, int counter) {
+    private int analyzeSeq(List<ProgramInstruction> program, TaintState state,
+                           List<Violation> violations, int counter) {
         for (ProgramInstruction ins : program) {
             ins.setId(counter);
             counter++;
             switch (ins.getOpCode()) {
+                case FOR -> counter = analyzeFor(ins, state, violations, counter);
                 default -> tf.apply(ins, state, violations, policy);
             }
         }
+        return counter;
+    }
+
+    private int analyzeFor(ProgramInstruction ins, TaintState state,
+                           List<Violation> violations, int counter) {
+        counter = assignIds(ins.getThenBranch(), counter);
+        tf.apply(ins, state, violations, policy);
+        return counter;
+    }
+
+    private int assignIds(List<ProgramInstruction> program, int counter) {
+        for (ProgramInstruction child : program) {
+            child.setId(counter);
+            counter++;
+            if (child.getOpCode() == OpCode.FOR) {
+                counter = assignIds(child.getThenBranch(), counter);
+            }
+        }
+        return counter;
     }
 
     private void analyzeIf(ProgramInstruction ins, TaintState state,

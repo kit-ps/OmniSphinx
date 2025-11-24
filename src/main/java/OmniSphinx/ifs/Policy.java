@@ -7,6 +7,15 @@ public class Policy {
     private final Map<Register, SecurityLabel> initial;
     private final Set<Register> publicOutputs;
 
+    private static final Map<Register, SecurityLabel> DEFAULT_PREPROCESSING = Map.of(
+            Register.R_ALPHA, SecurityLabel.PUBLIC,
+            Register.R_BETA, SecurityLabel.PUBLIC,
+            Register.R_GAMMA, SecurityLabel.PUBLIC,
+            Register.R_PAYLOAD, SecurityLabel.SECRET,
+            Register.R_SHARED_SECRET, SecurityLabel.SECRET
+    );
+
+
     private Policy(Map<Register, SecurityLabel> initial, Set<Register> publicOutputs) {
         this.initial = initial;
         this.publicOutputs = publicOutputs;
@@ -60,12 +69,17 @@ public class Policy {
      * Creates a policy with the default rules described in the thesis.
      */
     public static Policy defaultPolicy() {
-        return new Builder()
-                .secret(Register.R_SHARED_SECRET)
-                .publicOutput(Register.R_ALPHA)
+        return senderClassified(Collections.emptyMap());
+    }
+
+    public static Policy senderClassified(Map<Register, SecurityLabel> senderInputs) {
+        Builder b = new Builder();
+        DEFAULT_PREPROCESSING.forEach(b::label);
+        senderInputs.forEach(b::label);
+        b.publicOutput(Register.R_ALPHA)
                 .publicOutput(Register.R_BETA)
                 .publicOutput(Register.R_GAMMA)
-                .publicOutput(Register.R_PAYLOAD)
-                .build();
+                .publicOutput(Register.R_PAYLOAD);
+        return b.build();
     }
 }

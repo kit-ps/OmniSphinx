@@ -27,6 +27,7 @@ public class TransferFunction {
         rules.put(OpCode.STORE_BYTES4, this::storeBytes);
         rules.put(OpCode.STORE_MULTIPLE_BYTES, this::storeBytes);
         rules.put(OpCode.CONCATE, this::concate);
+        rules.put(OpCode.LOAD_MULTIPLE_BYTES, this::load);
         rules.put(OpCode.CONCATE_WITH_BYTE_VALUE, this::concateWithByteValue);
         rules.put(OpCode.XOR, this::xor);
         rules.put(OpCode.COPY, this::copy);
@@ -168,12 +169,6 @@ public class TransferFunction {
         checkSink(ins, res, v, policy);
     }
 
-    private void computeSharedSecret(ProgramInstruction ins, TaintState state, List<Violation> v, Policy policy) {
-        Taint res = joinPc(state, state.get(ins.getSrc1()));
-        state.set(ins.getDest(), res);
-        checkSink(ins, res, v, policy);
-    }
-
     private void verify(ProgramInstruction ins, TaintState state, List<Violation> v, Policy policy) {
         // result of verification is not stored but may influence control flow
         joinPc(state, state.get(ins.getSrc1()), state.get(ins.getSrc2()));
@@ -202,19 +197,16 @@ public class TransferFunction {
     }
 
     private void forLoop(ProgramInstruction ins, TaintState state, List<Violation> v, Policy policy) {
-        Register countReg = ins.getSrc1();
         List<ProgramInstruction> body = ins.getThenBranch();
-        if (countReg == null || body.isEmpty()) {
+        if (body.isEmpty()) {
             return;
         }
-
         Taint oldPc = state.getPc().copy();
-        Taint count = state.get(countReg);
+        byte iterations = ins.getInput1();
+        if (iterations <= 0) {
+            return;
+        }
         Taint loopPc = oldPc.copy();
-        loopPc.label = SecurityLabel.join(loopPc.label, count.label);
-        loopPc.controlSecrets.addAll(count.dataSecrets);
-        loopPc.controlSecrets.addAll(count.controlSecrets);
-        loopPc.controlInstrs.addAll(count.controlInstrs);
         loopPc.controlInstrs.add(ins.getId());
 
         TaintState loopState = state.copy();
@@ -222,7 +214,7 @@ public class TransferFunction {
 
         final int MAX_ITERS = 5;
         int iter = 0;
-        while (true) {
+        while (iter < iterations) {
             TaintState before = loopState.copy();
             for (ProgramInstruction b : body) {
                 apply(b, loopState, v, policy);
