@@ -3,13 +3,14 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertTrue;
 
 public class InformationSecurityTest {
 
     @Test
-    public void analyzeSphinxRelayInstructions() throws Exception {
+    public void analyzeSphinxRelayInstructions() {
         List<ProgramInstruction> program = new ArrayList<>();
 
         byte salt = 0x00;
@@ -22,14 +23,19 @@ public class InformationSecurityTest {
         program.add(ProgramInstruction.load(nextHop, Register.R1));
         program.add(ProgramInstruction.forward(Register.R1));
 
-        Analyzer analyzer = new Analyzer(Policy.defaultPolicy());
+        Map<Register, SecurityLabel> senderInputs = Map.of(
+                Register.R_SHARED_SECRET, SecurityLabel.SECRET,
+                Register.R1, SecurityLabel.PUBLIC
+        );
+
+        Analyzer analyzer = new Analyzer(Policy.senderClassified(senderInputs));
         Report report = analyzer.analyze(program);
         System.out.println(report.toString());
         assertTrue(report.isClean());
     }
 
     @Test
-    public void analyzePolySphinxRelayInstructions() throws Exception {
+    public void analyzePolySphinxRelayInstructions() {
         List<ProgramInstruction> program = new ArrayList<>();
 
         byte sigma = 0x01;
@@ -40,7 +46,12 @@ public class InformationSecurityTest {
         program.add(ProgramInstruction.load(nextHop, Register.R1));
         program.add(ProgramInstruction.forward(Register.R1));
 
-        Analyzer analyzer = new Analyzer(Policy.defaultPolicy());
+        Map<Register, SecurityLabel> senderInputs = Map.of(
+                Register.R0, SecurityLabel.SECRET,
+                Register.R1, SecurityLabel.PUBLIC
+        );
+
+        Analyzer analyzer = new Analyzer(Policy.senderClassified(senderInputs));
         Report report = analyzer.analyze(program);
         System.out.println(report.toString());
         assertTrue(report.isClean());
