@@ -1,4 +1,5 @@
 import OmniSphinx.MixFormats.PolySphinx.SubHeader;
+import OmniSphinx.VM.VMUtil;
 import OmniSphinx.Params;
 import OmniSphinx.ClientUtil;
 import OmniSphinx.MixFormats.PolySphinx.PolySphinxUtil;
@@ -120,8 +121,16 @@ public class PolySphinxMacTest {
         BigInteger b = params.hb(alpha, sharedKey);
         ECPoint nextAlpha = params.getGroup().expon(alpha, b);
 
-        byte[] nextMAC = {};
+        // Okay, actually do some processing here
+        int instructionEnd = VMUtil.findInstructionsEnd(plainInstr);
+        byte[] nextMAC = Arrays.copyOfRange(plainInstr, instructionEnd, instructionEnd + params.keyLength());
 
-        return new InstructionHeader(nextAlpha, plainInstr, nextMAC);
+        byte[] zeros = new byte[instructionEnd + params.keyLength()];
+        Arrays.fill(zeros, (byte) 0x00);
+        byte[] paddedBeta = SerializationUtils.concatenate(encInstr, zeros);
+        byte[] prg = params.xorRho(params.hrho(sharedKey), paddedBeta);
+        byte[] nextInstructions = Arrays.copyOfRange(prg, instructionEnd + params.keyLength(), prg.length);
+
+        return new InstructionHeader(nextAlpha, nextInstructions, nextMAC);
     }
 }

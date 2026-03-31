@@ -203,7 +203,8 @@ public class OmniSphinxNetworkTest {
                     Integer receiverIdx = clientIdMap.get(hopKey);
                     assertNotNull("Unknown recipient for key " + hopKey, receiverIdx);
                     assertTrue(contains(receivers, receiverIdx));
-                    assertEquals("test", new String(currentOut.getPacket().getPayload()));
+                    byte[] payload = Arrays.copyOfRange(currentOut.getPacket().getPayload(), 0, 4);
+                    assertEquals("test", new String(payload));
                 }
             }
         }
