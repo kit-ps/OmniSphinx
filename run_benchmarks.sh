@@ -1,15 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "Starting benchmark run for OmniSphinx"
+#mvn compile
+mkdir -p target/benchmarks
+
 BENCHES=(
     "InstructionBenchmark"
-    "MultiSphinxPackageCreationBenchmark"
-    "MultiSphinxPackageProcessingBenchmark"
-    "PolySphinxPackageCreationBenchmark"
-    "PolySphinxPackageProcessingBenchmark"
-    "SphinxPackageCreationBenchmark"
-    "SphinxPackageProcessingBenchmark"
 )
 
-taskset -c 0 mvn test -Dtest="$(IFS=, ; echo "${BENCHES[*]}")"
+for bench in ${BENCHES[@]} ; do
+    mvn exec:java -Dexec.mainClass=OmniSphinx.benchmarks."$bench"
+done
