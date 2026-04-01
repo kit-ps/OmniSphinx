@@ -1,4 +1,4 @@
-package microBenchmarks;
+package OmniSphinx.benchmarks;
 
 import OmniSphinx.Client;
 import OmniSphinx.ClientUtil;
@@ -8,24 +8,29 @@ import OmniSphinx.MixFormats.MultiSphinx.MultiSphinxUtil;
 import OmniSphinx.MixNode;
 import OmniSphinx.Params;
 import OmniSphinx.VM.VMException;
+import OmniSphinx.crypto.ECCGroup;
 import OmniSphinx.pki.PkiEntry;
 import OmniSphinx.pki.PkiGenerator;
 import OmniSphinx.routing.RandomRoutingStrategy;
 import org.bouncycastle.math.ec.ECPoint;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.*;
 
-import static org.junit.Assert.assertTrue;
+import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.results.format.ResultFormatType;
+import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+@BenchmarkMode(Mode.SampleTime)
+@State(Scope.Benchmark)
 public class MultiSphinxPackageCreationBenchmark {
-    private static final int RUNS = 100;
-
     private static final int MIX_NODE_COUNT = 100;
     private static final int CLIENT_COUNT = 30;
     private static final int SUB_PACKET_COUNT = 10;
@@ -43,9 +48,16 @@ public class MultiSphinxPackageCreationBenchmark {
     private Client[] clients;
     private final SecureRandom random = new SecureRandom();
 
-    @Before
+    byte[][] prefixNodes;
+    ECPoint[] prefixKeys;
+    List<byte[][]> suffixPaths;
+    List<ECPoint[]> suffixKeys;
+    byte[][] destinations;
+    byte[][] messages;
+
+    @Setup
     public void setUp() throws Exception {
-        params = new Params();
+        params = new Params(16, 53221, 19200, new ECCGroup(), 5000);
         PkiGenerator generator = new PkiGenerator(params);
 
         mixNodeIds = new byte[MIX_NODE_COUNT][];
@@ -79,67 +91,51 @@ public class MultiSphinxPackageCreationBenchmark {
         }
     }
 
-    @Test
-    public void benchmarkMultiSphinxPackageCreation() throws Exception {
+    @Setup(Level.Invocation)
+    public void setupInvocation() throws Exception {
         int prefixHops = 3;
         int suffixHops = 3;
 
-        BenchmarkStats creationStats = new BenchmarkStats();
+        int senderIndex = random.nextInt(CLIENT_COUNT);
+        Client sender = clients[senderIndex];
 
-        for (int i = 0; i < RUNS; i++) {
-            int senderIndex = random.nextInt(CLIENT_COUNT);
-            Client sender = clients[senderIndex];
-
-            int[] prefixIndices = randomDistinctIndices(MIX_NODE_COUNT, prefixHops, -1);
-            byte[][] prefixNodes = new byte[prefixHops][];
-            ECPoint[] prefixKeys = new ECPoint[prefixHops];
-            for (int h = 0; h < prefixHops; h++) {
-                prefixNodes[h] = mixNodeIds[prefixIndices[h]];
-                prefixKeys[h] = mixNodePubs[prefixIndices[h]];
-            }
-
-            List<byte[][]> suffixPaths = new ArrayList<>();
-            List<ECPoint[]> suffixKeys = new ArrayList<>();
-            byte[][] destinations = new byte[SUB_PACKET_COUNT][];
-            byte[][] messages = new byte[SUB_PACKET_COUNT][];
-
-            for (int p = 0; p < SUB_PACKET_COUNT; p++) {
-                int receiverIndex = randomDistinctIndices(CLIENT_COUNT, 1, senderIndex)[0];
-                destinations[p] = Arrays.copyOf(clientIds[receiverIndex], params.keyLength());
-
-                int[] mixIndices = randomDistinctIndices(MIX_NODE_COUNT, suffixHops, -1);
-                byte[][] path = new byte[suffixHops][];
-                ECPoint[] keyList = new ECPoint[suffixHops];
-                for (int h = 0; h < suffixHops; h++) {
-                    path[h] = mixNodeIds[mixIndices[h]];
-                    keyList[h] = mixNodePubs[mixIndices[h]];
-                }
-                suffixPaths.add(path);
-                suffixKeys.add(keyList);
-
-                byte[] message = new byte[256];
-                random.nextBytes(message);
-                messages[p] = message;
-            }
-
-            long start = System.nanoTime();
-            InstructionPacket packet = MultiSphinxUtil.createMultiSphinxPacket(
-                    params, prefixNodes, prefixKeys, suffixPaths, suffixKeys, messages, destinations);
-            double durationMs = (System.nanoTime() - start) / 1_000_000.0;
-            packet.getPayload();
-            if (i == 0) {
-                continue;
-            }
-            creationStats.record(durationMs);
-            sender.packInstructionPacket(packet);
+        int[] prefixIndices = randomDistinctIndices(MIX_NODE_COUNT, prefixHops, -1);
+        prefixNodes = new byte[prefixHops][];
+        prefixKeys = new ECPoint[prefixHops];
+        for (int h = 0; h < prefixHops; h++) {
+            prefixNodes[h] = mixNodeIds[prefixIndices[h]];
+            prefixKeys[h] = mixNodePubs[prefixIndices[h]];
         }
 
-        System.out.printf("MultiSphinx creation avg ms: %.2f (min=%.2f, max=%.2f)%n",
-                creationStats.getAverage(), creationStats.getMin(), creationStats.getMax());
+        suffixPaths = new ArrayList<>();
+        suffixKeys = new ArrayList<>();
+        destinations = new byte[SUB_PACKET_COUNT][];
+        messages = new byte[SUB_PACKET_COUNT][];
 
-        BenchmarkReporter.exportCsv(creationStats, "multisphinx-creation.csv");
+        for (int p = 0; p < SUB_PACKET_COUNT; p++) {
+            int receiverIndex = randomDistinctIndices(CLIENT_COUNT, 1, senderIndex)[0];
+            destinations[p] = Arrays.copyOf(clientIds[receiverIndex], params.keyLength());
 
-        assertTrue(creationStats.getCount() > 0);
+            int[] mixIndices = randomDistinctIndices(MIX_NODE_COUNT, suffixHops, -1);
+            byte[][] path = new byte[suffixHops][];
+            ECPoint[] keyList = new ECPoint[suffixHops];
+            for (int h = 0; h < suffixHops; h++) {
+                path[h] = mixNodeIds[mixIndices[h]];
+                keyList[h] = mixNodePubs[mixIndices[h]];
+            }
+            suffixPaths.add(path);
+            suffixKeys.add(keyList);
+
+            byte[] message = new byte[256];
+            random.nextBytes(message);
+            messages[p] = message;
+        }
+    }
+
+    @Benchmark
+    public InstructionPacket multiSphinxCreation() throws Exception {
+        return MultiSphinxUtil.createMultiSphinxPacket(
+                    params, prefixNodes, prefixKeys, suffixPaths, suffixKeys, messages, destinations);
     }
 
     private int[] randomDistinctIndices(int max, int count, int exclude) {
@@ -179,5 +175,16 @@ public class MultiSphinxPackageCreationBenchmark {
             super.process(rawPacket);
             return new ArrayList<>(forwarded);
         }
+    }
+
+    public static void main(String[] args) throws RunnerException {
+        Options opt = new OptionsBuilder()
+            .include(MultiSphinxPackageCreationBenchmark.class.getSimpleName())
+            .forks(1)
+            .resultFormat(ResultFormatType.JSON)
+            .result(Path.of("target", "benchmarks", "multisphinx-creation.json").toString())
+            .build();
+
+        new Runner(opt).run();
     }
 }

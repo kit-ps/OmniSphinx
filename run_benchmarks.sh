@@ -6,6 +6,7 @@ mkdir -p target/benchmarks
 
 BENCHES=(
     "InstructionBenchmark"
+    "MultiSphinxPackageCreationBenchmark"
 )
 
 for bench in ${BENCHES[@]} ; do
