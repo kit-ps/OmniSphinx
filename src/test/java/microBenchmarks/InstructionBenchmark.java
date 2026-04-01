@@ -79,6 +79,7 @@ public class InstructionBenchmark {
         }
 
         BenchmarkReporter.printStats("Instruction VM", results);
+        BenchmarkReporter.exportCsv(results, "instructions.csv");
         assertFalse(results.isEmpty());
         assertFalse(results.values().stream().anyMatch(s -> s.getCount() == 0 && s.getErrors() == 0));
     }

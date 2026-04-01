@@ -200,6 +200,7 @@ public class PolySphinxPackageProcessingBenchmark {
         String title = "PolySphinx " + stage + " p=" + p;
         BenchmarkReporter.printStats(title, stageMap);
         BenchmarkReporter.plotViolin(title, stageMap, "polysphinx-" + stage.toLowerCase() + "-p" + p + ".pdf");
+        BenchmarkReporter.exportCsv(stageMap, String.format("polysphinx-%s-p%d.csv", stage.toLowerCase(), p));
     }
 
     private String labelForStage(int stage, int replicationCount) {

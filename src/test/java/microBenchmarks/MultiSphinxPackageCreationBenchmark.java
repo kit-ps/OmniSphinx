@@ -137,6 +137,8 @@ public class MultiSphinxPackageCreationBenchmark {
         System.out.printf("MultiSphinx creation avg ms: %.2f (min=%.2f, max=%.2f)%n",
                 creationStats.getAverage(), creationStats.getMin(), creationStats.getMax());
 
+        BenchmarkReporter.exportCsv(creationStats, "multisphinx-creation.csv");
+
         assertTrue(creationStats.getCount() > 0);
     }
 

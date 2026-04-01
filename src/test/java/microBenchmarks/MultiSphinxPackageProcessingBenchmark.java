@@ -143,6 +143,7 @@ public class MultiSphinxPackageProcessingBenchmark {
         String title = "MultiSphinx " + stage + " p=" + p;
         BenchmarkReporter.printStats(title, stageMap);
         BenchmarkReporter.plotViolin(title, stageMap, "multisphinx-" + stage.toLowerCase() + "-p" + p + ".pdf");
+        BenchmarkReporter.exportCsv(stageMap, String.format("multisphinx-%s-p%d.csv", stage.toLowerCase(), p));
     }
 
     private void assertHasDataForStage(String stage, int replicationCount, Map<String, BenchmarkStats> stats) {

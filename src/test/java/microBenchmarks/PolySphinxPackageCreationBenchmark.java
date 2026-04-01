@@ -136,6 +136,8 @@ public class PolySphinxPackageCreationBenchmark {
         System.out.printf("PolySphinx creation avg ms: %.2f (min=%.2f, max=%.2f)%n",
                 creationStats.getAverage(), creationStats.getMin(), creationStats.getMax());
 
+        BenchmarkReporter.exportCsv(creationStats, "polysphinx-creation.csv");
+
         assertTrue(creationStats.getCount() > 0);
     }
 

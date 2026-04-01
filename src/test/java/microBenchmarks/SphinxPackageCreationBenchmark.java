@@ -66,6 +66,8 @@ public class SphinxPackageCreationBenchmark {
         System.out.printf("Sphinx creation avg ms: %.2f (min=%.2f, max=%.2f)%n",
                 creationStats.getAverage(), creationStats.getMin(), creationStats.getMax());
 
+        BenchmarkReporter.exportCsv(creationStats, "sphinx-creation.csv");
+
         assertTrue(creationStats.getCount() > 0);
     }
 }
