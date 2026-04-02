@@ -31,9 +31,11 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @BenchmarkMode(Mode.SampleTime)
 @State(Scope.Benchmark)
 public class PolySphinxPackageCreationBenchmark {
+    @Param({"3", "5", "10"})
+    int replicationFactor;
+
     private static final int MIX_NODE_COUNT = 100;
     private static final int CLIENT_COUNT = 30;
-    private static final int PACKET_COUNT = 5;
 
     private Params params;
     private byte[][] mixNodeIds;
@@ -94,8 +96,7 @@ public class PolySphinxPackageCreationBenchmark {
         Client sender = clients[senderIndex];
 
 
-        int receiverCount = 10;
-        int[] receivers = randomDistinctIndices(CLIENT_COUNT, receiverCount, senderIndex);
+        int[] receivers = randomDistinctIndices(CLIENT_COUNT, replicationFactor, senderIndex);
 
         int replicationIndex =  random.nextInt(MIX_NODE_COUNT);
         replicationNode = mixNodeIds[replicationIndex];
@@ -107,7 +108,7 @@ public class PolySphinxPackageCreationBenchmark {
         int hopCount = 3;
 
         //create Suffixpaths
-        for (int r = 0; r < receiverCount; r++) {
+        for (int r = 0; r < replicationFactor; r++) {
             int receiverIndex = receivers[r];
             int[] mixIndices = randomDistinctIndices(MIX_NODE_COUNT, hopCount, -1);
             byte[][] nodeList = new byte[hopCount][];

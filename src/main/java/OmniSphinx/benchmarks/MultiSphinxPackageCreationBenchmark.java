@@ -31,9 +31,11 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @BenchmarkMode(Mode.SampleTime)
 @State(Scope.Benchmark)
 public class MultiSphinxPackageCreationBenchmark {
+    @Param({"3", "5", "10"})
+    int replicationFactor;
+
     private static final int MIX_NODE_COUNT = 100;
     private static final int CLIENT_COUNT = 30;
-    private static final int SUB_PACKET_COUNT = 10;
 
     private Params params;
     private byte[][] mixNodeIds;
@@ -109,10 +111,10 @@ public class MultiSphinxPackageCreationBenchmark {
 
         suffixPaths = new ArrayList<>();
         suffixKeys = new ArrayList<>();
-        destinations = new byte[SUB_PACKET_COUNT][];
-        messages = new byte[SUB_PACKET_COUNT][];
+        destinations = new byte[replicationFactor][];
+        messages = new byte[replicationFactor][];
 
-        for (int p = 0; p < SUB_PACKET_COUNT; p++) {
+        for (int p = 0; p < replicationFactor; p++) {
             int receiverIndex = randomDistinctIndices(CLIENT_COUNT, 1, senderIndex)[0];
             destinations[p] = Arrays.copyOf(clientIds[receiverIndex], params.keyLength());
 
