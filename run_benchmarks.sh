@@ -1,12 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-#mvn compile
+mvn compile
 mkdir -p target/benchmarks
 
 BENCHES=(
     "InstructionBenchmark"
     "MultiSphinxPackageCreationBenchmark"
+    "MultiSphinxPackageProcessingBenchmark"
 )
 
 for bench in ${BENCHES[@]} ; do

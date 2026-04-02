@@ -1,4 +1,4 @@
-package microBenchmarks;
+package OmniSphinx.benchmarks;
 
 import OmniSphinx.Client;
 import OmniSphinx.ClientUtil;
@@ -7,62 +7,60 @@ import OmniSphinx.InstructionPacket.InstructionPacketAndNextHop;
 import OmniSphinx.MixFormats.MultiSphinx.MultiSphinxUtil;
 import OmniSphinx.MixNode;
 import OmniSphinx.Params;
+import OmniSphinx.crypto.ECCGroup;
 import OmniSphinx.pki.PkiEntry;
 import OmniSphinx.pki.PkiGenerator;
 import OmniSphinx.routing.RandomRoutingStrategy;
 import org.bouncycastle.math.ec.ECPoint;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.*;
+import java.nio.file.Path;
 
-import static org.junit.Assert.assertTrue;
+import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.results.format.ResultFormatType;
+import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+@BenchmarkMode(Mode.SampleTime)
+@State(Scope.Benchmark)
 public class MultiSphinxPackageProcessingBenchmark {
-    private static final int RUNS = 1000;
-    private static final int WARMUP_RUNS = 300;
-    private static final int[] P_VALUES = {3, 5, 10};
+    @Param({"3", "5", "10"})
+    public int p_value;
 
     private Params params;
     private Client client;
     private PkiGenerator generator;
     private final SecureRandom random = new SecureRandom();
+    private MultiSphinxContext context;
+    private byte[] packetRelay;
+    private byte[] packetReplication;
+    private TestMixNode nodeRelay;
 
-    @Before
+    @Setup
     public void setUp() throws Exception {
-        params = new Params();
+        int payloadSize = switch (p_value) {
+            case 3 -> 15268;
+            case 5 -> 25446;
+            case 10 -> 50891;
+            default -> throw new IllegalStateException("no payload size known");
+        };
+        params = new Params(16, payloadSize, 0, new ECCGroup(), 0);
         client = new Client(params, new RandomRoutingStrategy());
         generator = new PkiGenerator(params);
+        context = prepareContext(p_value);
     }
 
-    @Test
-    public void benchmarkMultiSphinxProcessing() throws Exception {
-        for (int p : P_VALUES) {
-            MultiSphinxContext context = prepareContext(p);
-            Map<String, BenchmarkStats> stageStats = new LinkedHashMap<>();
-
-            for (int warmup = 0; warmup < WARMUP_RUNS; warmup++) {
-                runPath(context, p, stageStats, false);
-            }
-
-            for (int run = 0; run < RUNS; run++) {
-                runPath(context, p, stageStats, true);
-            }
-
-            assertHasDataForStage("Replication", p, stageStats);
-            assertHasDataForStage("Relay", p, stageStats);
-            reportStageBenchmarks(p, stageStats);
-        }
-    }
-
-    private void runPath(MultiSphinxContext context, int p, Map<String, BenchmarkStats> statsByStage, boolean recordStats) throws Exception {
+    @Setup(Level.Invocation)
+    public void setupInvocation() throws Exception {
         int prefixHopCount = context.prefixHopCount;
         int suffixHopCount = context.suffixHopCount;
-        byte[][] messages = new byte[p][];
-        for (int i = 0; i < p; i++) {
+        byte[][] messages = new byte[p_value][];
+        for (int i = 0; i < p_value; i++) {
             byte[] message = new byte[24];
             random.nextBytes(message);
             messages[i] = message;
@@ -71,26 +69,19 @@ public class MultiSphinxPackageProcessingBenchmark {
         InstructionPacket packet = MultiSphinxUtil.createMultiSphinxPacket(
                 params, context.prefixNodeIds, context.prefixNodeKeys, context.suffixPaths, context.suffixKeys, messages, context.destinations);
         byte[] raw = client.packInstructionPacket(packet);
+        packetReplication = raw;
 
         List<InstructionPacketAndNextHop> replicationOutputs = null;
         for (int hop = 0; hop < prefixHopCount; hop++) {
             TestMixNode node = context.prefixMixNodes[hop];
-            long start = System.nanoTime();
             replicationOutputs = node.processForTest(raw);
-            double durationMicros = (System.nanoTime() - start) / 1_000.0;
-            if (recordStats && hop == prefixHopCount - 1) {
-                statsByStage.computeIfAbsent(labelForStageName("Replication", p), k -> new BenchmarkStats())
-                        .record(durationMicros);
-            }
 
             if (hop < prefixHopCount - 1) {
                 raw = client.packInstructionPacket(replicationOutputs.get(0).getPacket());
             }
         }
 
-        if (replicationOutputs == null) {
-            return;
-        }
+        assert replicationOutputs.size() == p_value;
 
         Deque<QueueEntry> queue = new ArrayDeque<>();
         for (InstructionPacketAndNextHop out : replicationOutputs) {
@@ -107,49 +98,22 @@ public class MultiSphinxPackageProcessingBenchmark {
             if (target == null) {
                 continue;
             }
-            List<InstructionPacketAndNextHop> outputs;
             byte[] rawpacket = client.packInstructionPacket(entry.packet);
-            long start = System.nanoTime();
-            outputs = target.processForTest(rawpacket);
-            double durationMicros = (System.nanoTime() - start) / 1_000.0;
-
-            if (recordStats && entry.stage == prefixHopCount) {
-                statsByStage.computeIfAbsent(labelForStageName("Relay", p), k -> new BenchmarkStats())
-                        .record(durationMicros);
-            }
-            int nextStage = entry.stage + 1;
-            if (nextStage < prefixHopCount + suffixHopCount) {
-                for (InstructionPacketAndNextHop output : outputs) {
-                    queue.add(new QueueEntry(output.getPacket(), output.getNextHop(), nextStage));
-                }
-            }
+            packetRelay = rawpacket;
+            nodeRelay = target;
+            break;
         }
     }
 
-    private void reportStageBenchmarks(int p, Map<String, BenchmarkStats> stats) throws Exception {
-        reportSingleStage("Replication", p, stats);
-        reportSingleStage("Relay", p, stats);
+    @Benchmark
+    public List<InstructionPacketAndNextHop> replication() throws Exception {
+        TestMixNode node = context.prefixMixNodes[0];
+        return node.processForTest(packetReplication);
     }
 
-    private void reportSingleStage(String stage, int p, Map<String, BenchmarkStats> stats) throws Exception {
-        String label = labelForStageName(stage, p);
-        BenchmarkStats stageStats = stats.get(label);
-        if (stageStats == null) {
-            System.out.printf("No stats recorded for %s%n", label);
-            return;
-        }
-
-        Map<String, BenchmarkStats> stageMap = Map.of(label, stageStats);
-        String title = "MultiSphinx " + stage + " p=" + p;
-        BenchmarkReporter.printStats(title, stageMap);
-        BenchmarkReporter.plotViolin(title, stageMap, "multisphinx-" + stage.toLowerCase() + "-p" + p + ".pdf");
-        BenchmarkReporter.exportCsv(stageMap, String.format("multisphinx-%s-p%d.csv", stage.toLowerCase(), p));
-    }
-
-    private void assertHasDataForStage(String stage, int replicationCount, Map<String, BenchmarkStats> stats) {
-        String label = labelForStageName(stage, replicationCount);
-        BenchmarkStats stageStats = stats.get(label);
-        assertTrue("No stats recorded for " + label, stageStats != null && stageStats.getCount() > 0);
+    @Benchmark
+    public List<InstructionPacketAndNextHop> relay() throws Exception {
+        return nodeRelay.processForTest(packetRelay);
     }
 
     private record QueueEntry(InstructionPacket packet, byte[] nextHop, int stage) {
@@ -193,10 +157,9 @@ public class MultiSphinxPackageProcessingBenchmark {
 
         return new MultiSphinxContext(prefixHopCount, suffixHopCount, prefixNodeIds, prefixNodeKeys, prefixMixNodes, suffixPaths, suffixKeys, suffixMixNodes, destinations);
     }
+
     private record MultiSphinxContext(int prefixHopCount, int suffixHopCount, byte[][] prefixNodeIds, ECPoint[] prefixNodeKeys, TestMixNode[] prefixMixNodes, List<byte[][]> suffixPaths, List<ECPoint[]> suffixKeys, Map<String, TestMixNode> suffixMixNodes, byte[][] destinations) { }
-    private String labelForStageName(String stage, int replicationCount) {
-        return stage + " p=" + replicationCount;
-    }
+
     private static class TestMixNode extends MixNode {
         private final List<InstructionPacketAndNextHop> forwarded = new ArrayList<>();
 
@@ -219,5 +182,16 @@ public class MultiSphinxPackageProcessingBenchmark {
             super.process(rawPacket);
             return new ArrayList<>(forwarded);
         }
+    }
+
+    public static void main(String[] args) throws RunnerException {
+        Options opt = new OptionsBuilder()
+            .include(MultiSphinxPackageProcessingBenchmark.class.getSimpleName())
+            .forks(1)
+            .resultFormat(ResultFormatType.JSON)
+            .result(Path.of("target", "benchmarks", "multisphinx-processing.json").toString())
+            .build();
+
+        new Runner(opt).run();
     }
 }
