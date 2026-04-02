@@ -9,6 +9,9 @@ BENCHES=(
     "MultiSphinxPackageCreationBenchmark"
     "MultiSphinxPackageProcessingBenchmark"
     "PolySphinxPackageCreationBenchmark"
+    "PolySphinxPackageProcessingBenchmark"
+    "SphinxPackageCreationBenchmark"
+    "SphinxPackageProcessingBenchmark"
 )
 
 for bench in ${BENCHES[@]} ; do

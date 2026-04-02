@@ -1,4 +1,4 @@
-package microBenchmarks;
+package OmniSphinx.benchmarks;
 
 import OmniSphinx.Client;
 import OmniSphinx.ClientUtil;
@@ -9,18 +9,24 @@ import OmniSphinx.pki.PkiEntry;
 import OmniSphinx.pki.PkiGenerator;
 import OmniSphinx.routing.RandomRoutingStrategy;
 import org.bouncycastle.math.ec.ECPoint;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
 
-import static org.junit.Assert.assertTrue;
+import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.results.format.ResultFormatType;
+import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+@BenchmarkMode(Mode.SampleTime)
+@State(Scope.Benchmark)
 public class SphinxPackageProcessingBenchmark {
     private static final int RUNS = 3000;
     private static final int pathLength = 6;
@@ -30,46 +36,52 @@ public class SphinxPackageProcessingBenchmark {
     private PkiGenerator generator;
     private final SecureRandom random = new SecureRandom();
 
-    @Before
+    byte[] packetRelay;
+    byte[] packetExit;
+    TestMixNode nodeRelay;
+    TestMixNode nodeExit;
+
+    @Setup
     public void setUp() throws Exception {
         params = new Params();
         client = new Client(params, new RandomRoutingStrategy());
         generator = new PkiGenerator(params);
     }
 
-    @Test
-    public void benchmarkSphinxProcessing() throws Exception {
+    @Setup(Level.Invocation)
+    public void setupInvocation() throws Exception {
         SphinxContext context = prepareContext(pathLength);
-        Map<String, BenchmarkStats> stats = new LinkedHashMap<>();
 
-        for (int run = 0; run < (RUNS + warmUp); run++) {
-            byte[] message = new byte[32 + random.nextInt(32)];
-            random.nextBytes(message);
-            InstructionPacket packet = client.createSphinxInstructionPacket(context.nodeList, context.keys, context.destination, message);
-            byte[] raw = client.packInstructionPacket(packet);
+        byte[] message = new byte[32];
+        random.nextBytes(message);
+        InstructionPacket packet = client.createSphinxInstructionPacket(context.nodeList, context.keys, context.destination, message);
+        byte[] raw = client.packInstructionPacket(packet);
 
-            byte[] current = raw;
-            for (int hop = 0; hop < context.privs.length; hop++) {
-                TestMixNode mixNode = context.mixNodes[hop];
-                long start = System.nanoTime();
-                List<InstructionPacket> outputs = mixNode.process(current);
-                double durationMicros = (System.nanoTime() - start) / 1_000.0;
-                if (hop < context.privs.length - 1 && !outputs.isEmpty()) {
-                    current = client.packInstructionPacket(outputs.get(0));
-                }
-                if (run < warmUp) {
-                    continue;
-                }
-                String label = hop == context.privs.length - 1 ? "Exit" : "Relay ";
-                stats.computeIfAbsent(label, l -> new BenchmarkStats()).record(durationMicros);
+        nodeRelay = context.mixNodes[0];
+        packetRelay = raw;
+
+        byte[] current = raw;
+        for (int hop = 0; hop < context.privs.length; hop++) {
+            TestMixNode mixNode = context.mixNodes[hop];
+            List<InstructionPacket> outputs = mixNode.process(current);
+            if (hop < context.privs.length - 1 && !outputs.isEmpty()) {
+                current = client.packInstructionPacket(outputs.get(0));
             }
+
+            nodeExit = mixNode;
+            packetExit = current;
         }
-        BenchmarkReporter.printStats("Sphinx " , stats);
-        BenchmarkReporter.plotViolin("Sphinx " , stats, "sphinx" + ".pdf");
-        BenchmarkReporter.exportCsv(stats, "sphinx.csv");
-        assertTrue(stats.values().stream().anyMatch(s -> s.getCount() > 0));
     }
 
+    @Benchmark
+    public List<InstructionPacket> relay() throws Exception {
+        return nodeRelay.process(packetRelay);
+    }
+
+    @Benchmark
+    public List<InstructionPacket> exit() throws Exception {
+        return nodeExit.process(packetExit);
+    }
 
     private SphinxContext prepareContext (int pathLength) throws Exception {
             byte[][] nodeList = new byte[pathLength][];
@@ -108,5 +120,16 @@ public class SphinxPackageProcessingBenchmark {
         protected void sendToNextNode(byte[] nextHop, InstructionPacket packet) {
             // Suppress network forwarding during benchmarks.
         }
+    }
+
+    public static void main(String[] args) throws RunnerException {
+        Options opt = new OptionsBuilder()
+            .include("\\b" + SphinxPackageProcessingBenchmark.class.getSimpleName())
+            .forks(1)
+            .resultFormat(ResultFormatType.JSON)
+            .result(Path.of("target", "benchmarks", "sphinx-processing.json").toString())
+            .build();
+
+        new Runner(opt).run();
     }
 }
