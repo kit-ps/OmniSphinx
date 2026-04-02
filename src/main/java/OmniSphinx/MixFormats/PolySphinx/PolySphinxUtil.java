@@ -226,7 +226,10 @@ public class PolySphinxUtil {
         byte[] instructions = PolySphinxInstructionPresets.createReplicationInstructions(nextHopLen, keyLen, alphaLen, gammaLen, p, tauPost, B);
 
         if (instructions.length > params.getInstructionTotalSize()) {
-            throw new IllegalArgumentException("Replication instructions exceed allowed size");
+            throw new IllegalArgumentException(String.format(
+                "Replication instructions exceed allowed size (need %d, have %d)",
+                instructions.length,
+                params.getInstructionTotalSize()));
         }
 
         int padLen = params.getInstructionTotalSize() - instructions.length;

@@ -220,7 +220,9 @@ public class MixNode {
     private byte[] postProcessPayload(byte[] payload, byte[] sharedSecret, int outputIndex) {
         int targetSize = params.bodyLength();
         if (payload.length > targetSize) {
-            throw new RuntimeException("Instruction block exceeds allowed size");
+            throw new RuntimeException(String.format(
+                "Instruction block exceeds allowed size (need %d, have %d)",
+                payload.length, targetSize));
         }
 
         if (payload.length == targetSize) {
