@@ -152,7 +152,7 @@ public class MultiSphinxUtil {
 
         int instPadLen = params.getInstructionTotalSize() - headerLen + params.keyLength();
         if (instPadLen < 0) {
-            throw new OmniSphinxException("Header to small!");
+            throw new OmniSphinxException(String.format("Header to small! (need %d bytes)", headerLen - params.keyLength()));
         }
 
         byte[] randomPad = new byte[instPadLen];
@@ -225,7 +225,7 @@ public class MultiSphinxUtil {
 
         int targetSize = params.bodyLength();
         if (payload.length >= targetSize) {
-            throw new RuntimeException("Instruction block exceeds allowed size");
+            throw new RuntimeException(String.format("Instruction block exceeds allowed size (%d vs %d)", payload.length, targetSize));
         }
 
 
@@ -273,7 +273,7 @@ public class MultiSphinxUtil {
 
         int instPadLen = params.getInstructionTotalSize() - headerLen + params.keyLength();
         if (instPadLen < 0) {
-            throw new OmniSphinxException("Header to small!");
+            throw new OmniSphinxException(String.format("Header to small! (need %d bytes total)", headerLen - params.keyLength()));
         }
 
         byte[] randomPad = new byte[instPadLen];

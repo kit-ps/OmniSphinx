@@ -49,7 +49,7 @@ public class MultiSphinxPackageProcessingBenchmark {
             case 10 -> 50891;
             default -> throw new IllegalStateException("no payload size known");
         };
-        params = new Params(16, payloadSize, 0, new ECCGroup(), 0);
+        params = new Params(16, payloadSize, 0, new ECCGroup(), 112);
         client = new Client(params, new RandomRoutingStrategy());
         generator = new PkiGenerator(params);
         context = prepareContext(p_value);
