@@ -1,4 +1,4 @@
-package microBenchmarks;
+package OmniSphinx.benchmarks;
 
 import OmniSphinx.Client;
 import OmniSphinx.ClientUtil;
@@ -8,24 +8,29 @@ import OmniSphinx.MixFormats.PolySphinx.PolySphinxUtil;
 import OmniSphinx.MixNode;
 import OmniSphinx.Params;
 import OmniSphinx.VM.VMException;
+import OmniSphinx.crypto.ECCGroup;
 import OmniSphinx.pki.PkiEntry;
 import OmniSphinx.pki.PkiGenerator;
 import OmniSphinx.routing.RandomRoutingStrategy;
 import org.bouncycastle.math.ec.ECPoint;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.*;
 
-import static org.junit.Assert.assertTrue;
+import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.results.format.ResultFormatType;
+import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+@BenchmarkMode(Mode.SampleTime)
+@State(Scope.Benchmark)
 public class PolySphinxPackageCreationBenchmark {
-    private static final int RUNS = 100;
-
     private static final int MIX_NODE_COUNT = 100;
     private static final int CLIENT_COUNT = 30;
     private static final int PACKET_COUNT = 5;
@@ -43,9 +48,16 @@ public class PolySphinxPackageCreationBenchmark {
     private Client[] clients;
     private final SecureRandom random = new SecureRandom();
 
-    @Before
+    byte[] replicationNode;
+    ECPoint replicationPub;
+    List<byte[][]> suffixPaths;
+    List<byte[]> receiversList;
+    List<ECPoint[]> keySets;
+    byte[] seed;
+
+    @Setup
     public void setUp() throws Exception {
-        params = new Params();
+        params = new Params(16, 0, 0, new ECCGroup(), 2847);
         PkiGenerator generator = new PkiGenerator(params);
 
         mixNodeIds = new byte[MIX_NODE_COUNT][];
@@ -77,10 +89,7 @@ public class PolySphinxPackageCreationBenchmark {
             byte[] truncatedId = Arrays.copyOf(clientIds[i], params.keyLength());
             clientIdMap.put(Base64.getEncoder().encodeToString(truncatedId), i);
         }
-    }
 
-    @Test
-    public void benchmarkPolySphinxPackageCreation() throws Exception {
         int senderIndex = random.nextInt(CLIENT_COUNT);
         Client sender = clients[senderIndex];
 
@@ -89,12 +98,12 @@ public class PolySphinxPackageCreationBenchmark {
         int[] receivers = randomDistinctIndices(CLIENT_COUNT, receiverCount, senderIndex);
 
         int replicationIndex =  random.nextInt(MIX_NODE_COUNT);
-        byte[] replicationNode = mixNodeIds[replicationIndex];
-        ECPoint replicationPub = mixNodePubs[replicationIndex];
+        replicationNode = mixNodeIds[replicationIndex];
+        replicationPub = mixNodePubs[replicationIndex];
 
-        List<byte[][]> suffixPaths = new ArrayList<>();
-        List<byte[]> receiversList = new ArrayList<>();
-        List<ECPoint[]> keySets = new ArrayList<>();
+        suffixPaths = new ArrayList<>();
+        receiversList = new ArrayList<>();
+        keySets = new ArrayList<>();
         int hopCount = 3;
 
         //create Suffixpaths
@@ -111,34 +120,17 @@ public class PolySphinxPackageCreationBenchmark {
             receiversList.add(Arrays.copyOf(clientIds[receiverIndex], params.keyLength()));
             keySets.add(keyList);
         }
+    }
 
-        BenchmarkStats creationStats = new BenchmarkStats();
+    @Setup(Level.Invocation)
+    public void setupInvocation() throws Exception {
+        seed = new byte[16];
+        random.nextBytes(seed);
+    }
 
-        for (int i = 0; i < RUNS; i++) {
-            byte[] message = new byte[32 + random.nextInt(32)];
-            random.nextBytes(message);
-
-
-            long start = System.nanoTime();
-            byte[] seed = new byte[16];
-            random.nextBytes(seed);
-            InstructionPacket packet = PolySphinxUtil.createPolySphinxPacket(params, replicationNode, replicationPub, suffixPaths, receiversList,"test".getBytes(), seed, keySets);
-            long duration = System.nanoTime() - start;
-            packet.getPayload();
-            double durationMs = duration / 1_000_000.0;
-            if(i == 0) {
-                continue;
-            }
-            creationStats.record(durationMs);
-            packet.getPayload();
-        }
-
-        System.out.printf("PolySphinx creation avg ms: %.2f (min=%.2f, max=%.2f)%n",
-                creationStats.getAverage(), creationStats.getMin(), creationStats.getMax());
-
-        BenchmarkReporter.exportCsv(creationStats, "polysphinx-creation.csv");
-
-        assertTrue(creationStats.getCount() > 0);
+    @Benchmark
+    public InstructionPacket polySphinxCreation() throws Exception {
+        return PolySphinxUtil.createPolySphinxPacket(params, replicationNode, replicationPub, suffixPaths, receiversList,"test".getBytes(), seed, keySets);
     }
 
     private int[] randomDistinctIndices(int max, int count, int exclude) {
@@ -180,4 +172,14 @@ public class PolySphinxPackageCreationBenchmark {
         }
     }
 
+    public static void main(String[] args) throws RunnerException {
+        Options opt = new OptionsBuilder()
+            .include(PolySphinxPackageCreationBenchmark.class.getSimpleName())
+            .forks(1)
+            .resultFormat(ResultFormatType.JSON)
+            .result(Path.of("target", "benchmarks", "polysphinx-creation.json").toString())
+            .build();
+
+        new Runner(opt).run();
+    }
 }
