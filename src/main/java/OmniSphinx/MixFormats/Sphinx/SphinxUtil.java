@@ -58,7 +58,9 @@ public final class SphinxUtil {
         int padLen = msgTotalSize - (encodedMessage.length + 1);
 
         if (padLen < 0) {
-            throw new Exception("Insufficient space for message");
+            throw new Exception(String.format(
+                "Insufficient space for message (need %d, have %d)",
+                encodedMessage.length + 1 + params.keyLength(), msgTotalSize + params.keyLength()));
         }
 
         byte[] padBytes = new byte[padLen];
@@ -94,7 +96,9 @@ public final class SphinxUtil {
         int instPadLen = params.getInstructionTotalSize() - headerLen + params.keyLength(); //nochmal params.keyLength abziehen, weil die letzte Instruktion kein Gamma hat!
 
         if(instPadLen < 0) {
-            throw new OmniSphinxException("Header to small!");
+            throw new OmniSphinxException(String.format(
+                "Header to small! (need %d, have %d)",
+                headerLen - params.keyLength(), params.getInstructionTotalSize()));
         }
         SecureRandom secureRandom = new SecureRandom();
         byte[] randomPad = new byte[instPadLen];

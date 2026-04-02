@@ -1,23 +1,28 @@
-package microBenchmarks;
+package OmniSphinx.benchmarks;
 
 import OmniSphinx.Client;
 import OmniSphinx.ClientUtil;
 import OmniSphinx.InstructionPacket.InstructionPacket;
 import OmniSphinx.Params;
+import OmniSphinx.crypto.ECCGroup;
 import OmniSphinx.pki.PkiEntry;
 import OmniSphinx.pki.PkiGenerator;
 import OmniSphinx.routing.RandomRoutingStrategy;
 import org.bouncycastle.math.ec.ECPoint;
-import org.junit.Before;
-import org.junit.Test;
 
+import java.nio.file.Path;
 import java.security.SecureRandom;
 
-import static org.junit.Assert.assertTrue;
+import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.results.format.ResultFormatType;
+import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+@BenchmarkMode(Mode.SampleTime)
+@State(Scope.Benchmark)
 public class SphinxPackageCreationBenchmark {
-    private static final int RUNS = 100;
-
     private Params params;
     private Client client;
     private PkiGenerator generator;
@@ -25,10 +30,11 @@ public class SphinxPackageCreationBenchmark {
     private ECPoint[] keys;
     private byte[] destination;
     private final SecureRandom random = new SecureRandom();
+    private byte[] message;
 
-    @Before
+    @Setup
     public void setUp() throws Exception {
-        params = new Params();
+        params = new Params(16, 52, 0, new ECCGroup(), 112);
         client = new Client(params, new RandomRoutingStrategy());
         generator = new PkiGenerator(params);
 
@@ -42,32 +48,23 @@ public class SphinxPackageCreationBenchmark {
         };
         keys = new ECPoint[]{n1.pub(), n2.pub(), n3.pub()};
         destination = ClientUtil.encodeNode(1000, 0);
+        message = new byte[32];
+        random.nextBytes(message);
     }
 
-    @Test
-    public void benchmarkSphinxPackageCreation() throws Exception {
-        BenchmarkStats creationStats = new BenchmarkStats();
+    @Benchmark
+    public InstructionPacket sphinxCreation() throws Exception {
+        return client.createSphinxInstructionPacket(nodeList, keys, destination, message);
+    }
 
-        for (int i = 0; i < RUNS; i++) {
-            byte[] message = new byte[32 + random.nextInt(32)];
-            random.nextBytes(message);
+    public static void main(String[] args) throws RunnerException {
+        Options opt = new OptionsBuilder()
+            .include("\\b" + SphinxPackageCreationBenchmark.class.getSimpleName())
+            .forks(1)
+            .resultFormat(ResultFormatType.JSON)
+            .result(Path.of("target", "benchmarks", "sphinx-creation.json").toString())
+            .build();
 
-            long start = System.nanoTime();
-            InstructionPacket packet = client.createSphinxInstructionPacket(nodeList, keys, destination, message);
-            long duration = System.nanoTime() - start;
-            packet.getPayload();
-            double durationMs = duration / 1_000_000.0;
-            if(i == 0) {
-                continue;
-            }
-            creationStats.record(durationMs);
-        }
-
-        System.out.printf("Sphinx creation avg ms: %.2f (min=%.2f, max=%.2f)%n",
-                creationStats.getAverage(), creationStats.getMin(), creationStats.getMax());
-
-        BenchmarkReporter.exportCsv(creationStats, "sphinx-creation.csv");
-
-        assertTrue(creationStats.getCount() > 0);
+        new Runner(opt).run();
     }
 }
