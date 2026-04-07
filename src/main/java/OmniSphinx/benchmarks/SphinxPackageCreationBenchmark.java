@@ -34,19 +34,23 @@ public class SphinxPackageCreationBenchmark {
 
     @Setup
     public void setUp() throws Exception {
-        params = new Params(16, 52, 0, new ECCGroup(), 112);
+        params = new Params(16, 52, 0, new ECCGroup(), 196);
         client = new Client(params, new RandomRoutingStrategy());
         generator = new PkiGenerator(params);
 
         PkiEntry n1 = generator.generateKeyPair();
         PkiEntry n2 = generator.generateKeyPair();
         PkiEntry n3 = generator.generateKeyPair();
+        PkiEntry n4 = generator.generateKeyPair();
+        PkiEntry n5 = generator.generateKeyPair();
         nodeList = new byte[][]{
                 ClientUtil.encodeNode(1, 0),
                 ClientUtil.encodeNode(2, 0),
-                ClientUtil.encodeNode(3, 0)
+                ClientUtil.encodeNode(3, 0),
+                ClientUtil.encodeNode(4, 0),
+                ClientUtil.encodeNode(5, 0)
         };
-        keys = new ECPoint[]{n1.pub(), n2.pub(), n3.pub()};
+        keys = new ECPoint[]{n1.pub(), n2.pub(), n3.pub(), n4.pub(), n5.pub()};
         destination = ClientUtil.encodeNode(1000, 0);
         message = new byte[32];
         random.nextBytes(message);
