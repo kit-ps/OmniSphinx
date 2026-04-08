@@ -4,7 +4,7 @@ with open("target/benchmarks/instructions.json") as input_file:
 
 wanteds = [
     "Stop",
-    "CutBytes",
+    "StoreBytes2",
     "Hash",
     "Mac",
     "Verify",
@@ -19,7 +19,7 @@ wanteds = [
     "Copy",
     "Add",
     "Forward",
-    "LoadBytes1",
+    "LoadBytes2",
     "For",
 ]
 
