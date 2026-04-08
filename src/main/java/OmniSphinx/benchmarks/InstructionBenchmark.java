@@ -61,7 +61,7 @@ public class InstructionBenchmark {
             registers.put(InstructionRegister.INSTRUCTIONS.getCode(), scenario);
         }
 
-        private Map<Byte, byte[]> createBaseRegisters() throws Exception {
+        Map<Byte, byte[]> createBaseRegisters() throws Exception {
             Map<Byte, byte[]> registers = new HashMap<>();
             BigInteger tmpSecret = params.generatePrivateKey();
             ECPoint point = params.derivePublicKey(tmpSecret);
@@ -504,6 +504,7 @@ public class InstructionBenchmark {
         public void setup() throws Exception {
             scenario = forwardScenario(registers);
             setInstructionRegister();
+            registers.put(InstructionRegister.NEXT_INSTRUCTIONS.getCode(), Instruction.stop());
         }
 
         private byte[] forwardScenario(Map<Byte, byte[]> registers) throws Exception {
