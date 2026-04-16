@@ -4,7 +4,7 @@ import OmniSphinx.InstructionPacket.InstructionPacket;
 import OmniSphinx.Params;
 import OmniSphinx.SerializationUtils;
 import OmniSphinx.crypto.ECCGroup;
-import OmniSphinx.header.InstructionEncryptor;
+import OmniSphinx.header.BetaUtil;
 import OmniSphinx.header.InstructionHeader;
 import kotlin.Pair;
 import org.bouncycastle.math.ec.ECPoint;
@@ -65,7 +65,7 @@ public class PolySphinxUtil {
         }
 
         int padLen = params.getInstructionTotalSize() - instructions.length;
-        byte[] padding = InstructionEncryptor.padInstructions(params, padLen, instructions.length, sharedSecretKey, 0);
+        byte[] padding = BetaUtil.padInstructions(params, padLen, instructions.length, sharedSecretKey, 0);
 
         byte[] encInstr = params.xorRho(params.hrho(sharedSecretKey), instructions);
         encInstr = concatenate(encInstr, padding);
@@ -177,9 +177,9 @@ public class PolySphinxUtil {
         int instPadLen = params.getInstructionTotalSize() - headerLen;
 
         // compute padding for replication node but do not append
-        byte[] padding = InstructionEncryptor.padInstructions(params, instPadLen, headerLen, replicationSecret, pathIndex);
+        byte[] padding = BetaUtil.padInstructions(params, instPadLen, headerLen, replicationSecret, pathIndex);
 
-        byte[] onion = InstructionEncryptor.encryptWithPadding(params, instructions, secrets, params.getInstructionTotalSize(), padding);
+        byte[] onion = BetaUtil.createBetaWithPadding(params, instructions, secrets, params.getInstructionTotalSize(), padding);
 
         byte[] encInstructions = slice(onion, headerLen);
 
@@ -233,7 +233,7 @@ public class PolySphinxUtil {
         }
 
         int padLen = params.getInstructionTotalSize() - instructions.length;
-        byte[] padding = InstructionEncryptor.padInstructions(params, padLen, instructions.length, sharedSecretKey, 0);
+        byte[] padding = BetaUtil.padInstructions(params, padLen, instructions.length, sharedSecretKey, 0);
 
         byte[] encInstr = params.xorRho(params.hrho(sharedSecretKey), instructions);
         encInstr = concatenate(encInstr, padding);

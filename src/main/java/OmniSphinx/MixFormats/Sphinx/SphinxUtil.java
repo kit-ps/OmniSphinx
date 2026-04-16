@@ -4,7 +4,7 @@ import OmniSphinx.InstructionPacket.InstructionPacket;
 import OmniSphinx.OmniSphinxException;
 import OmniSphinx.Params;
 import OmniSphinx.crypto.ECCGroup;
-import OmniSphinx.header.InstructionEncryptor;
+import OmniSphinx.header.BetaUtil;
 import OmniSphinx.header.InstructionHeader;
 import org.bouncycastle.math.ec.ECPoint;
 import org.msgpack.core.MessageBufferPacker;
@@ -105,7 +105,7 @@ public final class SphinxUtil {
         secureRandom.nextBytes(randomPad);
 
         instructions[hops - 1] = concatenate(instructions[hops - 1], randomPad);
-        byte[] onion = InstructionEncryptor.encryptFixedSize(params, instructions, secrets, params.getInstructionTotalSize());
+        byte[] onion = BetaUtil.createBetaPrePadded(params, instructions, secrets, params.getInstructionTotalSize());
 
         byte[] finalMac = params.mac(params.hmu(secrets[0]), onion);
 

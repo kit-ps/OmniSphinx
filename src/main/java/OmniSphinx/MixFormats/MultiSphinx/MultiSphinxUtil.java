@@ -5,7 +5,7 @@ import OmniSphinx.OmniSphinxException;
 import OmniSphinx.Params;
 import OmniSphinx.SerializationUtils;
 import OmniSphinx.crypto.ECCGroup;
-import OmniSphinx.header.InstructionEncryptor;
+import OmniSphinx.header.BetaUtil;
 import OmniSphinx.header.InstructionHeader;
 import kotlin.Pair;
 import org.bouncycastle.math.ec.ECPoint;
@@ -107,7 +107,7 @@ public class MultiSphinxUtil {
         int paddingLength = targetSize - payload.length;
         byte[] padding;
         try {
-            padding = InstructionEncryptor.padInstructions(params, paddingLength, payload.length, secrets[0], 0);
+            padding = BetaUtil.padInstructions(params, paddingLength, payload.length, secrets[0], 0);
         } catch (OmniSphinxException e) {
             throw new RuntimeException("[MultiSphinxUtil] Failed to pad instruction block", e);
         }
@@ -160,7 +160,7 @@ public class MultiSphinxUtil {
 
         instructions[hops - 1] = concatenate(instructions[hops - 1], randomPad);
 
-        byte[] onion = InstructionEncryptor.encryptFixedSize(params, instructions, secrets,
+        byte[] onion = BetaUtil.createBetaPrePadded(params, instructions, secrets,
                 params.getInstructionTotalSize());
 
         byte[] finalMac = params.mac(params.hmu(secrets[0]), onion);
@@ -232,7 +232,7 @@ public class MultiSphinxUtil {
         int paddingLength = targetSize - payload.length;
         byte[] padding;
         try {
-            padding = InstructionEncryptor.padInstructions(params, paddingLength, payload.length, sharedSecretKey, counter);
+            padding = BetaUtil.padInstructions(params, paddingLength, payload.length, sharedSecretKey, counter);
         } catch (OmniSphinxException e) {
             throw new RuntimeException("Failed to pad instruction block", e);
         }
@@ -281,7 +281,7 @@ public class MultiSphinxUtil {
 
         instructions[hops - 1] = concatenate(instructions[hops - 1], randomPad);
 
-        byte[] onion = InstructionEncryptor.encryptFixedSize(params, instructions, secrets,
+        byte[] onion = BetaUtil.createBetaPrePadded(params, instructions, secrets,
                 params.getInstructionTotalSize());
 
         byte[] finalMac = params.mac(params.hmu(secrets[0]), onion);

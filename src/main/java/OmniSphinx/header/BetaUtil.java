@@ -8,16 +8,16 @@ import java.util.Arrays;
 
 import static OmniSphinx.SerializationUtils.*;
 
-public final class InstructionEncryptor {
-    private InstructionEncryptor() {
+public final class BetaUtil {
+    private BetaUtil() {
     }
 
     /**
-     * Erstellt Instruction für den Header mit fixer länger!
-     *  totalSize = die gewünschte End größe
-     *  Instructions sind schon gepaddet und sind insgesamt der Größe totalSize
+     * Creates Beta for the header with a fixed length
+     * totalSize = the desired final size
+     * Instructions are already padded and have a total size of totalSize
      */
-    public static byte[] encryptFixedSize(Params params, byte[][] instructions, byte[][] secrets, int totalSize) throws Exception {
+    public static byte[] createBetaPrePadded(Params params, byte[][] instructions, byte[][] secrets, int totalSize) throws Exception {
         int hops = instructions.length;
         if (hops != secrets.length) {
             throw new IllegalArgumentException("instructions/secrets length mismatch");
@@ -65,10 +65,10 @@ public final class InstructionEncryptor {
     }
 
     /**
-     * Erstellt den Instruktionsheader, der zusätzlich zu den Instruktionen noch ein Padding besitzt um ihn auf die richtige länge zu padden
-     * Das heißt hier sind die Instructionen nicht auf die richtige länge gepaddet
+     * Creates the Beta which, in addition to the instructions, includes padding to reach the correct length
+     * This means that the instructions themselves are not padded to the correct length here
      */
-    public static byte[] encryptWithPadding(Params params, byte[][] instructions, byte[][] secrets, int totalSize, byte[] padding) throws Exception {
+    public static byte[] createBetaWithPadding(Params params, byte[][] instructions, byte[][] secrets, int totalSize, byte[] padding) throws Exception {
         int hops = instructions.length;
         if (hops != secrets.length) {
             throw new IllegalArgumentException("instructions/secrets length mismatch");

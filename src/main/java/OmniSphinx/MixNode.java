@@ -2,7 +2,7 @@ package OmniSphinx;
 
 import OmniSphinx.InstructionPacket.InstructionPacket;
 import OmniSphinx.VM.*;
-import OmniSphinx.header.InstructionEncryptor;
+import OmniSphinx.header.BetaUtil;
 import OmniSphinx.header.InstructionHeader;
 import OmniSphinx.instruction.InstructionRegister;
 import com.sun.net.httpserver.HttpExchange;
@@ -209,7 +209,7 @@ public class MixNode {
         int paddingLength = targetSize - instructions.length;
         byte[] padding;
         try {
-            padding = InstructionEncryptor.padInstructions(params, paddingLength, instructions.length, sharedSecret, outputIndex);
+            padding = BetaUtil.padInstructions(params, paddingLength, instructions.length, sharedSecret, outputIndex);
         } catch (OmniSphinxException e) {
             throw new RuntimeException("Failed to pad instruction block", e);
         }
@@ -232,7 +232,7 @@ public class MixNode {
         int paddingLength = targetSize - payload.length;
         byte[] padding;
         try {
-            padding = InstructionEncryptor.padInstructions(params, paddingLength, payload.length, sharedSecret, outputIndex);
+            padding = BetaUtil.padInstructions(params, paddingLength, payload.length, sharedSecret, outputIndex);
         } catch (OmniSphinxException e) {
             throw new RuntimeException("Failed to pad instruction block", e);
         }

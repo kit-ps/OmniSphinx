@@ -4,7 +4,7 @@ import OmniSphinx.Params;
 import OmniSphinx.ClientUtil;
 import OmniSphinx.MixFormats.PolySphinx.PolySphinxUtil;
 import OmniSphinx.InstructionPacket.InstructionPacket;
-import OmniSphinx.header.InstructionEncryptor;
+import OmniSphinx.header.BetaUtil;
 import OmniSphinx.header.InstructionHeader;
 import OmniSphinx.SerializationUtils;
 import kotlin.Pair;
@@ -94,7 +94,7 @@ public class PolySphinxMacTest {
             int instructionLength = subheader.instructions.length;
             int toPad = params.getInstructionTotalSize() - instructionLength;
 
-            byte[] padding = InstructionEncryptor.padInstructions(params, toPad, instructionLength, replicationSecret, i);
+            byte[] padding = BetaUtil.padInstructions(params, toPad, instructionLength, replicationSecret, i);
 
             subheader.instructions = concatenate(subheader.instructions, padding);
 
