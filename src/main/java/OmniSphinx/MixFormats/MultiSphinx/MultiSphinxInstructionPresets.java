@@ -7,7 +7,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class MultiSphinxInstructionPresets {
-	// Register-Definitionen
+
 	private static final byte REG_PAYLOAD = InstructionRegister.PAYLOAD.getCode();
 	private static final byte REG_ALPHA = InstructionRegister.NEXT_ALPHA.getCode();
 	private static final byte REG_BETA = InstructionRegister.NEXT_INSTRUCTIONS.getCode();
