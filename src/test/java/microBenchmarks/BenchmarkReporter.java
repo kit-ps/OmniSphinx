@@ -16,15 +16,6 @@ public final class BenchmarkReporter {
                 label, stats.getAverage(), stats.getMin(), stats.getMax(), stats.getCount()));
     }
 
-    public static Path plotViolin(String title, Map<String, BenchmarkStats> statsByLabel, String fileName) throws IOException {
-        Path outputDir = Path.of("target", "benchmarks");
-        Files.createDirectories(outputDir);
-        Path outputFile = outputDir.resolve(fileName);
-        ViolinPlotter.plot(title, statsByLabel, outputFile);
-        System.out.printf("Violin plot generated at %s%n", outputFile.toAbsolutePath());
-        return outputFile;
-    }
-
     public static void exportCsv(Map<String, BenchmarkStats> statsByLabel, String fileName) throws IOException {
         Path outputDir = Path.of("target", "benchmarks");
         Files.createDirectories(outputDir);
