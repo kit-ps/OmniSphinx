@@ -37,6 +37,9 @@ public class PolySphinxPackageCreationBenchmark {
     private static final int MIX_NODE_COUNT = 100;
     private static final int CLIENT_COUNT = 30;
 
+    private static final String PAYLOAD =
+        "Everyone has the right to respect for his private and family life, his home and his correspondence.";
+
     private Params params;
     private byte[][] mixNodeIds;
     private ECPoint[] mixNodePubs;
@@ -131,7 +134,7 @@ public class PolySphinxPackageCreationBenchmark {
 
     @Benchmark
     public InstructionPacket polySphinxCreation() throws Exception {
-        return PolySphinxUtil.createPolySphinxPacket(params, replicationNode, replicationPub, suffixPaths, receiversList,"test".getBytes(), seed, keySets);
+        return PolySphinxUtil.createPolySphinxPacket(params, replicationNode, replicationPub, suffixPaths, receiversList, PAYLOAD.getBytes(), seed, keySets);
     }
 
     private int[] randomDistinctIndices(int max, int count, int exclude) {
