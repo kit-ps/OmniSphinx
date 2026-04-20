@@ -1,5 +1,6 @@
 package OmniSphinx.VM;
 
+import OmniSphinx.OmniSphinxException;
 import OmniSphinx.Params;
 import OmniSphinx.instruction.InstructionRegister;
 import OmniSphinx.instruction.OpCode;
@@ -551,12 +552,22 @@ public class VM {
     }
 
     private void decrypt(byte keyReg, byte inputReg, byte destReg) throws VMException {
-        byte[] result = params.decrypt(registers.get(keyReg), registers.get(inputReg));
+        byte[] result;
+        try {
+            result = params.decrypt(registers.get(keyReg), registers.get(inputReg));
+        } catch (OmniSphinxException e) {
+            throw new VMException("decrypt: " + e.toString());
+        }
         registers.put(destReg, result);
     }
 
     private void encrypt(byte keyReg, byte inputReg, byte destReg) throws VMException {
-        byte[] result = params.encrypt(registers.get(keyReg), registers.get(inputReg));
+        byte[] result;
+        try {
+            result = params.encrypt(registers.get(keyReg), registers.get(inputReg));
+        } catch (OmniSphinxException e) {
+            throw new VMException("encrypt: " + e.toString());
+        }
         registers.put(destReg, result);
     }
 

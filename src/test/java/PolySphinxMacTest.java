@@ -69,7 +69,7 @@ public class PolySphinxMacTest {
         seed = new byte[16];
         new SecureRandom().nextBytes(seed);
 
-        message = "hello".getBytes();
+        message = "No one shall be subjected to arbitrary interference with his privacy, family, home or correspondence".getBytes();
     }
 
     @Test

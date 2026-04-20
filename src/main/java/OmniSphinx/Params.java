@@ -109,20 +109,89 @@ public class Params {
         return aesCtr(key, plain);
     }
 
+    public byte[] lionessEnc(byte[] key, byte[] message) throws OmniSphinxException {
+        if (key.length != keyLength) {
+            throw new OmniSphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
+        }
 
-    public byte[] encrypt(byte[] key, byte[] plaintext) {
-        byte[] iv = new byte[16]; // 16 null bytes as IV (CTR mode requirement)
-        StreamCipher cipher = new SICBlockCipher(new AESFastEngine());
-        cipher.init(true, new ParametersWithIV(new KeyParameter(key), iv));
+        if (message.length < keyLength * 2) {
+            throw new OmniSphinxException("Length of provided message (" + message.length + ") needs to be at least double the length of the key (" + keyLength + ")");
+        }
 
-        byte[] ciphertext = new byte[plaintext.length];
-        cipher.processBytes(plaintext, 0, plaintext.length, ciphertext, 0);
-        return ciphertext;
+        // Round 1
+        byte[] messageShort = slice(message, keyLength);
+        byte[] messageLong = slice(message, keyLength, message.length);
+        byte[] one = "1".getBytes();
+        byte[] k1 = slice(hash(concatenate(messageLong, key, one)), keyLength);
+        byte[] c = aesCtr(key, messageShort, k1);
+        byte[] r1 = concatenate(c, messageLong);
+
+        // Round 2
+        byte[] r1Short = slice(r1, keyLength);
+        byte[] r1Long = slice(r1, keyLength, message.length);
+        c = aesCtr(key, r1Long, r1Short);
+        byte[] r2 = concatenate(r1Short, c);
+
+        // Round 3
+        byte[] r2Short = slice(r2, keyLength);
+        byte[] r2Long = slice(r2, keyLength, message.length);
+        byte[] three = "3".getBytes();
+        byte[] k3 = slice(hash(concatenate(r2Long, key, three)), keyLength);
+        c = aesCtr(key, r2Short, k3);
+        byte[] r3 = concatenate(c, r2Long);
+
+        // Round 4
+        byte[] r3Short = slice(r3, keyLength);
+        byte[] r3Long = slice(r3, keyLength, message.length);
+        c = aesCtr(key, r3Long, r3Short);
+        byte[] r4 = concatenate(r3Short, c);
+
+        return r4;
     }
 
-    public byte[] decrypt(byte[] key, byte[] ciphertext) {
-        // CTR mode decryption is identical to encryption
-        return encrypt(key, ciphertext);
+    public byte[] lionessDec(byte[] key, byte[] message) throws OmniSphinxException {
+        if (key.length != keyLength) {
+            throw new OmniSphinxException("Length of provided key (" + key.length + ") did not match the required key length (" + keyLength + ")");
+        }
+
+        if (message.length < keyLength * 2) {
+            throw new OmniSphinxException("Length of provided message (" + message.length + ") needs to be at least double the length of the key (" + keyLength + ")");
+        }
+
+        byte[] r4Short = slice(message, keyLength);
+        byte[] r4Long = slice(message, keyLength, message.length);
+
+        // Round 4
+        byte[] r3Long = aesCtr(key, r4Long, r4Short);
+        byte[] r3Short = r4Short;
+
+        // Round 3
+        byte[] three = "3".getBytes();
+        byte[] k2 = slice(hash(concatenate(r3Long, key, three)), keyLength);
+        byte[] r2Short = aesCtr(key, r3Short, k2);
+        byte[] r2Long = r3Long;
+
+        // Round 2
+        byte[] r1Long = aesCtr(key, r2Long, r2Short);
+        byte[] r1Short = r2Short;
+
+        // Round 1
+        byte[] one = "1".getBytes();
+        byte[] k0 = slice(hash(concatenate(r1Long, key, one)), keyLength);
+        byte[] c = aesCtr(key, r1Short, k0);
+        byte[] r0 = concatenate(c, r1Long);
+
+        return r0;
+    }
+
+    public byte[] encrypt(byte[] key, byte[] plaintext) throws OmniSphinxException {
+        return lionessEnc(key, plaintext);
+        //return aesCtr(key, plaintext);
+    }
+
+    public byte[] decrypt(byte[] key, byte[] ciphertext) throws OmniSphinxException {
+        return lionessDec(key, ciphertext);
+        //return aesCtr(key, ciphertext);
     }
 
     public byte[] prg(byte[] key) {

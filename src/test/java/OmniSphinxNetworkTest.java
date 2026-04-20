@@ -7,6 +7,7 @@ import OmniSphinx.MixNode;
 import OmniSphinx.Params;
 import OmniSphinx.MixFormats.PolySphinx.PolySphinxUtil;
 import OmniSphinx.VM.VMException;
+import OmniSphinx.crypto.ECCGroup;
 import OmniSphinx.pki.PkiEntry;
 import OmniSphinx.pki.PkiGenerator;
 import OmniSphinx.routing.RandomRoutingStrategy;
@@ -22,12 +23,18 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.*;
 
+import static OmniSphinx.SerializationUtils.concatenate;
 import static org.junit.Assert.*;
 
 public class OmniSphinxNetworkTest {
     private static final int MIX_NODE_COUNT = 100;
     private static final int CLIENT_COUNT = 30;
     private static final int PACKET_COUNT = 5;
+
+    private static final String PAYLOAD =
+        "All human beings are born free and equal in dignity and rights. " +
+        "They are endowed with reason and conscience and should act " +
+        "towards one another in a spirit of brotherhood.";
 
     private Params params;
     private byte[][] mixNodeIds;
@@ -44,7 +51,7 @@ public class OmniSphinxNetworkTest {
 
     @Before
     public void setUp() throws Exception {
-        params = new Params();
+        params = new Params(16, 21410, 19200, new ECCGroup(), 5000);
         PkiGenerator generator = new PkiGenerator(params);
 
         mixNodeIds = new byte[MIX_NODE_COUNT][];
@@ -103,7 +110,7 @@ public class OmniSphinxNetworkTest {
                 keyList[i] = mixNodePubs[mixIndices[i]];
             }
 
-            InstructionPacket packet = sender.createSphinxInstructionPacket(nodeList, keyList, destination, "test".getBytes());
+            InstructionPacket packet = sender.createSphinxInstructionPacket(nodeList, keyList, destination, PAYLOAD.getBytes());
             byte[] raw = sender.packInstructionPacket(packet);
             InstructionPacket current = packet;
             byte[] nextHop = null;
@@ -137,7 +144,7 @@ public class OmniSphinxNetworkTest {
             byte[] msg = unpacker.readPayload(unpacker.unpackBinaryHeader());
             unpacker.close();
 
-            assertEquals("test", new String(msg));
+            assertEquals(PAYLOAD, new String(msg));
         }
     }
 
@@ -148,7 +155,7 @@ public class OmniSphinxNetworkTest {
             Client sender = clients[senderIndex];
 
 
-            int receiverCount = 5;
+            int receiverCount = 3;
             int[] receivers = randomDistinctIndices(CLIENT_COUNT, receiverCount, senderIndex);
 
             int replicationIndex =  random.nextInt(MIX_NODE_COUNT);
@@ -175,10 +182,11 @@ public class OmniSphinxNetworkTest {
                 keySets.add(keyList);
             }
 
+            byte[] initialPayload = concatenate(PAYLOAD.getBytes(), Arrays.copyOf(new byte[] {}, params.bodyLength() - PAYLOAD.getBytes().length));
             byte[] seed = new byte[16];
             random.nextBytes(seed);
             InstructionPacket packet = PolySphinxUtil.createPolySphinxPacket(
-                    params, replicationNode, replicationPub, suffixPaths, receiversList,"test".getBytes(), seed, keySets);
+                    params, replicationNode, replicationPub, suffixPaths, receiversList, initialPayload, seed, keySets);
             byte[] raw = sender.packInstructionPacket(packet);
 
             TestNode replicationNodeObj = mixNodes[replicationIndex];
@@ -203,8 +211,8 @@ public class OmniSphinxNetworkTest {
                     Integer receiverIdx = clientIdMap.get(hopKey);
                     assertNotNull("Unknown recipient for key " + hopKey, receiverIdx);
                     assertTrue(contains(receivers, receiverIdx));
-                    byte[] payload = Arrays.copyOfRange(currentOut.getPacket().getPayload(), 0, 4);
-                    assertEquals("test", new String(payload));
+                    byte[] payload = Arrays.copyOfRange(currentOut.getPacket().getPayload(), 0, PAYLOAD.length());
+                    assertEquals(PAYLOAD, new String(payload));
                 }
             }
         }
