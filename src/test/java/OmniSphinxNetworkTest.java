@@ -243,10 +243,19 @@ public class OmniSphinxNetworkTest {
             Map<String, String> expectedMessages = new HashMap<>();
 
             for (int i = 0; i < subPacketCount; i++) {
-                int[] receiverArray = randomDistinctIndices(CLIENT_COUNT, 1, senderIndex);
-                int receiverIndex = receiverArray[0];
-                byte[] destination = Arrays.copyOf(clientIds[receiverIndex], params.keyLength());
-                destinations[i] = destination;
+                int[] receiverArray;
+                int receiverIndex;
+                byte[] destination;
+                while (true) {
+                    receiverArray = randomDistinctIndices(CLIENT_COUNT, 1, senderIndex);
+                    receiverIndex = receiverArray[0];
+                    destination = Arrays.copyOf(clientIds[receiverIndex], params.keyLength());
+                    destinations[i] = destination;
+
+                    if (!expectedMessages.containsKey(Base64.getEncoder().encodeToString(destination))) {
+                        break;
+                    }
+                }
 
                 int[] mixIndices = randomDistinctIndices(MIX_NODE_COUNT, suffixHops, -1);
                 byte[][] path = new byte[suffixHops][];
