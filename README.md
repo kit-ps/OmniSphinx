@@ -31,6 +31,10 @@ files will be saved in `target/benchmarks`.
 
 The script `instruction-table.py` can be used to produce Table 4 in the paper.
 
+The script `processing-table.py` can be used to produce Table 3 in the paper.
+It requires the Sphinx benchmarks to be available (by default in
+`../java-sphinx/target/benchmarks`).
+
 ## License
 
 This code is based on `java-sphinx` by Robert Soultanaev:
