@@ -3,6 +3,7 @@ package OmniSphinx.benchmarks;
 import OmniSphinx.Client;
 import OmniSphinx.ClientUtil;
 import OmniSphinx.InstructionPacket.InstructionPacket;
+import OmniSphinx.crypto.ECCGroup;
 import OmniSphinx.MixNode;
 import OmniSphinx.Params;
 import OmniSphinx.pki.PkiEntry;
@@ -29,7 +30,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @State(Scope.Benchmark)
 public class SphinxPackageProcessingBenchmark {
     private static final int RUNS = 3000;
-    private static final int pathLength = 6;
+    private static final int pathLength = 5;
     private static final int warmUp = 300;
     private Params params;
     private Client client;
@@ -43,7 +44,7 @@ public class SphinxPackageProcessingBenchmark {
 
     @Setup
     public void setUp() throws Exception {
-        params = new Params();
+        params = new Params(16, 1045, 0, new ECCGroup(), 196);
         client = new Client(params, new RandomRoutingStrategy());
         generator = new PkiGenerator(params);
     }
@@ -52,7 +53,7 @@ public class SphinxPackageProcessingBenchmark {
     public void setupInvocation() throws Exception {
         SphinxContext context = prepareContext(pathLength);
 
-        byte[] message = new byte[32];
+        byte[] message = new byte[1024];
         random.nextBytes(message);
         InstructionPacket packet = client.createSphinxInstructionPacket(context.nodeList, context.keys, context.destination, message);
         byte[] raw = client.packInstructionPacket(packet);
