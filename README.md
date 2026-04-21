@@ -35,6 +35,11 @@ The script `processing-table.py` can be used to produce Table 3 in the paper.
 It requires the Sphinx benchmarks to be available (by default in
 `../java-sphinx/target/benchmarks`).
 
+## Extended version
+
+The extended version of the paper (including the security proofs) can be found
+in `Extended Version.pdf`.
+
 ## License
 
 This code is based on `java-sphinx` by Robert Soultanaev:
